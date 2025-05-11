@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
-import AgentWorkflow from "@/components/AgentWorkflow";
+import AgentWorkflow from "@/components/agent-workflow";
 import PromptOutput from "@/components/PromptOutput";
 import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
