@@ -4,7 +4,7 @@ import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/AgentWorkflow";
 import PromptOutput from "@/components/PromptOutput";
-import { ProjectSpec, GenerationStatus } from "@/types/ipa-types";
+import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
 
