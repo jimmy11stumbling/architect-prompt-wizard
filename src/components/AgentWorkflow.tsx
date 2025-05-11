@@ -51,81 +51,85 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents }) => {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col">
-          {agents.map((agent, index) => (
-            <React.Fragment key={agent.agent}>
-              <motion.div
-                className={`flex flex-col p-3 rounded-md ${
-                  agent.status === "processing"
-                    ? "bg-ipa-primary/10"
-                    : agent.status === "completed"
-                    ? "bg-ipa-success/10"
-                    : agent.status === "failed"
-                    ? "bg-ipa-error/10"
-                    : ""
-                }`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Collapsible
-                  open={openAgents[agent.agent]}
-                  onOpenChange={() => toggleAgent(agent.agent)}
+          {agents.map((agent, index) => {
+            // Create a unique key for each agent
+            const key = `${agent.agent}-${index}`;
+            return (
+              <React.Fragment key={key}>
+                <motion.div
+                  className={`flex flex-col p-3 rounded-md ${
+                    agent.status === "processing"
+                      ? "bg-ipa-primary/10"
+                      : agent.status === "completed"
+                      ? "bg-ipa-success/10"
+                      : agent.status === "failed"
+                      ? "bg-ipa-error/10"
+                      : ""
+                  }`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
                 >
-                  <div className="flex items-center">
-                    <div className="mr-3">{getStatusIcon(agent.status)}</div>
-                    <div className="flex-1">
-                      <div className="font-medium">{agent.agent}</div>
-                      <div className="text-sm text-ipa-muted">
-                        {agent.status === "processing"
-                          ? "Working..."
-                          : agent.status === "completed"
-                          ? "Completed"
-                          : agent.status === "failed"
-                          ? "Failed"
-                          : "Waiting"}
+                  <Collapsible
+                    open={openAgents[agent.agent]}
+                    onOpenChange={() => toggleAgent(agent.agent)}
+                  >
+                    <div className="flex items-center">
+                      <div className="mr-3">{getStatusIcon(agent.status)}</div>
+                      <div className="flex-1">
+                        <div className="font-medium">{agent.agent}</div>
+                        <div className="text-sm text-ipa-muted">
+                          {agent.status === "processing"
+                            ? "Working..."
+                            : agent.status === "completed"
+                            ? "Completed"
+                            : agent.status === "failed"
+                            ? "Failed"
+                            : "Waiting"}
+                        </div>
                       </div>
+                      {(agent.reasoningContent || agent.output) && (
+                        <CollapsibleTrigger asChild>
+                          <button className="p-1 hover:bg-ipa-muted rounded-full">
+                            {openAgents[agent.agent] ? (
+                              <ChevronUp className="h-4 w-4 text-ipa-muted" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-ipa-muted" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                      )}
                     </div>
-                    {(agent.reasoningContent || agent.output) && (
-                      <CollapsibleTrigger asChild>
-                        <button className="p-1 hover:bg-ipa-muted rounded-full">
-                          {openAgents[agent.agent] ? (
-                            <ChevronUp className="h-4 w-4 text-ipa-muted" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-ipa-muted" />
-                          )}
-                        </button>
-                      </CollapsibleTrigger>
-                    )}
+                    
+                    <CollapsibleContent>
+                      {agent.reasoningContent && (
+                        <div className="mt-3 border-t border-ipa-border pt-3">
+                          <div className="text-sm font-medium mb-1">Reasoning Process:</div>
+                          <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
+                            {agent.reasoningContent}
+                          </pre>
+                        </div>
+                      )}
+                      {agent.output && !agent.reasoningContent && (
+                        <div className="mt-3 border-t border-ipa-border pt-3">
+                          <div className="text-sm font-medium mb-1">Output:</div>
+                          <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
+                            {agent.output}
+                          </pre>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </motion.div>
+                
+                {index < agents.length - 1 && (
+                  <div className="flex justify-center my-1">
+                    <ArrowRight className="h-4 w-4 text-ipa-muted" />
                   </div>
-                  
-                  <CollapsibleContent>
-                    {agent.reasoningContent && (
-                      <div className="mt-3 border-t border-ipa-border pt-3">
-                        <div className="text-sm font-medium mb-1">Reasoning Process:</div>
-                        <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
-                          {agent.reasoningContent}
-                        </pre>
-                      </div>
-                    )}
-                    {agent.output && !agent.reasoningContent && (
-                      <div className="mt-3 border-t border-ipa-border pt-3">
-                        <div className="text-sm font-medium mb-1">Output:</div>
-                        <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
-                          {agent.output}
-                        </pre>
-                      </div>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
-              </motion.div>
-              
-              {index < agents.length - 1 && (
-                <div className="flex justify-center my-1">
-                  <ArrowRight className="h-4 w-4 text-ipa-muted" />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -133,4 +137,3 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents }) => {
 };
 
 export default AgentWorkflow;
-
