@@ -1,7 +1,10 @@
 
-import { GenerationStatus, ProjectSpec, AgentName } from "@/types/ipa-types";
+import { GenerationStatus, ProjectSpec, AgentName, DeepSeekCompletionRequest, DeepSeekCompletionResponse, DeepSeekMessage } from "@/types/ipa-types";
 
-// Mock service to simulate API calls
+// In a real app, this would be stored securely in environment variables
+const DEEPSEEK_API_KEY = "YOUR_DEEPSEEK_API_KEY"; // Replace with your actual API key
+const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+
 export const ipaService = {
   generatePrompt: async (spec: ProjectSpec): Promise<string> => {
     // In a real app, this would call the backend API
@@ -11,8 +14,41 @@ export const ipaService = {
   getGenerationStatus: async (taskId: string): Promise<GenerationStatus> => {
     // In a real app, this would poll the backend API
     return new Promise((resolve) => {
-      setTimeout(() => {
+      setTimeout(async () => {
         const currentStep = Math.min(mockStatus.progress + 1, 7);
+        
+        // If we're processing a new agent, invoke DeepSeek for that agent
+        if (currentStep > 0 && currentStep <= agentList.length) {
+          const currentAgent = agentList[currentStep - 1];
+          
+          try {
+            // Only make the API call if we're not in development/mock mode
+            if (process.env.NODE_ENV === "production" && DEEPSEEK_API_KEY !== "YOUR_DEEPSEEK_API_KEY") {
+              const agentResponse = await invokeDeepSeekAgent(currentAgent, spec);
+              
+              // Update the agent status with the response
+              mockStatus.agents[currentStep - 1] = {
+                agent: currentAgent,
+                status: "completed",
+                output: agentResponse.content,
+                reasoningContent: agentResponse.reasoningContent
+              };
+            } else {
+              // In development/mock mode, just update the status
+              mockStatus.agents[currentStep - 1] = {
+                agent: currentAgent,
+                status: "completed"
+              };
+            }
+          } catch (error) {
+            console.error(`Error invoking DeepSeek for agent ${currentAgent}:`, error);
+            mockStatus.agents[currentStep - 1] = {
+              agent: currentAgent,
+              status: "failed",
+              output: `Error: ${error instanceof Error ? error.message : String(error)}`
+            };
+          }
+        }
         
         // Update mock status
         mockStatus = {
@@ -20,10 +56,10 @@ export const ipaService = {
           progress: currentStep,
           status: currentStep < 7 ? "processing" : "completed",
           agents: agentList.map((agent, index) => ({
-            agent,
+            ...mockStatus.agents[index],
             status:
               index < currentStep
-                ? "completed"
+                ? mockStatus.agents[index].status || "completed"
                 : index === currentStep
                 ? "processing"
                 : "idle"
@@ -37,6 +73,145 @@ export const ipaService = {
         resolve(mockStatus);
       }, 2000); // Simulate network delay
     });
+  }
+};
+
+// Helper function to invoke DeepSeek API for a specific agent
+const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): Promise<{content: string, reasoningContent: string}> => {
+  const systemPrompt = getAgentSystemPrompt(agent);
+  const userMessage = createUserMessageFromSpec(agent, spec);
+  
+  const messages: DeepSeekMessage[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMessage }
+  ];
+  
+  const requestBody: DeepSeekCompletionRequest = {
+    model: "deepseek-reasoner",
+    messages: messages,
+    max_tokens: 4096
+  };
+  
+  try {
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`DeepSeek API error (${response.status}): ${errorData}`);
+    }
+    
+    const data: DeepSeekCompletionResponse = await response.json();
+    const completionMessage = data.choices[0].message;
+    
+    return {
+      content: completionMessage.content,
+      reasoningContent: completionMessage.reasoning_content
+    };
+  } catch (error) {
+    console.error("Error calling DeepSeek API:", error);
+    throw error;
+  }
+};
+
+// Helper function to get the system prompt for each agent
+const getAgentSystemPrompt = (agent: AgentName): string => {
+  switch(agent) {
+    case "RequirementDecompositionAgent":
+      return "You are a specialized AI agent focused on analyzing and decomposing software requirements. Your task is to break down a project description into well-structured development phases and user stories. Focus on identifying core functionalities, data models, user flows, and technical requirements. Output should be organized in clear sections with detailed bullet points.";
+    
+    case "RAGContextIntegrationAgent":
+      return "You are a specialized AI agent that integrates relevant context from technical documentation into development plans. Analyze the given project specifications and identify which technologies, patterns, and best practices are most relevant. Your output should connect specific project requirements with appropriate implementation approaches and cite relevant documentation.";
+    
+    case "A2AProtocolExpertAgent":
+      return "You are a specialized AI agent with expertise in Agent-to-Agent (A2A) communication protocols. Your task is to design robust communication systems between software agents for the specified project. Focus on message formats, communication channels, error handling, and synchronization mechanisms. Provide detailed implementation guidance specific to the mentioned technology stack.";
+    
+    case "TechStackImplementationAgent_Frontend":
+      return "You are a specialized AI agent focused on frontend implementation using the specified tech stack. Analyze project requirements and provide detailed guidance on component architecture, state management, UI/UX implementation, and frontend integration points. Include code patterns, library recommendations, and best practices specifically for the mentioned frontend technologies.";
+    
+    case "TechStackImplementationAgent_Backend":
+      return "You are a specialized AI agent focused on backend implementation using the specified tech stack. Analyze project requirements and provide detailed guidance on API design, database schema, authentication/authorization, business logic implementation, and system integration. Include code patterns, library recommendations, and best practices specifically for the mentioned backend technologies.";
+    
+    case "CursorOptimizationAgent":
+      return "You are a specialized AI agent that optimizes instructions for the Cursor AI code editor. Your task is to refine implementation guidance to leverage Cursor's capabilities effectively. Focus on structuring instructions in ways that Cursor can interpret most effectively, including appropriate level of detail, clear sequencing, and explicit technological references. Ensure instructions avoid common pitfalls that might confuse AI code generation.";
+    
+    case "QualityAssuranceAgent":
+      return "You are a specialized AI agent focused on quality assurance for software development instructions. Review the complete development plan and identify potential issues, inconsistencies, missing components, or areas needing clarification. Check for security considerations, scalability concerns, and maintenance challenges. Your output should be a comprehensive review with specific recommendations for improvement.";
+    
+    default:
+      return "You are a helpful AI assistant specializing in software development.";
+  }
+};
+
+// Helper function to create a user message from project spec for each agent
+const createUserMessageFromSpec = (agent: AgentName, spec: ProjectSpec): string => {
+  const { projectDescription, frontendTechStack, backendTechStack, a2aIntegrationDetails, additionalFeatures } = spec;
+  
+  const techStackInfo = `
+Frontend Tech Stack: ${frontendTechStack.join(", ")}
+Backend Tech Stack: ${backendTechStack.join(", ")}
+  `.trim();
+  
+  switch(agent) {
+    case "RequirementDecompositionAgent":
+      return `
+Please analyze and decompose the following project requirements:
+
+PROJECT DESCRIPTION:
+${projectDescription}
+
+TECH STACK:
+${techStackInfo}
+
+A2A INTEGRATION DETAILS:
+${a2aIntegrationDetails}
+
+ADDITIONAL FEATURES:
+${additionalFeatures}
+
+Break down this project into clear development phases, user stories, and technical requirements. Identify core functionalities, data models, user flows, and integration points.
+      `.trim();
+    
+    case "A2AProtocolExpertAgent":
+      return `
+Design a robust Agent-to-Agent (A2A) communication protocol for the following project:
+
+PROJECT DESCRIPTION:
+${projectDescription}
+
+TECH STACK:
+${techStackInfo}
+
+A2A INTEGRATION DETAILS:
+${a2aIntegrationDetails}
+
+Provide detailed specifications for message formats, communication channels, error handling, and synchronization. Include implementation guidance specific to the mentioned tech stack.
+      `.trim();
+    
+    // Add cases for other agents similarly
+    
+    default:
+      return `
+Analyze the following project specification:
+
+PROJECT DESCRIPTION:
+${projectDescription}
+
+TECH STACK:
+${techStackInfo}
+
+A2A INTEGRATION DETAILS:
+${a2aIntegrationDetails}
+
+ADDITIONAL FEATURES:
+${additionalFeatures}
+      `.trim();
   }
 };
 
@@ -156,3 +331,4 @@ Implement Agent-to-Agent communication for task assignment and notification subs
 7. Implement proper error handling to prevent information leakage
 
 Start by setting up the project structure, then proceed with the authentication system before moving on to the core task management features. Focus on implementing the A2A communication system early as it's a central requirement.`;
+

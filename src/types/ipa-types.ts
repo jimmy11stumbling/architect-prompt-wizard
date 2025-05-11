@@ -22,6 +22,7 @@ export interface AgentStatus {
   agent: AgentName;
   status: "idle" | "processing" | "completed" | "failed";
   output?: string;
+  reasoningContent?: string;
 }
 
 export interface GenerationStatus {
@@ -32,3 +33,36 @@ export interface GenerationStatus {
   result?: string;
   error?: string;
 }
+
+export interface DeepSeekMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+export interface DeepSeekCompletionRequest {
+  model: string;
+  messages: DeepSeekMessage[];
+  max_tokens?: number;
+}
+
+export interface DeepSeekCompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    index: number;
+    message: {
+      role: string;
+      content: string;
+      reasoning_content: string;
+    };
+    finish_reason: string;
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
