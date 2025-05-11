@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
@@ -28,6 +29,7 @@ const Index: React.FC = () => {
     setIsGenerating(true);
     try {
       const taskId = await ipaService.generatePrompt(completeSpec);
+      console.log("Starting generation with task ID:", taskId);
       startPolling(taskId);
     } catch (error) {
       console.error("Error generating prompt:", error);
@@ -41,9 +43,12 @@ const Index: React.FC = () => {
       setGenerationStatus(status);
       
       if (status.status !== "completed" && status.status !== "failed") {
+        // Continue polling with a 2-second interval
         setTimeout(() => startPolling(taskId), 2000);
       } else {
+        // Generation complete or failed
         setIsGenerating(false);
+        console.log("Generation completed with status:", status.status);
       }
     } catch (error) {
       console.error("Error polling status:", error);
