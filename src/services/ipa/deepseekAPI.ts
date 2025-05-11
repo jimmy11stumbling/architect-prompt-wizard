@@ -1,11 +1,8 @@
-
 import { ProjectSpec, AgentName, DeepSeekCompletionRequest, DeepSeekCompletionResponse, DeepSeekMessage } from "@/types/ipa-types";
 import { getAgentSystemPrompt, createUserMessageFromSpec } from "./agentPrompts";
 import { toast } from "@/hooks/use-toast";
 
-// This would typically be stored securely in environment variables
-// For demo purposes, we'll use a mock key - in production this should be properly secured
-const DEEPSEEK_API_KEY = "sk-demo-api-key-for-testing-purposes-replace-in-production";
+// API URL for DeepSeek
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
 /**
@@ -33,14 +30,14 @@ export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): 
   try {
     console.log(`Making API call to DeepSeek for agent ${agent}`);
     
-    // Since we're in an MVP and may not have actual API access yet,
-    // let's add a fallback mechanism to simulate the API response in development
+    // Get API key from localStorage
+    const apiKey = localStorage.getItem("deepseek_api_key");
     let response;
     let data: DeepSeekCompletionResponse;
     
-    if (DEEPSEEK_API_KEY === "sk-demo-api-key-for-testing-purposes-replace-in-production") {
-      // If using the demo key, create a simulated response
-      console.log("Using simulated API response for development");
+    if (!apiKey || apiKey === "") {
+      // If no API key is provided, use simulated responses
+      console.log("No API key found. Using simulated API response for development");
       
       // Simulate network delay (1-3 seconds)
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
@@ -48,12 +45,13 @@ export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): 
       // Create a simulated response based on the agent type
       data = createSimulatedResponse(agent, spec);
     } else {
-      // Make the actual API call if we have a real key
+      // Make the actual API call with the provided API key
+      console.log("Using saved API key for DeepSeek API call");
       response = await fetch(DEEPSEEK_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+          "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify(requestBody)
       });

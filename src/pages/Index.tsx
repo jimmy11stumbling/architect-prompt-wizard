@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
 import PromptOutput from "@/components/PromptOutput";
+import { ApiKeyForm } from "@/components/ApiKeyForm";
 import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
@@ -71,8 +72,9 @@ const Index: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
+            <div className="space-y-8">
               <ProjectSpecForm onSubmit={handleSubmit} />
+              <ApiKeyForm />
             </div>
             <div className="space-y-8">
               <AgentWorkflow agents={generationStatus?.agents || []} />
