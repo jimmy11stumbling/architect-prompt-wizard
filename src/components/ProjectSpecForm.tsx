@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Sparkles, X, Database, Brain, Network, Plus, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ const DATABASE_OPTIONS: TechStack[] = ["PostgreSQL", "MongoDB", "Redis"];
 const ADDITIONAL_OPTIONS: TechStack[] = ["Docker"];
 
 const VECTOR_DB_OPTIONS: VectorDatabaseType[] = ["Pinecone", "Weaviate", "Milvus", "Qdrant", "Chroma", "PGVector", "None"];
-const MCP_OPTIONS: MCPType[] = ["Chain-of-Thought", "LLM-Avalanche", "ReAct", "Agent-Critic", "None"];
+const MCP_OPTIONS: MCPType[] = ["Standard MCP", "Extended MCP", "MCP with Tools", "MCP with Resources", "None"];
 
 const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
   const [spec, setSpec] = useState<ProjectSpec>({
@@ -161,9 +160,9 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
       additionalFeatures: "User authentication, role-based permissions, kanban board view, activity timeline, and email notifications.",
       ragVectorDb: "PGVector",
       customRagVectorDb: "",
-      mcpType: "ReAct",
+      mcpType: "MCP with Tools",
       customMcpType: "",
-      advancedPromptDetails: "Leverage semantic search for smart task matching. Implement RAG 2.0 with hybrid search and metadata filtering for knowledge retrieval. Use ReAct pattern for agent decision making."
+      advancedPromptDetails: "Leverage semantic search for smart task matching. Implement RAG 2.0 with hybrid search and metadata filtering for knowledge retrieval. Use Model Context Protocol for tools integration in agent workflows."
     });
   };
 

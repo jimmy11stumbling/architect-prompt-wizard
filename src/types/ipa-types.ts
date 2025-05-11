@@ -3,7 +3,7 @@ export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Express" | "N
 
 export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "None" | string;
 
-export type MCPType = "Chain-of-Thought" | "LLM-Avalanche" | "ReAct" | "Agent-Critic" | "None" | string;
+export type MCPType = "Standard MCP" | "Extended MCP" | "MCP with Tools" | "MCP with Resources" | "None" | string;
 
 export interface ProjectSpec {
   projectDescription: string;

@@ -131,7 +131,7 @@ const getAgentSystemPrompt = (agent: AgentName, spec: ProjectSpec): string => {
     `The project uses ${spec.ragVectorDb} as the vector database for RAG 2.0 implementation. Focus on optimizing vector search, hybrid retrieval strategies, and metadata filtering techniques.` : "";
   
   const mcpContext = spec.mcpType !== "None" ? 
-    `The project implements the ${spec.mcpType} multi-chain protocol pattern for enhanced reasoning and decision making. Focus on designing for this protocol architecture.` : "";
+    `The project implements the ${spec.mcpType} Model Context Protocol for connecting AI models to external tools and data sources. Focus on designing effective tool definitions, resource access patterns, and secure context integration.` : "";
   
   const advancedContext = `${ragContext} ${mcpContext}`.trim();
   
@@ -173,7 +173,7 @@ Backend Tech Stack: ${backendTechStack.join(", ")}
   
   const advancedTechInfo = `
 RAG Vector Database: ${ragVectorDb}
-Multi-Chain Protocol: ${mcpType}
+Model Context Protocol: ${mcpType}
 Advanced Prompt Details: ${advancedPromptDetails || "None provided"}
   `.trim();
   
@@ -232,10 +232,10 @@ ${techStackInfo}
 A2A INTEGRATION DETAILS:
 ${a2aIntegrationDetails}
 
-MULTI-CHAIN PROTOCOL:
+MODEL CONTEXT PROTOCOL:
 ${mcpType}
 
-Provide detailed specifications for message formats, communication channels, error handling, and synchronization. Include implementation guidance specific to the mentioned tech stack and multi-chain protocol if applicable.
+Provide detailed specifications for message formats, communication channels, error handling, and synchronization. Include implementation guidance specific to the mentioned tech stack and Model Context Protocol if applicable.
       `.trim();
     
     // Add cases for other agents similarly
