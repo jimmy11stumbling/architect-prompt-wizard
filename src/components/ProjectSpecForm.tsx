@@ -1,12 +1,24 @@
 
 import React, { useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X, Database, Brain, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProjectSpec, TechStack } from "@/types/ipa-types";
+import { ProjectSpec, TechStack, VectorDatabaseType, MCPType } from "@/types/ipa-types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ProjectSpecFormProps {
   onSubmit: (spec: ProjectSpec) => void;
@@ -17,6 +29,9 @@ const BACKEND_OPTIONS: TechStack[] = ["Express", "NestJS", "FastAPI", "Django"];
 const DATABASE_OPTIONS: TechStack[] = ["PostgreSQL", "MongoDB", "Redis"];
 const ADDITIONAL_OPTIONS: TechStack[] = ["Docker"];
 
+const VECTOR_DB_OPTIONS: VectorDatabaseType[] = ["Pinecone", "Weaviate", "Milvus", "Qdrant", "Chroma", "PGVector", "None"];
+const MCP_OPTIONS: MCPType[] = ["Chain-of-Thought", "LLM-Avalanche", "ReAct", "Agent-Critic", "None"];
+
 const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
   const [spec, setSpec] = useState<ProjectSpec>({
     projectDescription: "",
@@ -24,6 +39,9 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     backendTechStack: ["Express"],
     a2aIntegrationDetails: "",
     additionalFeatures: "",
+    ragVectorDb: "None",
+    mcpType: "None",
+    advancedPromptDetails: ""
   });
 
   const handleTechStackToggle = (tech: TechStack, type: "frontend" | "backend") => {
@@ -60,13 +78,16 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
   };
 
   const handleQuickFill = () => {
-    // Example quick fill for demo purposes
+    // Example quick fill for demo purposes with advanced features
     setSpec({
       projectDescription: "A collaborative task management app with real-time updates and A2A communication.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL"],
       a2aIntegrationDetails: "Implement agent-to-agent communication for task assignment and notification subsystems.",
       additionalFeatures: "User authentication, role-based permissions, kanban board view, activity timeline, and email notifications.",
+      ragVectorDb: "PGVector",
+      mcpType: "ReAct",
+      advancedPromptDetails: "Leverage semantic search for smart task matching. Implement RAG 2.0 with hybrid search and metadata filtering for knowledge retrieval. Use ReAct pattern for agent decision making."
     });
   };
 
@@ -140,13 +161,92 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TooltipProvider>
+              <div className="space-y-2">
+                <label className="flex items-center gap-1 text-sm font-medium">
+                  <Database className="h-4 w-4" /> 
+                  RAG 2.0 Vector Database
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help ml-1 text-xs bg-ipa-muted/30 px-1 rounded">?</span>
+                    </TooltipTrigger>
+                    <TooltipContent className="w-64 p-3">
+                      <p>Select a vector database for RAG 2.0 implementation. This enables advanced semantic search and document retrieval in your AI system.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </label>
+                <Select 
+                  value={spec.ragVectorDb}
+                  onValueChange={(value: VectorDatabaseType) => setSpec({ ...spec, ragVectorDb: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Vector Database" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VECTOR_DB_OPTIONS.map((db) => (
+                      <SelectItem key={db} value={db}>
+                        {db}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <div className="space-y-2">
+                <label className="flex items-center gap-1 text-sm font-medium">
+                  <Brain className="h-4 w-4" /> 
+                  Multi-Chain Protocol
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help ml-1 text-xs bg-ipa-muted/30 px-1 rounded">?</span>
+                    </TooltipTrigger>
+                    <TooltipContent className="w-64 p-3">
+                      <p>Select a Multi-Chain Protocol (MCP) for enhanced reasoning and decision-making capabilities in your prompt.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </label>
+                <Select 
+                  value={spec.mcpType}
+                  onValueChange={(value: MCPType) => setSpec({ ...spec, mcpType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Protocol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MCP_OPTIONS.map((protocol) => (
+                      <SelectItem key={protocol} value={protocol}>
+                        {protocol}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </TooltipProvider>
+          </div>
+
           <div className="space-y-2">
-            <label className="block text-sm font-medium">A2A Integration Details</label>
+            <label className="flex items-center gap-1 text-sm font-medium">
+              <Network className="h-4 w-4" /> 
+              A2A Integration Details
+            </label>
             <Textarea 
               placeholder="Describe how Agent-to-Agent communication should be implemented..."
               className="min-h-[80px]"
               value={spec.a2aIntegrationDetails}
               onChange={(e) => setSpec({ ...spec, a2aIntegrationDetails: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Advanced Prompt Engineering Details</label>
+            <Textarea 
+              placeholder="Specify any advanced prompt engineering techniques, RAG strategies, or MCP patterns..."
+              className="min-h-[80px]"
+              value={spec.advancedPromptDetails}
+              onChange={(e) => setSpec({ ...spec, advancedPromptDetails: e.target.value })}
             />
           </div>
 

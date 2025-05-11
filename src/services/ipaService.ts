@@ -1,4 +1,3 @@
-
 import { GenerationStatus, ProjectSpec, AgentName, DeepSeekCompletionRequest, DeepSeekCompletionResponse, DeepSeekMessage } from "@/types/ipa-types";
 
 // In a real app, this would be stored securely in environment variables
@@ -72,7 +71,7 @@ export const ipaService = {
         };
         
         if (currentStep === 7) {
-          mockStatus.result = examplePrompt;
+          mockStatus.result = enhancedExamplePrompt;
         }
         
         resolve(mockStatus);
@@ -83,7 +82,7 @@ export const ipaService = {
 
 // Helper function to invoke DeepSeek API for a specific agent
 const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): Promise<{content: string, reasoningContent: string}> => {
-  const systemPrompt = getAgentSystemPrompt(agent);
+  const systemPrompt = getAgentSystemPrompt(agent, spec);
   const userMessage = createUserMessageFromSpec(agent, spec);
   
   const messages: DeepSeekMessage[] = [
@@ -126,28 +125,37 @@ const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): Promise
 };
 
 // Helper function to get the system prompt for each agent
-const getAgentSystemPrompt = (agent: AgentName): string => {
+const getAgentSystemPrompt = (agent: AgentName, spec: ProjectSpec): string => {
+  // Add RAG and MCP-specific context to the system prompts
+  const ragContext = spec.ragVectorDb !== "None" ? 
+    `The project uses ${spec.ragVectorDb} as the vector database for RAG 2.0 implementation. Focus on optimizing vector search, hybrid retrieval strategies, and metadata filtering techniques.` : "";
+  
+  const mcpContext = spec.mcpType !== "None" ? 
+    `The project implements the ${spec.mcpType} multi-chain protocol pattern for enhanced reasoning and decision making. Focus on designing for this protocol architecture.` : "";
+  
+  const advancedContext = `${ragContext} ${mcpContext}`.trim();
+  
   switch(agent) {
     case "RequirementDecompositionAgent":
-      return "You are a specialized AI agent focused on analyzing and decomposing software requirements. Your task is to break down a project description into well-structured development phases and user stories. Focus on identifying core functionalities, data models, user flows, and technical requirements. Output should be organized in clear sections with detailed bullet points.";
+      return `You are a specialized AI agent focused on analyzing and decomposing software requirements. Your task is to break down a project description into well-structured development phases and user stories. Focus on identifying core functionalities, data models, user flows, and technical requirements. Output should be organized in clear sections with detailed bullet points. ${advancedContext}`;
     
     case "RAGContextIntegrationAgent":
-      return "You are a specialized AI agent that integrates relevant context from technical documentation into development plans. Analyze the given project specifications and identify which technologies, patterns, and best practices are most relevant. Your output should connect specific project requirements with appropriate implementation approaches and cite relevant documentation.";
+      return `You are a specialized AI agent that integrates relevant context from technical documentation into development plans. Analyze the given project specifications and identify which technologies, patterns, and best practices are most relevant. Your output should connect specific project requirements with appropriate implementation approaches and cite relevant documentation. ${advancedContext ? `You should specifically focus on ${spec.ragVectorDb} integration for RAG 2.0 capabilities.` : ""}`;
     
     case "A2AProtocolExpertAgent":
-      return "You are a specialized AI agent with expertise in Agent-to-Agent (A2A) communication protocols. Your task is to design robust communication systems between software agents for the specified project. Focus on message formats, communication channels, error handling, and synchronization mechanisms. Provide detailed implementation guidance specific to the mentioned technology stack.";
+      return `You are a specialized AI agent with expertise in Agent-to-Agent (A2A) communication protocols. Your task is to design robust communication systems between software agents for the specified project. Focus on message formats, communication channels, error handling, and synchronization mechanisms. Provide detailed implementation guidance specific to the mentioned technology stack. ${advancedContext}`;
     
     case "TechStackImplementationAgent_Frontend":
-      return "You are a specialized AI agent focused on frontend implementation using the specified tech stack. Analyze project requirements and provide detailed guidance on component architecture, state management, UI/UX implementation, and frontend integration points. Include code patterns, library recommendations, and best practices specifically for the mentioned frontend technologies.";
+      return `You are a specialized AI agent focused on frontend implementation using the specified tech stack. Analyze project requirements and provide detailed guidance on component architecture, state management, UI/UX implementation, and frontend integration points. Include code patterns, library recommendations, and best practices specifically for the mentioned frontend technologies. ${advancedContext}`;
     
     case "TechStackImplementationAgent_Backend":
-      return "You are a specialized AI agent focused on backend implementation using the specified tech stack. Analyze project requirements and provide detailed guidance on API design, database schema, authentication/authorization, business logic implementation, and system integration. Include code patterns, library recommendations, and best practices specifically for the mentioned backend technologies.";
+      return `You are a specialized AI agent focused on backend implementation using the specified tech stack. Analyze project requirements and provide detailed guidance on API design, database schema, authentication/authorization, business logic implementation, and system integration. Include code patterns, library recommendations, and best practices specifically for the mentioned backend technologies. ${spec.ragVectorDb !== "None" ? `Focus on integrating ${spec.ragVectorDb} for vector storage and retrieval operations.` : ""} ${advancedContext}`;
     
     case "CursorOptimizationAgent":
-      return "You are a specialized AI agent that optimizes instructions for the Cursor AI code editor. Your task is to refine implementation guidance to leverage Cursor's capabilities effectively. Focus on structuring instructions in ways that Cursor can interpret most effectively, including appropriate level of detail, clear sequencing, and explicit technological references. Ensure instructions avoid common pitfalls that might confuse AI code generation.";
+      return `You are a specialized AI agent that optimizes instructions for the Cursor AI code editor. Your task is to refine implementation guidance to leverage Cursor's capabilities effectively. Focus on structuring instructions in ways that Cursor can interpret most effectively, including appropriate level of detail, clear sequencing, and explicit technological references. Ensure instructions avoid common pitfalls that might confuse AI code generation. ${advancedContext}`;
     
     case "QualityAssuranceAgent":
-      return "You are a specialized AI agent focused on quality assurance for software development instructions. Review the complete development plan and identify potential issues, inconsistencies, missing components, or areas needing clarification. Check for security considerations, scalability concerns, and maintenance challenges. Your output should be a comprehensive review with specific recommendations for improvement.";
+      return `You are a specialized AI agent focused on quality assurance for software development instructions. Review the complete development plan and identify potential issues, inconsistencies, missing components, or areas needing clarification. Check for security considerations, scalability concerns, and maintenance challenges. Your output should be a comprehensive review with specific recommendations for improvement. ${advancedContext}`;
     
     default:
       return "You are a helpful AI assistant specializing in software development.";
@@ -156,11 +164,17 @@ const getAgentSystemPrompt = (agent: AgentName): string => {
 
 // Helper function to create a user message from project spec for each agent
 const createUserMessageFromSpec = (agent: AgentName, spec: ProjectSpec): string => {
-  const { projectDescription, frontendTechStack, backendTechStack, a2aIntegrationDetails, additionalFeatures } = spec;
+  const { projectDescription, frontendTechStack, backendTechStack, a2aIntegrationDetails, additionalFeatures, ragVectorDb, mcpType, advancedPromptDetails } = spec;
   
   const techStackInfo = `
 Frontend Tech Stack: ${frontendTechStack.join(", ")}
 Backend Tech Stack: ${backendTechStack.join(", ")}
+  `.trim();
+  
+  const advancedTechInfo = `
+RAG Vector Database: ${ragVectorDb}
+Multi-Chain Protocol: ${mcpType}
+Advanced Prompt Details: ${advancedPromptDetails || "None provided"}
   `.trim();
   
   switch(agent) {
@@ -180,7 +194,29 @@ ${a2aIntegrationDetails}
 ADDITIONAL FEATURES:
 ${additionalFeatures}
 
+ADVANCED TECHNOLOGIES:
+${advancedTechInfo}
+
 Break down this project into clear development phases, user stories, and technical requirements. Identify core functionalities, data models, user flows, and integration points.
+      `.trim();
+    
+    case "RAGContextIntegrationAgent":
+      return `
+Design a Retrieval-Augmented Generation (RAG) 2.0 system for the following project:
+
+PROJECT DESCRIPTION:
+${projectDescription}
+
+TECH STACK:
+${techStackInfo}
+
+VECTOR DATABASE:
+${ragVectorDb}
+
+ADVANCED PROMPT DETAILS:
+${advancedPromptDetails}
+
+Provide detailed specifications for knowledge retrieval, vector embeddings, chunking strategies, and context integration. Include implementation guidance specific to the mentioned vector database and tech stack.
       `.trim();
     
     case "A2AProtocolExpertAgent":
@@ -196,7 +232,10 @@ ${techStackInfo}
 A2A INTEGRATION DETAILS:
 ${a2aIntegrationDetails}
 
-Provide detailed specifications for message formats, communication channels, error handling, and synchronization. Include implementation guidance specific to the mentioned tech stack.
+MULTI-CHAIN PROTOCOL:
+${mcpType}
+
+Provide detailed specifications for message formats, communication channels, error handling, and synchronization. Include implementation guidance specific to the mentioned tech stack and multi-chain protocol if applicable.
       `.trim();
     
     // Add cases for other agents similarly
@@ -216,6 +255,9 @@ ${a2aIntegrationDetails}
 
 ADDITIONAL FEATURES:
 ${additionalFeatures}
+
+ADVANCED TECHNOLOGIES:
+${advancedTechInfo}
       `.trim();
   }
 };
@@ -223,6 +265,7 @@ ${additionalFeatures}
 // Mock data
 const mockTaskId = "task-123456";
 
+// Add the enhanced list that includes all requested agents
 const agentList: AgentName[] = [
   "RequirementDecompositionAgent",
   "RAGContextIntegrationAgent",
@@ -243,16 +286,16 @@ let mockStatus: GenerationStatus = {
   }))
 };
 
-// Example prompt for demonstration
-const examplePrompt = `# Master Prompt for Cursor AI: Collaborative Task Management Application
+// Enhanced example prompt for demonstration
+const enhancedExamplePrompt = `# Master Prompt for Cursor AI: Collaborative Task Management Application with RAG 2.0 and ReAct Protocol
 
 ## Project Description
-Create a collaborative task management application with real-time updates and Agent-to-Agent (A2A) communication. The application should support user authentication, role-based permissions, a kanban board view, activity timeline, and email notifications.
+Create a collaborative task management application with real-time updates, Agent-to-Agent (A2A) communication, PGVector for semantic search, and ReAct protocol for agent reasoning. The application should support user authentication, role-based permissions, a kanban board view, activity timeline, and email notifications.
 
 ## Tech Stack
 - Frontend: React, Next.js
 - Backend: NestJS
-- Database: PostgreSQL
+- Database: PostgreSQL with PGVector extension
 - Authentication: JWT
 - Deployment: Docker
 
@@ -274,13 +317,30 @@ Create a collaborative task management application with real-time updates and Ag
 5. Database integration with TypeORM
 6. Email service with Nodemailer
 7. Job scheduling with NestJS Bull Queue
+8. Vector embeddings generation with OpenAI embeddings API
 
-### Database Schema (PostgreSQL)
-1. Users table: id, email, name, password_hash, role, created_at, updated_at
-2. Projects table: id, name, description, created_by, created_at, updated_at
-3. Tasks table: id, title, description, status, priority, assignee_id, project_id, due_date, created_by, created_at, updated_at
-4. Comments table: id, content, task_id, user_id, created_at, updated_at
-5. Activities table: id, action, entity_type, entity_id, user_id, metadata, created_at
+### RAG 2.0 Implementation (PGVector)
+1. Document processing pipeline:
+   - Text extraction and cleaning
+   - Chunking with sliding window and overlap
+   - Metadata extraction for filtering
+2. Vector storage in PostgreSQL using pgvector extension
+3. Hybrid search implementation:
+   - BM25 keyword search for precision
+   - Vector similarity search for semantic matching
+   - Rank fusion for combined results
+4. Context augmentation with metadata filtering
+5. Response synthesis with citations
+
+## ReAct Protocol Integration
+1. Agent architecture follows Reasoning + Acting pattern:
+   - Reasoning: Generate hypotheses about task requirements
+   - Acting: Execute semantic searches and information retrieval
+   - Observation: Evaluate search results
+   - Reflection: Refine reasoning based on observations
+2. Task decomposition with reasoning trace
+3. Dynamic context window management
+4. Self-correction mechanisms
 
 ## A2A Communication Implementation
 Implement Agent-to-Agent communication for task assignment and notification subsystems using the following approach:
@@ -289,6 +349,7 @@ Implement Agent-to-Agent communication for task assignment and notification subs
    - Listens for task creation/modification events
    - Analyzes task requirements and team member workloads
    - Communicates with Notification Agent when assignments are made
+   - Uses ReAct protocol for decision making
    - Protocol: JSON messages over a dedicated Redis channel
 
 2. Notification Agent:
@@ -307,24 +368,37 @@ Implement Agent-to-Agent communication for task assignment and notification subs
   "recipient": "agent-name",
   "messageType": "ACTION|NOTIFICATION|QUERY",
   "priority": 1-5,
+  "reasoning": {
+    "thoughts": "Step-by-step reasoning process",
+    "plan": "Action plan based on reasoning"
+  },
   "payload": {},
   "metadata": {}
 }
 \`\`\`
+
+## Database Schema (PostgreSQL)
+1. Users table: id, email, name, password_hash, role, created_at, updated_at
+2. Projects table: id, name, description, created_by, created_at, updated_at
+3. Tasks table: id, title, description, status, priority, assignee_id, project_id, due_date, created_by, created_at, updated_at
+4. Comments table: id, content, task_id, user_id, created_at, updated_at
+5. Activities table: id, action, entity_type, entity_id, user_id, metadata, created_at
+6. Vectors table: id, content_id, content_type, embedding, metadata, created_at
 
 ## Development Phases
 1. Setup project structure and configurations
 2. Implement authentication and user management
 3. Develop core task management features
 4. Implement real-time updates with WebSockets
-5. Build A2A communication system
-6. Implement notification system
-7. Develop kanban board UI
-8. Add activity timeline
-9. Implement email notifications
-10. Build admin dashboard
-11. Add analytics features
-12. Testing and optimization
+5. Setup PGVector and embedding pipeline
+6. Build A2A communication system with ReAct protocol
+7. Implement notification system
+8. Develop kanban board UI
+9. Add activity timeline
+10. Implement email notifications
+11. Build admin dashboard
+12. Add analytics features
+13. Testing and optimization
 
 ## Security Considerations
 1. Implement proper JWT handling with refresh tokens
@@ -334,6 +408,6 @@ Implement Agent-to-Agent communication for task assignment and notification subs
 5. Use prepared statements for database queries
 6. Validate all user inputs
 7. Implement proper error handling to prevent information leakage
+8. Secure vector database access with proper authentication
 
-Start by setting up the project structure, then proceed with the authentication system before moving on to the core task management features. Focus on implementing the A2A communication system early as it's a central requirement.`;
-
+Start by setting up the project structure, then proceed with the authentication system before moving on to the core task management features. Focus on implementing the PGVector integration and ReAct protocol early as they're central requirements.`;
