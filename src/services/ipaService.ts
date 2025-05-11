@@ -5,8 +5,13 @@ import { GenerationStatus, ProjectSpec, AgentName, DeepSeekCompletionRequest, De
 const DEEPSEEK_API_KEY = "YOUR_DEEPSEEK_API_KEY"; // Replace with your actual API key
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 
+// We'll store the current project spec in a variable that can be accessed by getGenerationStatus
+let currentProjectSpec: ProjectSpec | null = null;
+
 export const ipaService = {
   generatePrompt: async (spec: ProjectSpec): Promise<string> => {
+    // Store the spec for use by getGenerationStatus
+    currentProjectSpec = spec;
     // In a real app, this would call the backend API
     return Promise.resolve(mockTaskId);
   },
@@ -23,8 +28,8 @@ export const ipaService = {
           
           try {
             // Only make the API call if we're not in development/mock mode
-            if (process.env.NODE_ENV === "production" && DEEPSEEK_API_KEY !== "YOUR_DEEPSEEK_API_KEY") {
-              const agentResponse = await invokeDeepSeekAgent(currentAgent, spec);
+            if (process.env.NODE_ENV === "production" && DEEPSEEK_API_KEY !== "YOUR_DEEPSEEK_API_KEY" && currentProjectSpec) {
+              const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec);
               
               // Update the agent status with the response
               mockStatus.agents[currentStep - 1] = {
