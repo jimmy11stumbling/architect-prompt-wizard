@@ -1,18 +1,22 @@
 
-export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Express" | "NestJS" | "FastAPI" | "Django" | "PostgreSQL" | "MongoDB" | "Redis" | "Docker";
+export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Express" | "NestJS" | "FastAPI" | "Django" | "PostgreSQL" | "MongoDB" | "Redis" | "Docker" | string;
 
-export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "None";
+export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "None" | string;
 
-export type MCPType = "Chain-of-Thought" | "LLM-Avalanche" | "ReAct" | "Agent-Critic" | "None";
+export type MCPType = "Chain-of-Thought" | "LLM-Avalanche" | "ReAct" | "Agent-Critic" | "None" | string;
 
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
   backendTechStack: TechStack[];
+  customFrontendTech: string[];
+  customBackendTech: string[];
   a2aIntegrationDetails: string;
   additionalFeatures: string;
   ragVectorDb: VectorDatabaseType;
+  customRagVectorDb: string;
   mcpType: MCPType;
+  customMcpType: string;
   advancedPromptDetails: string;
 }
 

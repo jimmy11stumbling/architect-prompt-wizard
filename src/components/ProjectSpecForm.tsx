@@ -1,11 +1,12 @@
 
 import React, { useState } from "react";
-import { Sparkles, X, Database, Brain, Network } from "lucide-react";
+import { Sparkles, X, Database, Brain, Network, Plus, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectSpec, TechStack, VectorDatabaseType, MCPType } from "@/types/ipa-types";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface ProjectSpecFormProps {
   onSubmit: (spec: ProjectSpec) => void;
@@ -37,12 +46,21 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     projectDescription: "",
     frontendTechStack: ["React"],
     backendTechStack: ["Express"],
+    customFrontendTech: [],
+    customBackendTech: [],
     a2aIntegrationDetails: "",
     additionalFeatures: "",
     ragVectorDb: "None",
+    customRagVectorDb: "",
     mcpType: "None",
+    customMcpType: "",
     advancedPromptDetails: ""
   });
+  
+  const [newCustomFrontend, setNewCustomFrontend] = useState("");
+  const [newCustomBackend, setNewCustomBackend] = useState("");
+  const [customVectorDb, setCustomVectorDb] = useState("");
+  const [customMcp, setCustomMcp] = useState("");
 
   const handleTechStackToggle = (tech: TechStack, type: "frontend" | "backend") => {
     if (type === "frontend") {
@@ -72,6 +90,60 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     }
   };
 
+  const addCustomFrontendTech = () => {
+    if (newCustomFrontend.trim() !== "" && !spec.customFrontendTech.includes(newCustomFrontend)) {
+      setSpec({
+        ...spec,
+        customFrontendTech: [...spec.customFrontendTech, newCustomFrontend.trim()]
+      });
+      setNewCustomFrontend("");
+    }
+  };
+
+  const addCustomBackendTech = () => {
+    if (newCustomBackend.trim() !== "" && !spec.customBackendTech.includes(newCustomBackend)) {
+      setSpec({
+        ...spec,
+        customBackendTech: [...spec.customBackendTech, newCustomBackend.trim()]
+      });
+      setNewCustomBackend("");
+    }
+  };
+
+  const removeCustomTech = (tech: string, type: "frontend" | "backend") => {
+    if (type === "frontend") {
+      setSpec({
+        ...spec,
+        customFrontendTech: spec.customFrontendTech.filter(t => t !== tech)
+      });
+    } else {
+      setSpec({
+        ...spec,
+        customBackendTech: spec.customBackendTech.filter(t => t !== tech)
+      });
+    }
+  };
+
+  const saveCustomVectorDb = () => {
+    if (customVectorDb.trim()) {
+      setSpec({
+        ...spec,
+        ragVectorDb: customVectorDb as VectorDatabaseType,
+        customRagVectorDb: customVectorDb
+      });
+    }
+  };
+
+  const saveCustomMcp = () => {
+    if (customMcp.trim()) {
+      setSpec({
+        ...spec,
+        mcpType: customMcp as MCPType,
+        customMcpType: customMcp
+      });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(spec);
@@ -83,10 +155,14 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
       projectDescription: "A collaborative task management app with real-time updates and A2A communication.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL"],
+      customFrontendTech: ["TailwindCSS", "ShadCN UI"],
+      customBackendTech: ["Redis Pub/Sub", "WebSockets"],
       a2aIntegrationDetails: "Implement agent-to-agent communication for task assignment and notification subsystems.",
       additionalFeatures: "User authentication, role-based permissions, kanban board view, activity timeline, and email notifications.",
       ragVectorDb: "PGVector",
+      customRagVectorDb: "",
       mcpType: "ReAct",
+      customMcpType: "",
       advancedPromptDetails: "Leverage semantic search for smart task matching. Implement RAG 2.0 with hybrid search and metadata filtering for knowledge retrieval. Use ReAct pattern for agent decision making."
     });
   };
@@ -120,7 +196,31 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Frontend Tech Stack</label>
+            <label className="block text-sm font-medium flex items-center justify-between">
+              <span>Frontend Tech Stack</span>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Plus className="h-3 w-3" /> Add Custom
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Custom Frontend Technology</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Input 
+                      placeholder="Enter custom frontend technology..."
+                      value={newCustomFrontend}
+                      onChange={(e) => setNewCustomFrontend(e.target.value)}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" onClick={addCustomFrontendTech}>Add</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </label>
             <div className="flex flex-wrap gap-2">
               {FRONTEND_OPTIONS.map((tech) => (
                 <Badge 
@@ -137,11 +237,48 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
                   )}
                 </Badge>
               ))}
+              {spec.customFrontendTech.map((tech) => (
+                <Badge 
+                  key={tech}
+                  variant="default"
+                  className="cursor-pointer bg-ipa-accent"
+                >
+                  {tech}
+                  <X 
+                    className="ml-1 h-3 w-3" 
+                    onClick={() => removeCustomTech(tech, "frontend")} 
+                  />
+                </Badge>
+              ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Backend Tech Stack</label>
+            <label className="block text-sm font-medium flex items-center justify-between">
+              <span>Backend Tech Stack</span>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Plus className="h-3 w-3" /> Add Custom
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Custom Backend Technology</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Input 
+                      placeholder="Enter custom backend technology..."
+                      value={newCustomBackend}
+                      onChange={(e) => setNewCustomBackend(e.target.value)}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" onClick={addCustomBackendTech}>Add</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </label>
             <div className="flex flex-wrap gap-2">
               {[...BACKEND_OPTIONS, ...DATABASE_OPTIONS, ...ADDITIONAL_OPTIONS].map((tech) => (
                 <Badge 
@@ -156,6 +293,19 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
                   {spec.backendTechStack.includes(tech) && (
                     <X className="ml-1 h-3 w-3" />
                   )}
+                </Badge>
+              ))}
+              {spec.customBackendTech.map((tech) => (
+                <Badge 
+                  key={tech}
+                  variant="default"
+                  className="cursor-pointer bg-ipa-accent"
+                >
+                  {tech}
+                  <X 
+                    className="ml-1 h-3 w-3" 
+                    onClick={() => removeCustomTech(tech, "backend")} 
+                  />
                 </Badge>
               ))}
             </div>
@@ -176,21 +326,51 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
                     </TooltipContent>
                   </Tooltip>
                 </label>
-                <Select 
-                  value={spec.ragVectorDb}
-                  onValueChange={(value: VectorDatabaseType) => setSpec({ ...spec, ragVectorDb: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Vector Database" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VECTOR_DB_OPTIONS.map((db) => (
-                      <SelectItem key={db} value={db}>
-                        {db}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select 
+                    value={spec.ragVectorDb}
+                    onValueChange={(value: VectorDatabaseType) => setSpec({ ...spec, ragVectorDb: value })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select Vector Database" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VECTOR_DB_OPTIONS.map((db) => (
+                        <SelectItem key={db} value={db}>
+                          {db}
+                        </SelectItem>
+                      ))}
+                      {spec.customRagVectorDb && spec.customRagVectorDb !== "Custom" && (
+                        <SelectItem value={spec.customRagVectorDb}>
+                          {spec.customRagVectorDb}
+                        </SelectItem>
+                      )}
+                      <SelectItem value="Custom">Custom...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Plus className="h-3 w-3" /> Custom
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Custom Vector Database</DialogTitle>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <Input 
+                          placeholder="Enter custom vector database..."
+                          value={customVectorDb}
+                          onChange={(e) => setCustomVectorDb(e.target.value)}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" onClick={saveCustomVectorDb}>Add</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </TooltipProvider>
 
@@ -208,21 +388,51 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
                     </TooltipContent>
                   </Tooltip>
                 </label>
-                <Select 
-                  value={spec.mcpType}
-                  onValueChange={(value: MCPType) => setSpec({ ...spec, mcpType: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Protocol" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MCP_OPTIONS.map((protocol) => (
-                      <SelectItem key={protocol} value={protocol}>
-                        {protocol}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select 
+                    value={spec.mcpType}
+                    onValueChange={(value: MCPType) => setSpec({ ...spec, mcpType: value })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select Protocol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MCP_OPTIONS.map((protocol) => (
+                        <SelectItem key={protocol} value={protocol}>
+                          {protocol}
+                        </SelectItem>
+                      ))}
+                      {spec.customMcpType && spec.customMcpType !== "Custom" && (
+                        <SelectItem value={spec.customMcpType}>
+                          {spec.customMcpType}
+                        </SelectItem>
+                      )}
+                      <SelectItem value="Custom">Custom...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Plus className="h-3 w-3" /> Custom
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Custom MCP Type</DialogTitle>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <Input 
+                          placeholder="Enter custom MCP type..."
+                          value={customMcp}
+                          onChange={(e) => setCustomMcp(e.target.value)}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" onClick={saveCustomMcp}>Add</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
             </TooltipProvider>
           </div>
@@ -241,7 +451,10 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium">Advanced Prompt Engineering Details</label>
+            <label className="flex items-center gap-1 text-sm font-medium">
+              <Code className="h-4 w-4" />
+              Advanced Prompt Engineering Details
+            </label>
             <Textarea 
               placeholder="Specify any advanced prompt engineering techniques, RAG strategies, or MCP patterns..."
               className="min-h-[80px]"

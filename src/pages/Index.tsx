@@ -13,9 +13,22 @@ const Index: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleSubmit = async (spec: ProjectSpec) => {
+    // Prepare a complete spec with all tech stacks (standard + custom)
+    const completeSpec = {
+      ...spec,
+      frontendTechStack: [
+        ...spec.frontendTechStack,
+        ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack))
+      ],
+      backendTechStack: [
+        ...spec.backendTechStack,
+        ...spec.customBackendTech.filter(tech => !spec.backendTechStack.includes(tech as TechStack))
+      ]
+    };
+
     setIsGenerating(true);
     try {
-      const taskId = await ipaService.generatePrompt(spec);
+      const taskId = await ipaService.generatePrompt(completeSpec);
       startPolling(taskId);
     } catch (error) {
       console.error("Error generating prompt:", error);
