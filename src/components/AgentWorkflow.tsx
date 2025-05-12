@@ -88,7 +88,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents }) => {
                             : "Waiting"}
                         </div>
                       </div>
-                      {(agent.reasoningContent || agent.output) && (
+                      {agent.output && (
                         <CollapsibleTrigger asChild>
                           <button className="p-1 hover:bg-ipa-muted rounded-full">
                             {openAgents[agent.agent] ? (
@@ -102,15 +102,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents }) => {
                     </div>
                     
                     <CollapsibleContent>
-                      {agent.reasoningContent && (
-                        <div className="mt-3 border-t border-ipa-border pt-3">
-                          <div className="text-sm font-medium mb-1">Reasoning Process:</div>
-                          <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
-                            {agent.reasoningContent}
-                          </pre>
-                        </div>
-                      )}
-                      {agent.output && !agent.reasoningContent && (
+                      {agent.output && (
                         <div className="mt-3 border-t border-ipa-border pt-3">
                           <div className="text-sm font-medium mb-1">Output:</div>
                           <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
