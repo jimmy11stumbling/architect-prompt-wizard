@@ -2,6 +2,7 @@ import { GenerationStatus, ProjectSpec, AgentName, AgentStatus } from "@/types/i
 import { invokeDeepSeekAgent } from "./deepseekAPI";
 import { mockTaskId, agentList, initialMockStatus } from "./mockData";
 import { toast } from "@/hooks/use-toast";
+import { savePrompt } from "../db/promptDatabaseService";
 
 // We'll store the current project spec in a variable that can be accessed by getGenerationStatus
 let currentProjectSpec: ProjectSpec | null = null;
@@ -11,7 +12,10 @@ export const ipaService = {
   generatePrompt: async (spec: ProjectSpec): Promise<string> => {
     // Store the spec for use by getGenerationStatus
     currentProjectSpec = spec;
-    currentStatus = { ...initialMockStatus }; // Reset status for new generation
+    currentStatus = { 
+      ...initialMockStatus,
+      spec // Store the spec in the status for later database storage
+    }; // Reset status for new generation
     
     // Return a task ID (in a real implementation this would come from the backend)
     return Promise.resolve(mockTaskId);
@@ -104,6 +108,14 @@ export const ipaService = {
             // All agents completed successfully, build final prompt
             const finalPrompt = await generateFinalPrompt(currentStatus.agents);
             currentStatus.result = finalPrompt;
+            
+            // Save the completed prompt to the database
+            try {
+              await savePrompt(currentStatus, "Cursor AI Prompt");
+              console.log("Prompt successfully saved to database");
+            } catch (error) {
+              console.error("Failed to save prompt to database:", error);
+            }
           } else {
             // Some agents failed, create a message about it
             currentStatus.result = `⚠️ Warning: ${agentList.length - completedAgents.length} out of ${agentList.length} agents failed to complete. The generated prompt may be incomplete.\n\n` +

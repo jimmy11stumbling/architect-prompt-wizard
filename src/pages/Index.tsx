@@ -4,14 +4,17 @@ import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
 import PromptOutput from "@/components/PromptOutput";
+import SavedPrompts from "@/components/SavedPrompts";
 import { ApiKeyForm } from "@/components/ApiKeyForm";
 import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index: React.FC = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("create");
 
   const handleSubmit = async (spec: ProjectSpec) => {
     // Prepare a complete spec with all tech stacks (standard + custom)
@@ -71,16 +74,27 @@ const Index: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-8">
-              <ProjectSpecForm onSubmit={handleSubmit} />
-              <ApiKeyForm />
-            </div>
-            <div className="space-y-8">
-              <AgentWorkflow agents={generationStatus?.agents || []} />
-              <PromptOutput prompt={generationStatus?.result} />
-            </div>
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="create">Create New Prompt</TabsTrigger>
+              <TabsTrigger value="saved">Saved Prompts</TabsTrigger>
+            </TabsList>
+            <TabsContent value="create">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-8">
+                  <ProjectSpecForm onSubmit={handleSubmit} />
+                  <ApiKeyForm />
+                </div>
+                <div className="space-y-8">
+                  <AgentWorkflow agents={generationStatus?.agents || []} />
+                  <PromptOutput prompt={generationStatus?.result} />
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="saved">
+              <SavedPrompts />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       <footer className="border-t border-ipa-border py-4">
