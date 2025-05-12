@@ -1,3 +1,4 @@
+
 import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
 import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
 import { mockTaskId, agentList, initialMockStatus } from "./mockData";
@@ -48,13 +49,18 @@ export const ipaService = {
           
           // For multi-round conversation, build history of previous agents
           // Get previous conversation messages or initialize them
-          const messageHistory = conversationMessages.length > 0 ? 
-            conversationMessages : 
-            buildConversationHistory(agentList.slice(0, currentStep - 1), currentProjectSpec!);
+          const messageHistory = buildConversationHistory(agentList.slice(0, currentStep - 1), currentProjectSpec!);
           
           // Now make the actual API call to DeepSeek with the conversation history
           console.log(`Invoking DeepSeek API for agent ${currentAgent} with ${messageHistory.length} messages in history`);
           const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec!, messageHistory);
+          
+          // Update the agent status with the actual response
+          currentStatus.agents[currentStep - 1] = {
+            agent: currentAgent,
+            status: "completed",
+            output: agentResponse.content
+          };
           
           // Add this agent's response to the conversation
           if (conversationMessages.length === 0) {
@@ -74,15 +80,8 @@ export const ipaService = {
             content: agentResponse.content
           });
           
-          // Update the agent status with the actual response
-          currentStatus.agents[currentStep - 1] = {
-            agent: currentAgent,
-            status: "completed",
-            output: agentResponse.content
-          };
-          
           // Update the messages in the generation status
-          currentStatus.messages = conversationMessages;
+          currentStatus.messages = [...conversationMessages];
         } catch (error) {
           console.error(`Error invoking DeepSeek for agent ${currentAgent}:`, error);
           currentStatus.agents[currentStep - 1] = {
@@ -104,28 +103,7 @@ export const ipaService = {
         ...currentStatus,
         progress: currentStep,
         status: currentStep <= agentList.length ? "processing" : "completed",
-        agents: agentList.map((agent, index) => {
-          // Keep existing agent status or update based on current step
-          if (index < currentStep - 1) {
-            // Already processed agents - keep their status
-            return currentStatus.agents[index];
-          } else if (index === currentStep - 1) {
-            // Current agent - should be processing or completed/failed based on above logic
-            return currentStatus.agents[index];
-          } else if (index === currentStep) {
-            // Next agent - mark as processing if we're not at the end
-            return {
-              ...currentStatus.agents[index],
-              status: currentStep <= agentList.length ? "processing" : "idle"
-            };
-          } else {
-            // Future agents - keep as idle
-            return {
-              ...currentStatus.agents[index],
-              status: "idle"
-            };
-          }
-        })
+        agents: currentStatus.agents
       };
       
       // If we've completed all agents, generate the final result
