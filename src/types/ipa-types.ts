@@ -1,4 +1,3 @@
-
 export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Express" | "NestJS" | "FastAPI" | "Django" | "PostgreSQL" | "MongoDB" | "Redis" | "Docker" | string;
 
 export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "None" | string;
@@ -43,6 +42,7 @@ export interface GenerationStatus {
   agents: AgentStatus[];
   result?: string;
   error?: string;
+  spec?: ProjectSpec; // Added spec property
 }
 
 export interface DeepSeekMessage {
@@ -76,4 +76,3 @@ export interface DeepSeekCompletionResponse {
     total_tokens: number;
   };
 }
-

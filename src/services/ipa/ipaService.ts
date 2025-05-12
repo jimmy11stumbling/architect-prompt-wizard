@@ -14,7 +14,7 @@ export const ipaService = {
     currentProjectSpec = spec;
     currentStatus = { 
       ...initialMockStatus,
-      spec // Store the spec in the status for later database storage
+      spec: spec // Store the spec in the status for later database storage
     }; // Reset status for new generation
     
     // Return a task ID (in a real implementation this would come from the backend)
