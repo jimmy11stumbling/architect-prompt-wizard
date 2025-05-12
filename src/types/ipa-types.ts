@@ -33,7 +33,6 @@ export interface AgentStatus {
   agent: AgentName;
   status: "idle" | "processing" | "completed" | "failed";
   output?: string;
-  reasoningContent?: string; // Keeping this for backward compatibility but it might be null
 }
 
 export interface GenerationStatus {
@@ -44,7 +43,7 @@ export interface GenerationStatus {
   result?: string;
   error?: string;
   spec?: ProjectSpec;
-  messages?: DeepSeekMessage[]; // Added for multi-round conversations
+  messages?: DeepSeekMessage[]; // For multi-round conversations
 }
 
 export interface DeepSeekMessage {
@@ -68,7 +67,6 @@ export interface DeepSeekCompletionResponse {
     message: {
       role: string;
       content: string;
-      reasoning_content?: string; // Now optional since deepseek-chat doesn't use it
     };
     finish_reason: string;
   }[];

@@ -17,7 +17,7 @@ interface AgentContentProps {
 
 const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) => {
   // Determine if there's any content to show
-  const hasContent = agent.output || agent.reasoningContent;
+  const hasContent = agent.output;
 
   return (
     <Collapsible
@@ -54,14 +54,6 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
       </div>
       
       <CollapsibleContent>
-        {agent.reasoningContent && (
-          <div className="mt-3 border-t border-ipa-border pt-3">
-            <div className="text-sm font-medium mb-1">Reasoning Process:</div>
-            <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
-              {agent.reasoningContent}
-            </pre>
-          </div>
-        )}
         {agent.output && (
           <div className="mt-3 border-t border-ipa-border pt-3">
             <div className="text-sm font-medium mb-1">Output:</div>

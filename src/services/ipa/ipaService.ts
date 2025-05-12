@@ -1,4 +1,3 @@
-
 import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
 import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
 import { mockTaskId, agentList, initialMockStatus } from "./mockData";
@@ -48,20 +47,26 @@ export const ipaService = {
           resolve({ ...currentStatus });
           
           // For multi-round conversation, build history of previous agents
-          const previousAgents = agentList.slice(0, currentStep - 1);
+          // Get previous conversation messages or initialize them
           const messageHistory = conversationMessages.length > 0 ? 
             conversationMessages : 
-            buildConversationHistory(previousAgents, currentProjectSpec!);
+            buildConversationHistory(agentList.slice(0, currentStep - 1), currentProjectSpec!);
           
-          // Now make the actual API call to DeepSeek
-          console.log(`Invoking DeepSeek API for agent ${currentAgent}...`);
-          const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec!);
+          // Now make the actual API call to DeepSeek with the conversation history
+          console.log(`Invoking DeepSeek API for agent ${currentAgent} with ${messageHistory.length} messages in history`);
+          const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec!, messageHistory);
           
           // Add this agent's response to the conversation
           if (conversationMessages.length === 0) {
-            // Initialize with the first response
-            conversationMessages = messageHistory;
+            // Initialize with the history
+            conversationMessages = [...messageHistory];
           }
+          
+          // Add the agent's system prompt
+          conversationMessages.push({
+            role: "system",
+            content: `Now responding as ${currentAgent}`
+          });
           
           // Add the agent's response to the conversation history
           conversationMessages.push({
@@ -73,8 +78,7 @@ export const ipaService = {
           currentStatus.agents[currentStep - 1] = {
             agent: currentAgent,
             status: "completed",
-            output: agentResponse.content,
-            reasoningContent: agentResponse.reasoningContent // This might be undefined now
+            output: agentResponse.content
           };
           
           // Update the messages in the generation status
