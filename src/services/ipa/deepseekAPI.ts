@@ -1,3 +1,4 @@
+
 import { ProjectSpec, AgentName, DeepSeekCompletionRequest, DeepSeekCompletionResponse, DeepSeekMessage } from "@/types/ipa-types";
 import { getAgentSystemPrompt, createUserMessageFromSpec } from "./agentPrompts";
 import { toast } from "@/hooks/use-toast";
@@ -8,21 +9,23 @@ const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 /**
  * Helper function to invoke DeepSeek API for a specific agent
  */
-export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): Promise<{content: string, reasoningContent: string}> => {
+export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): Promise<{content: string, reasoningContent?: string}> => {
   if (!spec) {
     throw new Error("Project specification is required");
   }
   
+  // Get system prompt and user message for this agent
   const systemPrompt = getAgentSystemPrompt(agent, spec);
   const userMessage = createUserMessageFromSpec(agent, spec);
   
+  // Create the messages array for DeepSeek Chat
   const messages: DeepSeekMessage[] = [
     { role: "system", content: systemPrompt },
     { role: "user", content: userMessage }
   ];
   
   const requestBody: DeepSeekCompletionRequest = {
-    model: "deepseek-reasoner",
+    model: "deepseek-chat", // Using deepseek-chat instead of deepseek-reasoner
     messages: messages,
     max_tokens: 4096
   };
@@ -50,8 +53,8 @@ export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): 
       response = await fetch(DEEPSEEK_API_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(requestBody)
       });
@@ -68,12 +71,12 @@ export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec): 
     
     console.log(`Received response for agent ${agent}`, {
       contentLength: completionMessage.content.length,
-      reasoningContentLength: completionMessage.reasoning_content?.length || 0
+      // No reasoning_content in deepseek-chat model
     });
     
     return {
       content: completionMessage.content,
-      reasoningContent: completionMessage.reasoning_content || "No reasoning process provided"
+      // deepseek-chat doesn't have reasoning_content
     };
   } catch (error) {
     console.error("Error calling DeepSeek API:", error);
@@ -126,19 +129,19 @@ const createSimulatedResponse = (agent: AgentName, spec: ProjectSpec): DeepSeekC
     reasoning_content: "This is a placeholder reasoning content."
   };
   
-  // Simulate a DeepSeek API response structure
+  // Simulate a DeepSeek API response structure (modified for deepseek-chat which doesn't use reasoning_content)
   return {
     id: `sim-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
     object: "chat.completion",
     created: Math.floor(Date.now() / 1000),
-    model: "deepseek-reasoner",
+    model: "deepseek-chat",
     choices: [
       {
         index: 0,
         message: {
           role: "assistant",
           content: response.content,
-          reasoning_content: response.reasoning_content
+          // No reasoning_content in deepseek-chat
         },
         finish_reason: "stop"
       }
@@ -150,3 +153,44 @@ const createSimulatedResponse = (agent: AgentName, spec: ProjectSpec): DeepSeekC
     }
   };
 };
+
+/**
+ * Helper function to build a conversation history with multiple agents
+ * This implements the multi-round conversation approach
+ */
+export const buildConversationHistory = (prevAgents: AgentName[], spec: ProjectSpec): DeepSeekMessage[] => {
+  const messages: DeepSeekMessage[] = [];
+  
+  // Add a high-level system prompt to start the conversation
+  messages.push({
+    role: "system", 
+    content: "You are a collaborative AI system helping to create a comprehensive project specification."
+  });
+  
+  // Add the initial user request with project details
+  messages.push({
+    role: "user",
+    content: `I need assistance with this project: ${spec.projectDescription}`
+  });
+  
+  // For each previous agent that has completed, add their contribution to the conversation
+  prevAgents.forEach(agentName => {
+    // Get the system prompt for this agent
+    const agentSystemPrompt = getAgentSystemPrompt(agentName, spec);
+    
+    // Add the agent's system prompt as a user message (to provide context)
+    messages.push({
+      role: "user",
+      content: `Now I need you to act as a ${agentName}. ${agentSystemPrompt}`
+    });
+    
+    // In a real multi-round conversation, we would add the agent's response here
+    // For now, we'll use placeholder content (this will be replaced by real implementation)
+    messages.push({
+      role: "assistant",
+      content: `[${agentName}'s analysis and recommendations would appear here]`
+    });
+  });
+  
+  return messages;
+}

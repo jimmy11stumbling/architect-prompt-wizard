@@ -1,3 +1,4 @@
+
 export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Express" | "NestJS" | "FastAPI" | "Django" | "PostgreSQL" | "MongoDB" | "Redis" | "Docker" | string;
 
 export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "None" | string;
@@ -32,7 +33,7 @@ export interface AgentStatus {
   agent: AgentName;
   status: "idle" | "processing" | "completed" | "failed";
   output?: string;
-  reasoningContent?: string;
+  reasoningContent?: string; // Keeping this for backward compatibility but it might be null
 }
 
 export interface GenerationStatus {
@@ -42,7 +43,8 @@ export interface GenerationStatus {
   agents: AgentStatus[];
   result?: string;
   error?: string;
-  spec?: ProjectSpec; // Added spec property
+  spec?: ProjectSpec;
+  messages?: DeepSeekMessage[]; // Added for multi-round conversations
 }
 
 export interface DeepSeekMessage {
@@ -66,7 +68,7 @@ export interface DeepSeekCompletionResponse {
     message: {
       role: string;
       content: string;
-      reasoning_content: string;
+      reasoning_content?: string; // Now optional since deepseek-chat doesn't use it
     };
     finish_reason: string;
   }[];

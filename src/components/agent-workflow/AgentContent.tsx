@@ -2,12 +2,12 @@
 import React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AgentStatus } from "@/types/ipa-types";
-import AgentStatusIcon from "./AgentStatusIcon";
-import {
+import { 
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import AgentStatusIcon from "./AgentStatusIcon";
 
 interface AgentContentProps {
   agent: AgentStatus;
@@ -16,6 +16,9 @@ interface AgentContentProps {
 }
 
 const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) => {
+  // Determine if there's any content to show
+  const hasContent = agent.output || agent.reasoningContent;
+
   return (
     <Collapsible
       open={isOpen}
@@ -37,7 +40,7 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
               : "Waiting"}
           </div>
         </div>
-        {(agent.reasoningContent || agent.output) && (
+        {hasContent && (
           <CollapsibleTrigger asChild>
             <button className="p-1 hover:bg-ipa-muted rounded-full">
               {isOpen ? (
@@ -59,7 +62,7 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
             </pre>
           </div>
         )}
-        {agent.output && !agent.reasoningContent && (
+        {agent.output && (
           <div className="mt-3 border-t border-ipa-border pt-3">
             <div className="text-sm font-medium mb-1">Output:</div>
             <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">

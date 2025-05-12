@@ -1,5 +1,6 @@
-import { GenerationStatus, ProjectSpec, AgentName, AgentStatus } from "@/types/ipa-types";
-import { invokeDeepSeekAgent } from "./deepseekAPI";
+
+import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
+import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
 import { mockTaskId, agentList, initialMockStatus } from "./mockData";
 import { toast } from "@/hooks/use-toast";
 import { savePrompt } from "../db/promptDatabaseService";
@@ -7,6 +8,7 @@ import { savePrompt } from "../db/promptDatabaseService";
 // We'll store the current project spec in a variable that can be accessed by getGenerationStatus
 let currentProjectSpec: ProjectSpec | null = null;
 let currentStatus: GenerationStatus = { ...initialMockStatus };
+let conversationMessages: DeepSeekMessage[] = [];
 
 export const ipaService = {
   generatePrompt: async (spec: ProjectSpec): Promise<string> => {
@@ -14,8 +16,12 @@ export const ipaService = {
     currentProjectSpec = spec;
     currentStatus = { 
       ...initialMockStatus,
-      spec: spec // Store the spec in the status for later database storage
+      spec: spec, // Store the spec in the status for later database storage
+      messages: [] // Initialize the conversation messages
     }; // Reset status for new generation
+    
+    // Initialize conversation messages
+    conversationMessages = [];
     
     // Return a task ID (in a real implementation this would come from the backend)
     return Promise.resolve(mockTaskId);
@@ -41,17 +47,38 @@ export const ipaService = {
           
           resolve({ ...currentStatus });
           
+          // For multi-round conversation, build history of previous agents
+          const previousAgents = agentList.slice(0, currentStep - 1);
+          const messageHistory = conversationMessages.length > 0 ? 
+            conversationMessages : 
+            buildConversationHistory(previousAgents, currentProjectSpec!);
+          
           // Now make the actual API call to DeepSeek
           console.log(`Invoking DeepSeek API for agent ${currentAgent}...`);
           const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec!);
+          
+          // Add this agent's response to the conversation
+          if (conversationMessages.length === 0) {
+            // Initialize with the first response
+            conversationMessages = messageHistory;
+          }
+          
+          // Add the agent's response to the conversation history
+          conversationMessages.push({
+            role: "assistant",
+            content: agentResponse.content
+          });
           
           // Update the agent status with the actual response
           currentStatus.agents[currentStep - 1] = {
             agent: currentAgent,
             status: "completed",
             output: agentResponse.content,
-            reasoningContent: agentResponse.reasoningContent
+            reasoningContent: agentResponse.reasoningContent // This might be undefined now
           };
+          
+          // Update the messages in the generation status
+          currentStatus.messages = conversationMessages;
         } catch (error) {
           console.error(`Error invoking DeepSeek for agent ${currentAgent}:`, error);
           currentStatus.agents[currentStep - 1] = {
