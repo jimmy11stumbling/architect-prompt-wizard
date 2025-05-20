@@ -36,11 +36,22 @@ const CustomOptionSelector: React.FC<CustomOptionSelectorProps> = ({
   onSaveCustom,
 }) => {
   const [customInput, setCustomInput] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleSaveCustom = () => {
     if (customInput.trim()) {
       onSaveCustom(customInput);
       setCustomInput("");
+      setIsDialogOpen(false);
+    }
+  };
+
+  // Handle value change - if "Custom" is selected, open dialog automatically
+  const handleValueChange = (selectedValue: string) => {
+    if (selectedValue === "Custom") {
+      setIsDialogOpen(true);
+    } else {
+      onChange(selectedValue);
     }
   };
 
@@ -62,7 +73,7 @@ const CustomOptionSelector: React.FC<CustomOptionSelectorProps> = ({
         <div className="flex items-center gap-2">
           <Select 
             value={value}
-            onValueChange={(value) => onChange(value)}
+            onValueChange={handleValueChange}
           >
             <SelectTrigger className="flex-1">
               <SelectValue placeholder={`Select ${title}`} />
@@ -81,7 +92,7 @@ const CustomOptionSelector: React.FC<CustomOptionSelectorProps> = ({
               <SelectItem value="Custom">Custom...</SelectItem>
             </SelectContent>
           </Select>
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1">
                 <Plus className="h-3 w-3" /> Custom
@@ -96,6 +107,12 @@ const CustomOptionSelector: React.FC<CustomOptionSelectorProps> = ({
                   placeholder={`Enter custom ${title.toLowerCase()}...`}
                   value={customInput}
                   onChange={(e) => setCustomInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSaveCustom();
+                    }
+                  }}
+                  autoFocus
                 />
               </div>
               <DialogFooter>

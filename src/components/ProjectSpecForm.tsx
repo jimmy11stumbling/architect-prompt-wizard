@@ -34,9 +34,6 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     advancedPromptDetails: ""
   });
   
-  const [customVectorDb, setCustomVectorDb] = useState("");
-  const [customMcp, setCustomMcp] = useState("");
-
   const handleTechStackToggle = (tech: TechStack, type: "frontend" | "backend") => {
     if (type === "frontend") {
       setSpec({
@@ -87,22 +84,36 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     }
   };
 
-  const saveCustomVectorDb = () => {
-    if (customVectorDb.trim()) {
+  const handleVectorDbChange = (value: string) => {
+    setSpec({
+      ...spec,
+      ragVectorDb: value as VectorDatabaseType
+    });
+  };
+
+  const handleMcpTypeChange = (value: string) => {
+    setSpec({
+      ...spec,
+      mcpType: value as MCPType
+    });
+  };
+
+  const saveCustomVectorDb = (customValue: string) => {
+    if (customValue.trim()) {
       setSpec({
         ...spec,
-        ragVectorDb: customVectorDb as VectorDatabaseType,
-        customRagVectorDb: customVectorDb
+        ragVectorDb: customValue as VectorDatabaseType,
+        customRagVectorDb: customValue
       });
     }
   };
 
-  const saveCustomMcp = () => {
-    if (customMcp.trim()) {
+  const saveCustomMcp = (customValue: string) => {
+    if (customValue.trim()) {
       setSpec({
         ...spec,
-        mcpType: customMcp as MCPType,
-        customMcpType: customMcp
+        mcpType: customValue as MCPType,
+        customMcpType: customValue
       });
     }
   };
@@ -185,12 +196,9 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
               description="Select a vector database for RAG 2.0 implementation. This enables advanced semantic search and document retrieval in your AI system."
               options={VECTOR_DB_OPTIONS}
               value={spec.ragVectorDb}
-              onChange={(value) => setSpec({ ...spec, ragVectorDb: value as VectorDatabaseType })}
+              onChange={handleVectorDbChange}
               customValue={spec.customRagVectorDb}
-              onSaveCustom={(value) => {
-                setCustomVectorDb(value);
-                saveCustomVectorDb();
-              }}
+              onSaveCustom={saveCustomVectorDb}
             />
 
             <CustomOptionSelector
@@ -199,12 +207,9 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
               description="Select a Model Context Protocol (MCP) type for connecting AI models with external tools and data sources in your application."
               options={MCP_OPTIONS}
               value={spec.mcpType}
-              onChange={(value) => setSpec({ ...spec, mcpType: value as MCPType })}
+              onChange={handleMcpTypeChange}
               customValue={spec.customMcpType}
-              onSaveCustom={(value) => {
-                setCustomMcp(value);
-                saveCustomMcp();
-              }}
+              onSaveCustom={saveCustomMcp}
             />
           </div>
 
