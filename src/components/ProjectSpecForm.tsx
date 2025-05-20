@@ -377,13 +377,13 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
               <div className="space-y-2">
                 <label className="flex items-center gap-1 text-sm font-medium">
                   <Brain className="h-4 w-4" /> 
-                  Multi-Chain Protocol
+                  Model Context Protocol
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="cursor-help ml-1 text-xs bg-ipa-muted/30 px-1 rounded">?</span>
                     </TooltipTrigger>
                     <TooltipContent className="w-64 p-3">
-                      <p>Select a Multi-Chain Protocol (MCP) for enhanced reasoning and decision-making capabilities in your prompt.</p>
+                      <p>Select a Model Context Protocol (MCP) type for connecting AI models with external tools and data sources in your application.</p>
                     </TooltipContent>
                   </Tooltip>
                 </label>
