@@ -56,7 +56,11 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     if (!spec.customFrontendTech.includes(tech)) {
       setSpec({
         ...spec,
-        customFrontendTech: [...spec.customFrontendTech, tech]
+        customFrontendTech: [...spec.customFrontendTech, tech],
+        // Also add to the selected tech stack if not already there
+        frontendTechStack: !spec.frontendTechStack.includes(tech as TechStack) 
+          ? [...spec.frontendTechStack, tech as TechStack]
+          : spec.frontendTechStack
       });
     }
   };
@@ -65,7 +69,11 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     if (!spec.customBackendTech.includes(tech)) {
       setSpec({
         ...spec,
-        customBackendTech: [...spec.customBackendTech, tech]
+        customBackendTech: [...spec.customBackendTech, tech],
+        // Also add to the selected tech stack if not already there
+        backendTechStack: !spec.backendTechStack.includes(tech as TechStack)
+          ? [...spec.backendTechStack, tech as TechStack]
+          : spec.backendTechStack
       });
     }
   };
@@ -74,12 +82,16 @@ const ProjectSpecForm: React.FC<ProjectSpecFormProps> = ({ onSubmit }) => {
     if (type === "frontend") {
       setSpec({
         ...spec,
-        customFrontendTech: spec.customFrontendTech.filter(t => t !== tech)
+        customFrontendTech: spec.customFrontendTech.filter(t => t !== tech),
+        // Also remove from frontendTechStack if it's there
+        frontendTechStack: spec.frontendTechStack.filter(t => t !== tech)
       });
     } else {
       setSpec({
         ...spec,
-        customBackendTech: spec.customBackendTech.filter(t => t !== tech)
+        customBackendTech: spec.customBackendTech.filter(t => t !== tech),
+        // Also remove from backendTechStack if it's there
+        backendTechStack: spec.backendTechStack.filter(t => t !== tech)
       });
     }
   };
