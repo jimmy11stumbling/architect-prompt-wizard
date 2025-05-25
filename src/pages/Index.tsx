@@ -6,6 +6,7 @@ import AgentWorkflow from "@/components/agent-workflow";
 import PromptOutput from "@/components/PromptOutput";
 import SavedPrompts from "@/components/SavedPrompts";
 import { ApiKeyForm } from "@/components/ApiKeyForm";
+import { ComponentTester } from "@/components/testing";
 import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
@@ -75,9 +76,10 @@ const Index: React.FC = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="create">Create New Prompt</TabsTrigger>
               <TabsTrigger value="saved">Saved Prompts</TabsTrigger>
+              <TabsTrigger value="test">Component Tests</TabsTrigger>
             </TabsList>
             <TabsContent value="create">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -93,6 +95,9 @@ const Index: React.FC = () => {
             </TabsContent>
             <TabsContent value="saved">
               <SavedPrompts />
+            </TabsContent>
+            <TabsContent value="test">
+              <ComponentTester />
             </TabsContent>
           </Tabs>
         </div>
