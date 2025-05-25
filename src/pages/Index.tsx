@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
@@ -16,6 +15,7 @@ const Index: React.FC = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("create");
+  const projectFormRef = useRef<{ setSpec: (spec: ProjectSpec) => void }>(null);
 
   const handleSubmit = async (spec: ProjectSpec) => {
     // Prepare a complete spec with all tech stacks (standard + custom)
@@ -61,9 +61,16 @@ const Index: React.FC = () => {
     }
   };
 
+  const handleSelectTemplate = (spec: ProjectSpec) => {
+    if (projectFormRef.current) {
+      projectFormRef.current.setSpec(spec);
+    }
+    setActiveTab("create");
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header onSelectTemplate={handleSelectTemplate} />
       <main className="flex-1 container py-8">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
@@ -84,7 +91,7 @@ const Index: React.FC = () => {
             <TabsContent value="create">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-8">
-                  <ProjectSpecForm onSubmit={handleSubmit} />
+                  <ProjectSpecForm ref={projectFormRef} onSubmit={handleSubmit} />
                   <ApiKeyForm />
                 </div>
                 <div className="space-y-8">

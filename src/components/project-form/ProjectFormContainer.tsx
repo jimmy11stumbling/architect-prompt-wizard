@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectSpec, TechStack, VectorDatabaseType, MCPType } from "@/types/ipa-types";
@@ -7,10 +6,16 @@ import { TextAreaField, TechStackSection, AdvancedFeaturesSection, QuickFillButt
 
 interface ProjectFormContainerProps {
   onSubmit: (spec: ProjectSpec) => void;
+  spec?: ProjectSpec;
+  onSpecChange?: (spec: ProjectSpec) => void;
 }
 
-const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({ onSubmit }) => {
-  const [spec, setSpec] = useState<ProjectSpec>({
+const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({ 
+  onSubmit, 
+  spec: externalSpec,
+  onSpecChange 
+}) => {
+  const [internalSpec, setInternalSpec] = React.useState<ProjectSpec>({
     projectDescription: "",
     frontendTechStack: ["React"],
     backendTechStack: ["Express"],
@@ -24,6 +29,17 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({ onSubmit })
     customMcpType: "",
     advancedPromptDetails: ""
   });
+
+  // Use external spec if provided, otherwise use internal spec
+  const spec = externalSpec || internalSpec;
+  const setSpec = onSpecChange || setInternalSpec;
+
+  // Update internal spec when external spec changes
+  useEffect(() => {
+    if (externalSpec) {
+      setInternalSpec(externalSpec);
+    }
+  }, [externalSpec]);
   
   const handleTechStackToggle = (tech: TechStack, type: "frontend" | "backend") => {
     if (type === "frontend") {
