@@ -1,14 +1,11 @@
 
 import React, { useEffect, useState } from "react";
 import { SavedPrompt, getAllPrompts, deletePrompt } from "@/services/db/promptDatabaseService";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Search, Trash2, Clock, Copy, Download, Database } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PromptCard, PromptSearch, EmptyState } from "./saved-prompts";
 
 const SavedPrompts: React.FC = () => {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
@@ -102,10 +99,6 @@ const SavedPrompts: React.FC = () => {
     });
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString();
-  };
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -116,15 +109,7 @@ const SavedPrompts: React.FC = () => {
           </div>
           <CardDescription>{filteredPrompts.length} prompts stored locally</CardDescription>
         </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search prompts..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <PromptSearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -132,77 +117,18 @@ const SavedPrompts: React.FC = () => {
             <div className="text-ipa-muted">Loading saved prompts...</div>
           </div>
         ) : filteredPrompts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center">
-            <Database className="h-10 w-10 text-ipa-muted mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">No saved prompts found</h3>
-            <p className="text-sm text-muted-foreground">
-              {prompts.length === 0
-                ? "Generate your first prompt to automatically save it here"
-                : "No prompts match your search criteria"}
-            </p>
-          </div>
+          <EmptyState hasPrompts={prompts.length > 0} isFiltered={searchTerm.trim() !== ""} />
         ) : (
           <ScrollArea className="h-[400px] pr-4">
             <div className="space-y-4">
               {filteredPrompts.map((prompt) => (
-                <Card key={prompt.id} className="border-ipa-border">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between">
-                      <CardTitle className="text-lg">{prompt.projectName}</CardTitle>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatDate(prompt.timestamp)}</span>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    <div className="max-h-24 overflow-hidden text-ellipsis text-sm">
-                      {prompt.prompt?.substring(0, 150)}
-                      {(prompt.prompt?.length || 0) > 150 ? "..." : ""}
-                    </div>
-                    {prompt.tags && prompt.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {prompt.tags.slice(0, 5).map((tag, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {prompt.tags.length > 5 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{prompt.tags.length - 5}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                  <Separator />
-                  <CardFooter className="pt-2 flex justify-between">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeletePrompt(prompt.id)}
-                      className="text-ipa-muted hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" /> Delete
-                    </Button>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopy(prompt.prompt)}
-                      >
-                        <Copy className="h-4 w-4 mr-1" /> Copy
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(prompt.prompt)}
-                      >
-                        <Download className="h-4 w-4 mr-1" /> Download
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
+                <PromptCard
+                  key={prompt.id}
+                  prompt={prompt}
+                  onDelete={handleDeletePrompt}
+                  onCopy={handleCopy}
+                  onDownload={handleDownload}
+                />
               ))}
             </div>
           </ScrollArea>
