@@ -201,11 +201,11 @@ const ComponentTester: React.FC = () => {
   const getStatusColor = (status: TestResult["status"]) => {
     switch (status) {
       case "pass":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
       case "fail":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
       case "warning":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
     }
   };
 
@@ -218,9 +218,9 @@ const ComponentTester: React.FC = () => {
       <CardHeader>
         <CardTitle>Component Functionality Test Suite</CardTitle>
         <div className="flex gap-4 text-sm">
-          <span className="text-green-600">✓ {passedTests} Passed</span>
-          <span className="text-red-600">✗ {failedTests} Failed</span>
-          <span className="text-yellow-600">⚠ {warningTests} Warnings</span>
+          <span className="text-green-500">✓ {passedTests} Passed</span>
+          <span className="text-red-500">✗ {failedTests} Failed</span>
+          <span className="text-yellow-500">⚠ {warningTests} Warnings</span>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -236,13 +236,13 @@ const ComponentTester: React.FC = () => {
           <div className="space-y-2">
             <h3 className="font-medium">Test Results:</h3>
             {testResults.map((result, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={index} className="flex items-center justify-between p-3 border border-ipa-border rounded-lg bg-card">
                 <div className="flex items-center gap-2">
                   {getStatusIcon(result.status)}
                   <span className="font-medium">{result.component}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">{result.message}</span>
+                  <span className="text-sm text-muted-foreground">{result.message}</span>
                   <Badge className={getStatusColor(result.status)}>
                     {result.status.toUpperCase()}
                   </Badge>
@@ -253,9 +253,9 @@ const ComponentTester: React.FC = () => {
         )}
 
         {testResults.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium mb-2">Test Summary:</h4>
-            <div className="text-sm space-y-1">
+          <div className="mt-4 p-4 bg-muted/50 border border-ipa-border rounded-lg">
+            <h4 className="font-medium mb-2 text-foreground">Test Summary:</h4>
+            <div className="text-sm space-y-1 text-muted-foreground">
               <p>Total Components Tested: {testResults.length}</p>
               <p>Overall Success Rate: {Math.round((passedTests / testResults.length) * 100)}%</p>
               <p>Status: {failedTests === 0 ? "All systems operational ✅" : "Issues detected ⚠️"}</p>
