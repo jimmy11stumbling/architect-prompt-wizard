@@ -1,9 +1,12 @@
 
-export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Express" | "NestJS" | "FastAPI" | "Django" | "PostgreSQL" | "MongoDB" | "Redis" | "Docker" | string;
+export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Svelte" | "Nuxt.js" | "Gatsby" | "Remix" |
+  "Express" | "NestJS" | "FastAPI" | "Django" | "Flask" | "Spring Boot" | "Laravel" | "Ruby on Rails" | "ASP.NET Core" | "Koa.js" | "Hapi.js" |
+  "PostgreSQL" | "MongoDB" | "Redis" | "MySQL" | "SQLite" | "Supabase" | "Firebase" | "DynamoDB" | "CouchDB" | "Cassandra" |
+  "Docker" | "Kubernetes" | "GraphQL" | "REST API" | "WebSockets" | "Microservices" | "Serverless" | "AWS" | "Google Cloud" | "Azure" | string;
 
-export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "None" | string;
+export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "FAISS" | "Elasticsearch" | "OpenSearch" | "None" | string;
 
-export type MCPType = "Standard MCP" | "Extended MCP" | "MCP with Tools" | "MCP with Resources" | "None" | string;
+export type MCPType = "Standard MCP" | "Extended MCP" | "MCP with Tools" | "MCP with Resources" | "MCP with Prompts" | "MCP with Sampling" | "Custom MCP Implementation" | "None" | string;
 
 export interface ProjectSpec {
   projectDescription: string;
@@ -18,6 +21,10 @@ export interface ProjectSpec {
   mcpType: MCPType;
   customMcpType: string;
   advancedPromptDetails: string;
+  deploymentPreference?: string;
+  authenticationMethod?: string;
+  performanceRequirements?: string;
+  securityConsiderations?: string;
 }
 
 export type AgentName = 
@@ -43,7 +50,7 @@ export interface GenerationStatus {
   result?: string;
   error?: string;
   spec?: ProjectSpec;
-  messages?: DeepSeekMessage[]; // For multi-round conversations
+  messages?: DeepSeekMessage[];
 }
 
 export interface DeepSeekMessage {

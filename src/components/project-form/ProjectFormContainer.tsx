@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectSpec, TechStack, VectorDatabaseType, MCPType } from "@/types/ipa-types";
-import { TextAreaField, TechStackSection, AdvancedFeaturesSection, QuickFillButton } from "./";
+import { TextAreaField, TechStackSection, AdvancedFeaturesSection, QuickFillButton, ProjectFormValidation } from "./";
 
 interface ProjectFormContainerProps {
   onSubmit: (spec: ProjectSpec) => void;
@@ -27,7 +28,9 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
     customRagVectorDb: "",
     mcpType: "None",
     customMcpType: "",
-    advancedPromptDetails: ""
+    advancedPromptDetails: "",
+    deploymentPreference: "Vercel",
+    authenticationMethod: "JWT"
   });
 
   // Use external spec if provided, otherwise use internal spec
@@ -135,12 +138,20 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!spec.projectDescription.trim() || spec.frontendTechStack.length === 0 || spec.backendTechStack.length === 0) {
+      return; // Don't submit if validation fails
+    }
+    
     onSubmit(spec);
   };
 
   const handleQuickFill = (quickFillSpec: ProjectSpec) => {
     setSpec(quickFillSpec);
   };
+
+  const isFormValid = spec.projectDescription.trim() && spec.frontendTechStack.length > 0 && spec.backendTechStack.length > 0;
 
   return (
     <Card className="w-full">
@@ -154,11 +165,11 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           <TextAreaField
             label="Project Description"
-            placeholder="Describe your project in detail..."
+            placeholder="Describe your project in detail including main features, target audience, key functionalities, and business objectives..."
             value={spec.projectDescription}
             onChange={(value) => setSpec({ ...spec, projectDescription: value })}
             required={true}
-            minHeight="100px"
+            minHeight="120px"
           />
 
           <TechStackSection
@@ -186,8 +197,14 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
             onFieldChange={handleFieldChange}
           />
 
-          <Button type="submit" className="w-full bg-gradient-blue-purple hover:opacity-90">
-            Generate Cursor Prompt
+          <ProjectFormValidation spec={spec} />
+
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-blue-purple hover:opacity-90"
+            disabled={!isFormValid}
+          >
+            {isFormValid ? "Generate Cursor Prompt" : "Complete Required Fields"}
           </Button>
         </form>
       </CardContent>
