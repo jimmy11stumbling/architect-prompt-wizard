@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
@@ -10,35 +11,44 @@ import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 
 const Index: React.FC = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("create");
   const projectFormRef = useRef<{ setSpec: (spec: ProjectSpec) => void }>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (spec: ProjectSpec) => {
-    // Prepare a complete spec with all tech stacks (standard + custom)
-    const completeSpec = {
-      ...spec,
-      frontendTechStack: [
-        ...spec.frontendTechStack,
-        ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack))
-      ],
-      backendTechStack: [
-        ...spec.backendTechStack,
-        ...spec.customBackendTech.filter(tech => !spec.backendTechStack.includes(tech as TechStack))
-      ]
-    };
-
-    setIsGenerating(true);
     try {
+      // Prepare a complete spec with all tech stacks (standard + custom)
+      const completeSpec = {
+        ...spec,
+        frontendTechStack: [
+          ...spec.frontendTechStack,
+          ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack))
+        ],
+        backendTechStack: [
+          ...spec.backendTechStack,
+          ...spec.customBackendTech.filter(tech => !spec.backendTechStack.includes(tech as TechStack))
+        ]
+      };
+
+      setIsGenerating(true);
+      setGenerationStatus(null);
+      
       const taskId = await ipaService.generatePrompt(completeSpec);
       console.log("Starting generation with task ID:", taskId);
       startPolling(taskId);
     } catch (error) {
       console.error("Error generating prompt:", error);
       setIsGenerating(false);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to start prompt generation",
+        variant: "destructive"
+      });
     }
   };
 
@@ -54,10 +64,22 @@ const Index: React.FC = () => {
         // Generation complete or failed
         setIsGenerating(false);
         console.log("Generation completed with status:", status.status);
+        
+        if (status.status === "completed") {
+          toast({
+            title: "Generation Complete",
+            description: "Your Cursor AI prompt has been successfully generated!",
+          });
+        }
       }
     } catch (error) {
       console.error("Error polling status:", error);
       setIsGenerating(false);
+      toast({
+        title: "Polling Error",
+        description: "Failed to check generation status",
+        variant: "destructive"
+      });
     }
   };
 
@@ -66,10 +88,14 @@ const Index: React.FC = () => {
       projectFormRef.current.setSpec(spec);
     }
     setActiveTab("create");
+    toast({
+      title: "Template Applied",
+      description: "Project template has been loaded into the form",
+    });
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header onSelectTemplate={handleSelectTemplate} />
       <main className="flex-1 container py-8">
         <div className="max-w-6xl mx-auto">
@@ -77,8 +103,8 @@ const Index: React.FC = () => {
             <h1 className="text-3xl font-bold mb-4">
               <span className="text-gradient">Intelligent Prompt Architect</span>
             </h1>
-            <p className="text-lg text-ipa-muted max-w-3xl mx-auto">
-              Generate sophisticated Cursor AI prompts for building full-stack applications with Agent-to-Agent communication
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              Generate sophisticated Cursor AI prompts for building full-stack applications with Agent-to-Agent communication, RAG 2.0, and MCP integration
             </p>
           </div>
 
@@ -95,7 +121,10 @@ const Index: React.FC = () => {
                   <ApiKeyForm />
                 </div>
                 <div className="space-y-8">
-                  <AgentWorkflow agents={generationStatus?.agents || []} />
+                  <AgentWorkflow 
+                    agents={generationStatus?.agents || []} 
+                    isGenerating={isGenerating}
+                  />
                   <PromptOutput prompt={generationStatus?.result} />
                 </div>
               </div>
@@ -109,9 +138,9 @@ const Index: React.FC = () => {
           </Tabs>
         </div>
       </main>
-      <footer className="border-t border-ipa-border py-4">
-        <div className="container text-center text-sm text-ipa-muted">
-          Intelligent Prompt Architect (IPA) - Powered by DeepSeek models
+      <footer className="border-t border-border py-4">
+        <div className="container text-center text-sm text-muted-foreground">
+          Intelligent Prompt Architect (IPA) - Powered by DeepSeek models with advanced RAG 2.0 and MCP integration
         </div>
       </footer>
       <Toaster />
