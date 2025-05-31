@@ -8,9 +8,10 @@ import AgentContent from "./agent-workflow/AgentContent";
 
 interface AgentWorkflowProps {
   agents: AgentStatus[];
+  isGenerating: boolean;
 }
 
-const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents }) => {
+const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) => {
   const [openAgents, setOpenAgents] = useState<Record<string, boolean>>({});
 
   const toggleAgent = (agent: string) => {
@@ -23,7 +24,14 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents }) => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>DeepSeek Prompt Synthesis Swarm</CardTitle>
+        <CardTitle>
+          DeepSeek Prompt Synthesis Swarm
+          {isGenerating && (
+            <span className="ml-2 text-sm text-ipa-primary animate-pulse">
+              (Processing...)
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col">
