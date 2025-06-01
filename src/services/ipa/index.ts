@@ -1,6 +1,7 @@
 
-// This file re-exports everything from the service modules for convenient imports
-
+// Export both the original and scalable service implementations
 import { ipaService } from './ipaService';
+import { scalableIpaService } from './scalableIpaService';
 
-export { ipaService };
+// Use scalable service for production-ready high-concurrency support
+export { scalableIpaService as ipaService, ipaService as originalIpaService };
