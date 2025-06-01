@@ -3,25 +3,17 @@ import { GenerationStatus, ProjectSpec } from "@/types/ipa-types";
 import { mockTaskId } from "./mockData";
 import { toast } from "@/hooks/use-toast";
 import { GenerationOrchestrator } from "./generationOrchestrator";
+import { SpecValidator } from "./validation/specValidator";
+import { IpaServiceInterface } from "./types/serviceTypes";
 
 // Single instance of the orchestrator to maintain state across calls
 const orchestrator = new GenerationOrchestrator();
 
-export const ipaService = {
+export const ipaService: IpaServiceInterface = {
   generatePrompt: async (spec: ProjectSpec): Promise<string> => {
     try {
       // Validate the spec
-      if (!spec.projectDescription?.trim()) {
-        throw new Error("Project description is required");
-      }
-      
-      if (!spec.frontendTechStack || spec.frontendTechStack.length === 0) {
-        throw new Error("At least one frontend technology must be selected");
-      }
-      
-      if (!spec.backendTechStack || spec.backendTechStack.length === 0) {
-        throw new Error("At least one backend technology must be selected");
-      }
+      SpecValidator.validate(spec);
 
       // Initialize the orchestrator with the new spec
       orchestrator.setProjectSpec(spec);
