@@ -3,8 +3,8 @@ import { AgentName, ProjectSpec, DeepSeekCompletionResponse } from "@/types/ipa-
 
 export class ResponseSimulator {
   static async simulateResponse(agent: AgentName, spec: ProjectSpec): Promise<DeepSeekCompletionResponse> {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    // Reduced simulation delay for testing - was causing 20+ minute waits
+    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
     
     const responses = {
       RequirementDecompositionAgent: `# Project Requirements Analysis & Decomposition
@@ -27,120 +27,61 @@ Based on the project description for "${spec.projectDescription}", I've conducte
    - ${spec.ragVectorDb !== "None" ? `Vector database integration with ${spec.ragVectorDb}` : "Standard database operations"}
    - ${spec.mcpType !== "None" ? `Model Context Protocol implementation (${spec.mcpType})` : "Standard data context management"}
 
-3. **Integration Layer**
-   - ${spec.a2aIntegrationDetails ? "Agent-to-Agent communication protocols" : "Standard system integrations"}
-   - ${spec.mcpType !== "None" ? "MCP-compliant tool and resource management" : "Standard tool integration"}
-   - Real-time data synchronization
-
 ## Technical Architecture
-
-### System Components
-1. **Frontend Application** (${spec.frontendTechStack.join(", ")})
-2. **Backend Services** (${spec.backendTechStack.join(", ")})
-3. **Database Layer** (Optimized for selected tech stack)
-4. **Integration Services** (A2A, MCP, RAG as specified)
-
-### Data Flow Architecture
-- Client-server communication via REST/GraphQL APIs
-- Real-time updates through WebSocket connections
-- ${spec.ragVectorDb !== "None" ? "Vector similarity search for semantic queries" : "Standard database queries"}
-- Caching layers for performance optimization
+- Frontend: ${spec.frontendTechStack.join(", ")}
+- Backend: ${spec.backendTechStack.join(", ")}
+- Database: Optimized for selected tech stack
+- Integration: A2A, MCP, RAG as specified
 
 ## Development Phases
+1. Foundation setup and authentication
+2. Core features development
+3. Advanced features (RAG, MCP, A2A)
+4. Testing and deployment
 
-### Phase 1: Foundation (Weeks 1-2)
-- Project setup and configuration
-- Basic authentication implementation
-- Core database schema design
-- Initial UI framework setup
-
-### Phase 2: Core Features (Weeks 3-6)
-- Main application features development
-- API endpoint implementation
-- Frontend component development
-- Basic testing setup
-
-### Phase 3: Advanced Features (Weeks 7-10)
-- ${spec.ragVectorDb !== "None" ? `RAG 2.0 implementation with ${spec.ragVectorDb}` : "Advanced feature implementation"}
-- ${spec.mcpType !== "None" ? `MCP integration (${spec.mcpType})` : "Enhanced integration features"}
-- A2A communication protocols
-- Performance optimization
-
-### Phase 4: Testing & Deployment (Weeks 11-12)
-- Comprehensive testing (unit, integration, e2e)
-- Security audit and optimization
-- Deployment to ${spec.deploymentPreference || "production environment"}
-- Documentation and training
-
-## Risk Assessment & Mitigation
-
-### Technical Risks
-1. **Integration Complexity**: Mitigate with thorough API design and testing
-2. **Performance Bottlenecks**: Address with caching and optimization strategies
-3. **Security Vulnerabilities**: Implement comprehensive security auditing
-
-### Recommendations
-- Use TypeScript for better code quality and maintainability
-- Implement comprehensive logging and monitoring
-- Follow SOLID principles and clean architecture patterns
-- Establish CI/CD pipelines for automated testing and deployment`,
+## Risk Assessment
+- Integration complexity mitigation needed
+- Performance optimization required
+- Security auditing essential`,
 
       RAGContextIntegrationAgent: `# RAG 2.0 Implementation Strategy
 
 ## Vector Database Architecture (${spec.ragVectorDb})
 
-### Database Schema Design
-\`\`\`sql
--- Document Collections
-CREATE TABLE document_collections (
-    id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    embedding_model VARCHAR(100),
-    chunk_size INTEGER DEFAULT 1000,
-    chunk_overlap INTEGER DEFAULT 200,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### Implementation Plan
+1. **Database Schema**: Document collections with vector embeddings
+2. **Embedding Strategy**: OpenAI text-embedding-3-large primary model
+3. **Search Implementation**: Hybrid vector + full-text search
+4. **Performance**: Query optimization and caching
 
--- Document Chunks with Vector Embeddings
-CREATE TABLE document_chunks (
-    id UUID PRIMARY KEY,
-    collection_id UUID REFERENCES document_collections(id),
-    document_id VARCHAR(255),
-    chunk_index INTEGER,
-    content TEXT NOT NULL,
-    embedding VECTOR(1536), -- For OpenAI embeddings
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### Integration Code
+\`\`\`typescript
+interface SearchResult {
+  id: string;
+  content: string;
+  score: number;
+  metadata: Record<string, any>;
+}
 
--- Create vector similarity index
-CREATE INDEX ON document_chunks USING ivfflat (embedding vector_cosine_ops);
+class RAGEngine {
+  async search(query: string): Promise<SearchResult[]> {
+    const vectorResults = await this.vectorSearch(query);
+    const textResults = await this.fullTextSearch(query);
+    return this.fuseResults(vectorResults, textResults);
+  }
+}
 \`\`\`
 
-### Embedding Strategy
-1. **Model Selection**: 
-   - Primary: OpenAI text-embedding-3-large (3072 dimensions)
-   - Fallback: sentence-transformers/all-mpnet-base-v2
-   - Domain-specific fine-tuning for specialized content
-
-2. **Chunking Pipeline**:
-   - Semantic chunking using sentence boundaries
-   - Hierarchical chunking for long documents
-   - Metadata extraction and enrichment
-   - Overlap strategy for context preservation
-
-### Performance Monitoring
-- Query latency tracking
-- Retrieval accuracy metrics
-- Cache hit rates
-- Vector database performance metrics`,
+### Performance Metrics
+- Query latency: <100ms target
+- Retrieval accuracy: >90% relevance
+- Cache hit rate: >80%`,
 
       A2AProtocolExpertAgent: `# Agent-to-Agent Communication Architecture
 
-## Protocol Specification
+## Protocol Implementation
 
-### Message Format Standard
+### Message Format
 \`\`\`typescript
 interface A2AMessage {
   id: string;
@@ -149,263 +90,139 @@ interface A2AMessage {
   target: AgentIdentifier;
   type: MessageType;
   payload: any;
-  metadata: MessageMetadata;
-  signature?: string; // For message authentication
-}
-
-interface AgentIdentifier {
-  id: string;
-  name: string;
-  capabilities: string[];
-  endpoint: string;
-}
-
-enum MessageType {
-  REQUEST = 'request',
-  RESPONSE = 'response',
-  NOTIFICATION = 'notification',
-  HEARTBEAT = 'heartbeat',
-  ERROR = 'error'
+  signature?: string;
 }
 \`\`\`
 
-### Integration with Backend (${spec.backendTechStack.join(", ")})
-- WebSocket server for real-time communication
-- Message queue integration (Redis/RabbitMQ)
-- Database logging for message audit trail
+### Communication Features
+- Service discovery and registration
+- Message routing and load balancing
+- Authentication and security
+- Error handling and fault tolerance
+
+### Integration Points
+- WebSocket for real-time communication
+- Message queues for reliability
+- Database logging for audit trails
 - Monitoring and metrics collection`,
 
-      TechStackImplementationAgent_Frontend: `# Frontend Implementation Guide
+      TechStackImplementationAgent_Frontend: `# Frontend Implementation (${spec.frontendTechStack.join(", ")})
 
-## Architecture Overview (${spec.frontendTechStack.join(", ")})
-
-### Project Structure
+## Project Structure
 \`\`\`
 src/
-├── components/           # Reusable UI components
-│   ├── ui/              # Basic UI primitives
-│   ├── forms/           # Form components
-│   ├── layout/          # Layout components
-│   └── features/        # Feature-specific components
-├── hooks/               # Custom React hooks
-├── stores/              # State management
-├── services/            # API and external services
-├── utils/               # Utility functions
-├── types/               # TypeScript type definitions
-└── pages/               # Page components
+├── components/     # Reusable UI components
+├── hooks/         # Custom React hooks  
+├── stores/        # State management
+├── services/      # API services
+├── utils/         # Utility functions
+└── types/         # TypeScript definitions
 \`\`\`
 
-### Component Architecture
+## Key Components
+1. **Authentication**: ${spec.authenticationMethod || "JWT"} implementation
+2. **State Management**: Zustand/Redux setup
+3. **Real-time**: WebSocket integration
+4. **Performance**: Code splitting and optimization
 
-#### Base Components
-\`\`\`typescript
-// Button Component with variants
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
-}
+## Implementation Details
+- Component architecture with TypeScript
+- Responsive design patterns
+- API integration layers
+- Testing setup and configuration`,
 
-export const Button: React.FC<ButtonProps> = ({
-  variant = 'primary',
-  size = 'md',
-  loading = false,
-  children,
-  className,
-  ...props
-}) => {
-  return (
-    <button
-      className={cn(
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        'disabled:pointer-events-none disabled:opacity-50',
-        buttonVariants[variant],
-        buttonSizes[size],
-        className
-      )}
-      disabled={loading || props.disabled}
-      {...props}
-    >
-      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      {children}
-    </button>
-  );
-};
-\`\`\`
+      TechStackImplementationAgent_Backend: `# Backend Implementation (${spec.backendTechStack.join(", ")})
 
-### Performance Optimization
-
-#### Code Splitting & Lazy Loading
-\`\`\`typescript
-// Route-based code splitting
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Search = lazy(() => import('./pages/Search'));
-\`\`\``,
-
-      TechStackImplementationAgent_Backend: `# Backend Implementation Guide
-
-## API Architecture (${spec.backendTechStack.join(", ")})
-
-### Project Structure
+## API Architecture
 \`\`\`
 src/
-├── controllers/         # Request handlers
-├── services/           # Business logic
-├── models/             # Data models
-├── middleware/         # Custom middleware
-├── routes/             # API routes
-├── utils/              # Utility functions
-├── config/             # Configuration files
-├── database/           # Database setup and migrations
-└── types/              # TypeScript definitions
+├── controllers/    # Request handlers
+├── services/      # Business logic
+├── models/        # Data models
+├── middleware/    # Custom middleware
+├── routes/        # API routes
+└── config/        # Configuration
 \`\`\`
 
-### Database Schema Design
+## Core Features
+1. **Authentication**: ${spec.authenticationMethod || "JWT"} system
+2. **Database**: Schema design and migrations
+3. **API Endpoints**: RESTful service design
+4. **Security**: Input validation and protection
 
-\`\`\`sql
--- Users table
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-    role VARCHAR(50) DEFAULT 'user',
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-\`\`\`
-
-### Testing Strategy
-
-\`\`\`typescript
-// Example API test
-import request from 'supertest';
-import app from '../app';
-
-describe('Auth API', () => {
-  it('should login with valid credentials', async () => {
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({
-        email: 'test@example.com',
-        password: 'password123'
-      });
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('token');
-    expect(response.body).toHaveProperty('user');
-  });
-});
-\`\`\``,
+## Performance & Scaling
+- Connection pooling
+- Caching strategies
+- Error handling
+- Logging and monitoring`,
 
       CursorOptimizationAgent: `# Cursor AI Optimization Guide
 
-## Project Structure for Optimal AI Code Generation
-
-### File Organization Strategy
+## Project Structure for Optimal AI Generation
 \`\`\`
 project-root/
-├── src/
-│   ├── components/           # React components (small, focused)
-│   │   ├── ui/              # Basic UI components (Button, Input, etc.)
-│   │   ├── features/        # Feature-specific components
-│   │   └── layout/          # Layout components
-│   ├── hooks/               # Custom React hooks
-│   ├── services/            # API and business logic services
-│   ├── utils/               # Pure utility functions
-│   ├── types/               # TypeScript type definitions
-│   └── constants/           # Application constants
-├── docs/                    # Documentation for Cursor context
-│   ├── api-guide.md         # API documentation
-│   ├── component-guide.md   # Component usage guide
-│   └── setup.md             # Setup instructions
-└── .cursorrules             # Cursor-specific rules and context
+├── src/components/    # Small, focused components
+├── docs/             # Context documentation
+└── .cursorrules      # AI guidance rules
 \`\`\`
 
-### Common Cursor Pitfalls to Avoid
-1. **Overly Complex Components**: Keep components focused and under 100 lines
-2. **Missing Type Definitions**: Always provide proper TypeScript types
-3. **Inconsistent Naming**: Use consistent naming conventions throughout
-4. **Poor Error Handling**: Always include proper error handling and user feedback
-5. **Missing Documentation**: Add clear comments and documentation for complex logic
-6. **Tight Coupling**: Ensure components are loosely coupled and reusable`,
+## Best Practices
+1. **Component Size**: Keep under 100 lines
+2. **Type Safety**: Comprehensive TypeScript
+3. **Documentation**: Clear comments and docs
+4. **Error Handling**: Proper user feedback
+5. **Naming**: Consistent conventions
 
-      QualityAssuranceAgent: `# Comprehensive Quality Assurance Review
+## Common Pitfalls
+- Overly complex components
+- Missing type definitions
+- Poor error handling
+- Inconsistent patterns`,
 
-## Executive Summary
-This QA review evaluates the proposed implementation for "${spec.projectDescription}" against industry best practices, security standards, and performance benchmarks.
+      QualityAssuranceAgent: `# Quality Assurance Review
 
-## Architecture Assessment
+## Assessment for "${spec.projectDescription}"
 
-### ✅ Strengths Identified
-1. **Modular Architecture**: Well-separated concerns with clear boundaries
-2. **Type Safety**: Comprehensive TypeScript implementation
-3. **Scalable Design**: Proper separation of services and components
-4. **Modern Tech Stack**: Using current, well-supported technologies
+### ✅ Strengths
+- Modular architecture design
+- TypeScript implementation
+- Modern tech stack selection
+- Scalable component structure
 
 ### ⚠️ Areas for Improvement
 
-#### 1. Security Considerations
-- **Authentication**: ${spec.authenticationMethod || "JWT"} implementation needs:
-  - Token rotation mechanism
-  - Secure token storage (HttpOnly cookies preferred over localStorage)
-  - Rate limiting on auth endpoints
-  - Account lockout policies
-  
-- **API Security**: Implement:
-  - Input validation and sanitization
-  - SQL injection prevention
-  - XSS protection headers
-  - CORS configuration review
-  - API rate limiting per user
+#### Security
+- Authentication: ${spec.authenticationMethod || "JWT"} hardening needed
+- Input validation required
+- API security measures
+- Data protection protocols
 
-#### 2. Performance Optimization
+#### Performance
+- Bundle optimization
+- Code splitting implementation
+- Database query optimization
+- Caching strategies
 
-##### Frontend Performance
-- **Bundle Optimization**:
-  - Implement code splitting for routes
-  - Use React.lazy for component loading
-  - Optimize image loading with next/image or similar
-  - Minimize CSS and JS bundles
+#### Testing
+- Unit test coverage
+- Integration testing
+- End-to-end scenarios
+- Performance benchmarks
 
-- **Runtime Performance**:
-  - Use React.memo for expensive components
-  - Implement virtualization for large lists
-  - Optimize re-renders with useCallback/useMemo
-  - Monitor Core Web Vitals
+## Recommendations
+1. **High Priority**: Security implementation
+2. **Medium Priority**: Performance optimization  
+3. **Ongoing**: Test coverage expansion
 
-## Recommendations Priority Matrix
-
-### High Priority (Implement Before Launch)
-1. Security authentication and authorization
-2. Input validation and sanitization
-3. Error handling and logging
-4. Basic performance optimization
-5. Core functionality testing
-
-### Medium Priority (First Month Post-Launch)
-1. Advanced monitoring setup
-2. Performance optimization
-3. Comprehensive test coverage
-4. Documentation completion
-5. Security audit
-
-## Conclusion
-The proposed implementation demonstrates solid architectural principles but requires attention to security, performance, and operational concerns before production deployment. Following these recommendations will ensure a robust, scalable, and secure application.
-
-**Overall Risk Assessment**: Medium
-**Readiness for Production**: 75% (after implementing high-priority recommendations)`
+**Risk Assessment**: Medium
+**Production Readiness**: 75% (after security improvements)`
     };
     
     const response = responses[agent as keyof typeof responses] || 
-      `# ${agent} Analysis\n\nDetailed analysis and recommendations for ${spec.projectDescription} using ${spec.frontendTechStack.join(", ")} and ${spec.backendTechStack.join(", ")}.`;
+      `# ${agent} Analysis\n\nDetailed analysis for ${spec.projectDescription} using ${spec.frontendTechStack.join(", ")} and ${spec.backendTechStack.join(", ")}.`;
     
     return {
-      id: `mock-${Date.now()}`,
+      id: `test-${Date.now()}`,
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
       model: "deepseek-chat",
