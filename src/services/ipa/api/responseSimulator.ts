@@ -1,4 +1,3 @@
-
 import { AgentName, ProjectSpec, DeepSeekCompletionResponse } from "@/types/ipa-types";
 
 export class ResponseSimulator {
@@ -1775,31 +1774,6 @@ alerts:
 The proposed implementation demonstrates solid architectural principles but requires attention to security, performance, and operational concerns before production deployment. Following these recommendations will ensure a robust, scalable, and secure application.
 
 **Overall Risk Assessment**: Medium
-**Readiness for Production**: 75% (after implementing high-priority recommendations)`
-    };
-    
-    const response = responses[agent as keyof typeof responses] || 
-      `# ${agent} Analysis\n\nDetailed analysis and recommendations for ${spec.projectDescription} using ${spec.frontendTechStack.join(", ")} and ${spec.backendTechStack.join(", ")}.`;
-    
-    return {
-      id: `mock-${Date.now()}`,
-      object: "chat.completion",
-      created: Math.floor(Date.now() / 1000),
-      model: "deepseek-chat",
-      choices: [{
-        index: 0,
-        message: {
-          role: "assistant",
-          content: response
-        },
-        finish_reason: "stop"
-      }],
-      usage: {
-        prompt_tokens: 100,
-        completion_tokens: response.length / 4,
-        total_tokens: 100 + response.length / 4
-      },
-      system_fingerprint: "mock-system"
-    };
-  }
-}
+**Readiness for Production**: 75% (after implementing high-priority recommendations)`,
+
+      };
