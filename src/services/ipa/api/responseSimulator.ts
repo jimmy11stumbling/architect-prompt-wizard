@@ -1792,7 +1792,6 @@ The proposed implementation demonstrates solid architectural principles but requ
           role: "assistant",
           content: response
         },
-        logprobs: null,
         finish_reason: "stop"
       }],
       usage: {

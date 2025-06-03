@@ -165,9 +165,16 @@ Please provide expert analysis and recommendations for implementing this project
   static addAgentResponse(messages: DeepSeekMessage[], agentName: AgentName, response: string): DeepSeekMessage[] {
     // Replace the placeholder response with the actual agent response
     const updatedMessages = [...messages];
-    const placeholderIndex = updatedMessages.findLastIndex(
-      msg => msg.role === "assistant" && msg.content.includes(`[This will be replaced with ${agentName}'s`)
-    );
+    
+    // Find the last placeholder for this agent using a loop instead of findLastIndex
+    let placeholderIndex = -1;
+    for (let i = updatedMessages.length - 1; i >= 0; i--) {
+      if (updatedMessages[i].role === "assistant" && 
+          updatedMessages[i].content.includes(`[This will be replaced with ${agentName}'s`)) {
+        placeholderIndex = i;
+        break;
+      }
+    }
     
     if (placeholderIndex !== -1) {
       updatedMessages[placeholderIndex] = {
