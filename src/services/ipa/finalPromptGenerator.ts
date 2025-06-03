@@ -133,7 +133,7 @@ ${frontendOutput.output}
 ### 🏗️ Component Architecture Design
 Your frontend will follow a modular, scalable architecture:
 
-```
+\`\`\`
 src/
 ├── components/           # Reusable UI components
 │   ├── ui/              # Base UI library components
@@ -146,7 +146,7 @@ src/
 ├── utils/               # Utility functions and helpers
 ├── types/               # TypeScript type definitions
 └── assets/              # Static assets and resources
-```
+\`\`\`
 
 ### 🎯 Frontend Development Phases
 **Phase 1: Foundation (Week 1-2)**
@@ -185,7 +185,7 @@ ${backendOutput.output}
 ### 🏗️ API Architecture Design
 Your backend will implement a robust, scalable API architecture:
 
-```
+\`\`\`
 src/
 ├── controllers/         # Request handlers and route logic
 ├── services/           # Business logic and external integrations
@@ -195,7 +195,7 @@ src/
 ├── utils/              # Utility functions and helpers
 ├── config/             # Configuration and environment setup
 └── tests/              # Unit and integration tests
-```
+\`\`\`
 
 ### 📊 Database Schema Design
 **Core Entities:**
