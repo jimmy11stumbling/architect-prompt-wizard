@@ -6,7 +6,7 @@ import AgentWorkflow from "@/components/agent-workflow";
 import PromptOutput from "@/components/PromptOutput";
 import SavedPrompts from "@/components/SavedPrompts";
 import { ApiKeyForm } from "@/components/ApiKeyForm";
-import { ComponentTester } from "@/components/testing";
+import { ComponentTester, AgentResponseTester } from "@/components/testing";
 import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
@@ -133,7 +133,10 @@ const Index: React.FC = () => {
               <SavedPrompts />
             </TabsContent>
             <TabsContent value="test">
-              <ComponentTester />
+              <div className="space-y-8">
+                <AgentResponseTester />
+                <ComponentTester />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
