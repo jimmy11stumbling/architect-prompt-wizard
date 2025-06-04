@@ -40,6 +40,7 @@ export interface AgentStatus {
   agent: AgentName;
   status: "idle" | "processing" | "completed" | "failed";
   output?: string;
+  reasoning?: string; // Add reasoning content support
 }
 
 export interface GenerationStatus {
@@ -51,17 +52,29 @@ export interface GenerationStatus {
   error?: string;
   spec?: ProjectSpec;
   messages?: DeepSeekMessage[];
+  reasoningHistory?: ReasoningStep[]; // Add reasoning history
 }
 
 export interface DeepSeekMessage {
   role: "system" | "user" | "assistant";
   content: string;
+  reasoning_content?: string; // Add reasoning content support
+}
+
+export interface ReasoningStep {
+  agent: AgentName;
+  reasoning: string;
+  timestamp: number;
 }
 
 export interface DeepSeekCompletionRequest {
   model: string;
   messages: DeepSeekMessage[];
   max_tokens?: number;
+  temperature?: number; // Not supported for deepseek-reasoner
+  top_p?: number; // Not supported for deepseek-reasoner
+  frequency_penalty?: number; // Not supported for deepseek-reasoner
+  presence_penalty?: number; // Not supported for deepseek-reasoner
 }
 
 export interface DeepSeekCompletionResponse {
@@ -74,6 +87,7 @@ export interface DeepSeekCompletionResponse {
     message: {
       role: string;
       content: string;
+      reasoning_content?: string; // Add reasoning content support
     };
     finish_reason: string;
   }[];
@@ -81,5 +95,46 @@ export interface DeepSeekCompletionResponse {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
+    reasoning_tokens?: number; // Add reasoning tokens tracking
   };
+}
+
+// Add MCP and A2A related types
+export interface MCPServer {
+  id: string;
+  name: string;
+  endpoint: string;
+  capabilities: string[];
+  status: "active" | "inactive" | "error";
+}
+
+export interface A2AAgent {
+  id: string;
+  name: string;
+  capabilities: string[];
+  endpoint: string;
+  status: "online" | "offline" | "busy";
+}
+
+export interface RAGDocument {
+  id: string;
+  title: string;
+  content: string;
+  embedding?: number[];
+  metadata: Record<string, any>;
+  source: string;
+}
+
+export interface RAGQuery {
+  query: string;
+  filters?: Record<string, any>;
+  limit?: number;
+  threshold?: number;
+}
+
+export interface RAGResult {
+  documents: RAGDocument[];
+  scores: number[];
+  query: string;
+  totalResults: number;
 }

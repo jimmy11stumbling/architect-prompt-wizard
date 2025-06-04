@@ -1,4 +1,3 @@
-
 import { DeepSeekCompletionRequest, DeepSeekCompletionResponse } from "@/types/ipa-types";
 import { toast } from "@/hooks/use-toast";
 
@@ -14,14 +13,15 @@ export class DeepSeekClient {
 
     console.log("Using saved API key for DeepSeek API call with enhanced request body");
     
-    // Enhanced request body with better parameters for quality responses
+    // Enhanced request body with support for deepseek-reasoner model
     const enhancedRequestBody = {
       ...requestBody,
-      temperature: 0.1, // Lower temperature for more consistent responses
-      max_tokens: Math.min(requestBody.max_tokens || 4096, 8192), // Allow larger responses
-      top_p: 0.95,
-      frequency_penalty: 0.1,
-      presence_penalty: 0.1,
+      model: requestBody.model === "deepseek-reasoner" ? "deepseek-reasoner" : "deepseek-chat",
+      temperature: requestBody.model === "deepseek-reasoner" ? undefined : 0.1, // Not supported for reasoner
+      max_tokens: Math.min(requestBody.max_tokens || 4096, requestBody.model === "deepseek-reasoner" ? 8192 : 8192),
+      top_p: requestBody.model === "deepseek-reasoner" ? undefined : 0.95, // Not supported for reasoner
+      frequency_penalty: requestBody.model === "deepseek-reasoner" ? undefined : 0.1, // Not supported for reasoner
+      presence_penalty: requestBody.model === "deepseek-reasoner" ? undefined : 0.1, // Not supported for reasoner
       stream: false
     };
 
@@ -30,7 +30,7 @@ export class DeepSeekClient {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "User-Agent": "IPA-System/1.0"
+        "User-Agent": "IPA-System/2.0"
       },
       body: JSON.stringify(enhancedRequestBody)
     });
@@ -92,5 +92,36 @@ export class DeepSeekClient {
       console.error("API key validation failed:", error);
       return false;
     }
+  }
+
+  static async makeReasonerCall(requestBody: DeepSeekCompletionRequest): Promise<{
+    reasoning_content?: string;
+    content: string;
+    usage?: any;
+  }> {
+    const reasonerRequest = {
+      ...requestBody,
+      model: "deepseek-reasoner"
+    };
+
+    const response = await this.makeApiCall(reasonerRequest);
+    const choice = response.choices[0];
+
+    return {
+      reasoning_content: choice.message.reasoning_content,
+      content: choice.message.content,
+      usage: response.usage
+    };
+  }
+
+  static cleanMessagesForNextRound(messages: any[]): any[] {
+    // Remove reasoning_content from messages to avoid 400 error
+    return messages.map(msg => {
+      if (msg.reasoning_content) {
+        const { reasoning_content, ...cleanMsg } = msg;
+        return cleanMsg;
+      }
+      return msg;
+    });
   }
 }
