@@ -1,128 +1,64 @@
 
 import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { NavLink } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { 
+  Home, 
   LayoutDashboard, 
-  FileText, 
+  Brain, 
+  Zap,
   Database, 
   Network, 
   Settings, 
-  Brain,
-  Workflow,
-  TestTube,
-  Archive
+  GitBranch, 
+  BookOpen, 
+  TestTube 
 } from "lucide-react";
 
-const navigationItems = [
-  {
-    title: "Prompt Generator",
-    url: "/",
-    icon: FileText,
-    description: "Create AI prompts"
-  },
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-    description: "System overview"
-  },
-  {
-    title: "RAG Query",
-    url: "/rag",
-    icon: Database,
-    description: "Knowledge retrieval"
-  },
-  {
-    title: "A2A Network",
-    url: "/a2a",
-    icon: Network,
-    description: "Agent communication"
-  },
-  {
-    title: "MCP Hub",
-    url: "/mcp",
-    icon: Settings,
-    description: "Protocol management"
-  },
-  {
-    title: "DeepSeek Reasoner",
-    url: "/reasoner",
-    icon: Brain,
-    description: "AI reasoning"
-  },
-  {
-    title: "Integrated Workflow",
-    url: "/workflow",
-    icon: Workflow,
-    description: "End-to-end processing"
-  },
-  {
-    title: "Testing Suite",
-    url: "/testing",
-    icon: TestTube,
-    description: "Component testing"
-  },
-  {
-    title: "Saved Prompts",
-    url: "/saved",
-    icon: Archive,
-    description: "Prompt library"
-  }
+const navigation = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "DeepSeek Reasoner", href: "/reasoner", icon: Brain },
+  { name: "Enhanced System", href: "/enhanced", icon: Zap },
+  { name: "RAG 2.0", href: "/rag", icon: Database },
+  { name: "A2A Network", href: "/a2a", icon: Network },
+  { name: "MCP Hub", href: "/mcp", icon: Settings },
+  { name: "Workflow", href: "/workflow", icon: GitBranch },
+  { name: "Saved Prompts", href: "/saved-prompts", icon: BookOpen },
+  { name: "Testing", href: "/testing", icon: TestTube },
 ];
 
-const NavigationSidebar: React.FC = () => {
-  const { state } = useSidebar();
-  const location = useLocation();
-  const currentPath = location.pathname;
-
-  const isCollapsed = state === "collapsed";
-  const getNavClass = ({ isActive }: { isActive: boolean }) =>
-    isActive ? "bg-muted text-primary font-medium" : "hover:bg-muted/50";
-
+export const NavigationSidebar: React.FC = () => {
   return (
-    <Sidebar collapsible="icon">
-      <SidebarTrigger className="m-2 self-end" />
-      
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavClass}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && (
-                        <div className="flex flex-col">
-                          <span>{item.title}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {item.description}
-                          </span>
-                        </div>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+    <div className="flex h-full w-64 flex-col bg-card border-r">
+      <div className="flex h-16 items-center px-4 border-b">
+        <h2 className="text-lg font-semibold text-gradient">IPA System</h2>
+      </div>
+      <nav className="flex-1 space-y-1 p-4">
+        {navigation.map((item) => (
+          <NavLink
+            key={item.name}
+            to={item.href}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              )
+            }
+          >
+            <item.icon className="h-4 w-4" />
+            {item.name}
+          </NavLink>
+        ))}
+      </nav>
+      <div className="p-4 border-t">
+        <div className="text-xs text-muted-foreground">
+          <div className="font-medium">Enhanced AI System</div>
+          <div>RAG 2.0 • A2A • MCP • DeepSeek</div>
+        </div>
+      </div>
+    </div>
   );
 };
-
-export default NavigationSidebar;
