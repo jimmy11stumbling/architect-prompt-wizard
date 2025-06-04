@@ -1,10 +1,11 @@
 
-import { RAGDocument, RAGQuery, RAGResult, VectorDatabaseType } from "@/types/ipa-types";
+import { RAGQuery, RAGResult, RAGDocument, VectorDatabaseType } from "@/types/ipa-types";
 
 export class RAGService {
   private static instance: RAGService;
   private documents: RAGDocument[] = [];
-  private vectorDbType: VectorDatabaseType = "None";
+  private vectorDb: VectorDatabaseType = "None";
+  private initialized = false;
 
   static getInstance(): RAGService {
     if (!RAGService.instance) {
@@ -14,115 +15,109 @@ export class RAGService {
   }
 
   async initialize(vectorDbType: VectorDatabaseType): Promise<void> {
-    this.vectorDbType = vectorDbType;
-    await this.loadDocuments();
-    console.log(`RAG Service initialized with ${vectorDbType}`);
-  }
-
-  private async loadDocuments(): Promise<void> {
-    // Load comprehensive documentation for showcased platforms
-    const platformDocs: RAGDocument[] = [
+    this.vectorDb = vectorDbType;
+    
+    // Initialize with sample documents for demonstration
+    this.documents = [
       {
-        id: "cursor-docs",
-        title: "Cursor AI Editor Documentation",
-        content: "Comprehensive guide for Cursor AI with MCP integration, agent communication, and advanced prompt engineering techniques...",
-        metadata: { platform: "cursor", type: "documentation" },
-        source: "cursor.com/docs"
+        id: "doc-1",
+        title: "Cursor AI Integration Guide",
+        content: "Cursor AI is an AI-first code editor that integrates seamlessly with various development workflows. It provides intelligent code completion, refactoring suggestions, and can generate entire functions based on natural language descriptions.",
+        metadata: { category: "development", tool: "cursor" },
+        source: "Documentation"
       },
       {
-        id: "mcp-protocol",
+        id: "doc-2",
+        title: "RAG 2.0 Architecture Patterns",
+        content: "RAG 2.0 represents the next generation of retrieval-augmented generation systems, featuring end-to-end optimization, sophisticated document processing, and advanced hybrid retrieval strategies combining dense vectors with sparse representations.",
+        metadata: { category: "ai", technique: "rag" },
+        source: "Technical Guide"
+      },
+      {
+        id: "doc-3",
         title: "Model Context Protocol Specification",
-        content: "Complete MCP protocol specification including tools, resources, prompts, and sampling mechanisms for AI agent communication...",
-        metadata: { platform: "mcp", type: "specification" },
-        source: "modelcontextprotocol.io"
+        content: "MCP is an open standard protocol that enables AI models to securely interact with external tools and data sources. It provides a standardized way for models to discover, access context from, and invoke actions within external systems.",
+        metadata: { category: "protocol", standard: "mcp" },
+        source: "Specification"
       },
       {
-        id: "a2a-protocol",
-        title: "Agent-to-Agent Communication Protocol",
-        content: "Detailed A2A protocol documentation covering agent discovery, message passing, task delegation, and coordination patterns...",
-        metadata: { platform: "a2a", type: "protocol" },
-        source: "a2a-protocol.org"
+        id: "doc-4",
+        title: "Agent-to-Agent Communication Best Practices",
+        content: "A2A protocols facilitate secure, interoperable communication between autonomous AI agents. Key considerations include message routing, capability discovery, task delegation, and maintaining conversation context across multi-turn interactions.",
+        metadata: { category: "communication", pattern: "a2a" },
+        source: "Best Practices"
       },
       {
-        id: "deepseek-api",
-        title: "DeepSeek API Integration Guide",
-        content: "Complete guide for DeepSeek API integration including chat completions, reasoning models, and multi-turn conversations...",
-        metadata: { platform: "deepseek", type: "api-guide" },
-        source: "api.deepseek.com/docs"
-      },
-      {
-        id: "rag-implementation",
-        title: "RAG 2.0 Implementation Best Practices",
-        content: "Advanced RAG 2.0 implementation strategies including vector databases, semantic search, and hybrid retrieval methods...",
-        metadata: { platform: "rag", type: "best-practices" },
-        source: "rag-research.org"
+        id: "doc-5",
+        title: "DeepSeek Reasoner Implementation",
+        content: "DeepSeek Reasoner provides advanced chain-of-thought processing, generating detailed reasoning traces before producing final answers. This approach enhances accuracy and provides transparency into the model's decision-making process.",
+        metadata: { category: "ai", model: "deepseek" },
+        source: "API Documentation"
       }
     ];
 
-    this.documents = platformDocs;
+    this.initialized = true;
+    console.log(`RAG Service initialized with ${this.vectorDb} vector database`);
   }
 
-  async query(ragQuery: RAGQuery): Promise<RAGResult> {
-    console.log(`Performing RAG query: ${ragQuery.query}`);
-    
-    // Simulate semantic search with score calculation
-    const results = this.documents
-      .map(doc => ({
-        document: doc,
-        score: this.calculateRelevanceScore(doc, ragQuery.query)
-      }))
-      .filter(result => result.score > (ragQuery.threshold || 0.3))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, ragQuery.limit || 5);
+  async query(query: RAGQuery): Promise<RAGResult> {
+    if (!this.initialized) {
+      throw new Error("RAG Service not initialized");
+    }
+
+    // Simple similarity search simulation
+    const relevantDocs = this.documents.filter(doc => {
+      const searchText = `${doc.title} ${doc.content}`.toLowerCase();
+      const queryTerms = query.query.toLowerCase().split(' ');
+      return queryTerms.some(term => searchText.includes(term));
+    });
+
+    // Generate mock similarity scores
+    const scores = relevantDocs.map(() => Math.random() * 0.5 + 0.5); // 0.5 to 1.0
+
+    // Apply threshold filter
+    const filteredResults = relevantDocs.filter((_, index) => scores[index] >= (query.threshold || 0.5));
+    const filteredScores = scores.filter(score => score >= (query.threshold || 0.5));
+
+    // Apply limit
+    const limitedDocs = filteredResults.slice(0, query.limit || 5);
+    const limitedScores = filteredScores.slice(0, query.limit || 5);
+
+    // Sort by score (descending)
+    const sortedResults = limitedDocs
+      .map((doc, index) => ({ doc, score: limitedScores[index] }))
+      .sort((a, b) => b.score - a.score);
 
     return {
-      documents: results.map(r => r.document),
-      scores: results.map(r => r.score),
-      query: ragQuery.query,
-      totalResults: results.length
+      documents: sortedResults.map(r => r.doc),
+      scores: sortedResults.map(r => r.score),
+      query: query.query,
+      totalResults: relevantDocs.length
     };
-  }
-
-  private calculateRelevanceScore(document: RAGDocument, query: string): number {
-    const queryLower = query.toLowerCase();
-    const contentLower = document.content.toLowerCase();
-    const titleLower = document.title.toLowerCase();
-    
-    let score = 0;
-    
-    // Title relevance (higher weight)
-    if (titleLower.includes(queryLower)) score += 0.8;
-    
-    // Content keyword matching
-    const queryWords = queryLower.split(' ');
-    queryWords.forEach(word => {
-      if (contentLower.includes(word)) score += 0.1;
-      if (titleLower.includes(word)) score += 0.2;
-    });
-    
-    // Platform-specific boost
-    if (document.metadata.platform && queryLower.includes(document.metadata.platform)) {
-      score += 0.3;
-    }
-    
-    return Math.min(score, 1.0);
   }
 
   async addDocument(document: RAGDocument): Promise<void> {
     this.documents.push(document);
-    console.log(`Added document: ${document.title}`);
   }
 
-  async getDocumentsByPlatform(platform: string): Promise<RAGDocument[]> {
-    return this.documents.filter(doc => doc.metadata.platform === platform);
-  }
-
-  getVectorDbType(): VectorDatabaseType {
-    return this.vectorDbType;
+  async removeDocument(documentId: string): Promise<void> {
+    this.documents = this.documents.filter(doc => doc.id !== documentId);
   }
 
   getDocumentCount(): number {
     return this.documents.length;
+  }
+
+  getVectorDatabase(): VectorDatabaseType {
+    return this.vectorDb;
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  getAllDocuments(): RAGDocument[] {
+    return [...this.documents];
   }
 }
 

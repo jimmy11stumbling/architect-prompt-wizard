@@ -1,10 +1,10 @@
 
-import { MCPServer } from "@/types/ipa-types";
+import { MCPServer, MCPType } from "@/types/ipa-types";
 
 export interface MCPTool {
   name: string;
   description: string;
-  parameters: Record<string, any>;
+  parameters?: any;
   server: string;
 }
 
@@ -13,14 +13,14 @@ export interface MCPResource {
   name: string;
   description: string;
   type: string;
-  server: string;
 }
 
 export class MCPService {
   private static instance: MCPService;
-  private servers: Map<string, MCPServer> = new Map();
-  private tools: Map<string, MCPTool> = new Map();
-  private resources: Map<string, MCPResource> = new Map();
+  private servers: MCPServer[] = [];
+  private tools: MCPTool[] = [];
+  private resources: MCPResource[] = [];
+  private initialized = false;
 
   static getInstance(): MCPService {
     if (!MCPService.instance) {
@@ -30,237 +30,184 @@ export class MCPService {
   }
 
   async initialize(): Promise<void> {
-    await this.registerCoreServers();
-    console.log("MCP Service initialized with core servers");
-  }
-
-  private async registerCoreServers(): Promise<void> {
-    const coreServers: MCPServer[] = [
+    // Initialize with sample MCP servers
+    this.servers = [
       {
         id: "filesystem-server",
         name: "Filesystem MCP Server",
         endpoint: "mcp://filesystem",
-        capabilities: ["file-read", "file-write", "directory-list"],
+        capabilities: ["file-operations", "directory-listing"],
         status: "active"
       },
       {
         id: "database-server",
-        name: "Database MCP Server", 
+        name: "Database MCP Server",
         endpoint: "mcp://database",
-        capabilities: ["query-execution", "schema-introspection", "data-management"],
+        capabilities: ["sql-queries", "data-retrieval"],
         status: "active"
       },
       {
         id: "web-server",
         name: "Web Content MCP Server",
         endpoint: "mcp://web",
-        capabilities: ["web-scraping", "api-calls", "content-extraction"],
-        status: "active"
-      },
-      {
-        id: "ai-server",
-        name: "AI Processing MCP Server",
-        endpoint: "mcp://ai",
-        capabilities: ["text-generation", "embedding-creation", "sentiment-analysis"],
+        capabilities: ["web-scraping", "api-calls"],
         status: "active"
       }
     ];
 
-    coreServers.forEach(server => {
-      this.servers.set(server.id, server);
-    });
-
-    await this.discoverToolsAndResources();
-  }
-
-  private async discoverToolsAndResources(): Promise<void> {
-    // Register core tools
-    const coreTools: MCPTool[] = [
+    // Initialize sample tools
+    this.tools = [
       {
         name: "read_file",
         description: "Read contents of a file",
-        parameters: { path: "string", encoding: "string?" },
+        parameters: { path: "string" },
+        server: "filesystem-server"
+      },
+      {
+        name: "write_file", 
+        description: "Write content to a file",
+        parameters: { path: "string", content: "string" },
         server: "filesystem-server"
       },
       {
         name: "execute_query",
-        description: "Execute a database query",
-        parameters: { query: "string", database: "string?" },
+        description: "Execute a SQL query",
+        parameters: { query: "string" },
         server: "database-server"
       },
       {
         name: "fetch_url",
         description: "Fetch content from a URL",
-        parameters: { url: "string", method: "string?", headers: "object?" },
-        server: "web-server"
-      },
-      {
-        name: "generate_embedding",
-        description: "Generate text embeddings",
-        parameters: { text: "string", model: "string?" },
-        server: "ai-server"
-      }
-    ];
-
-    coreTools.forEach(tool => {
-      this.tools.set(tool.name, tool);
-    });
-
-    // Register core resources
-    const coreResources: MCPResource[] = [
-      {
-        uri: "config://app/settings",
-        name: "Application Settings",
-        description: "Current application configuration",
-        type: "json",
-        server: "filesystem-server"
-      },
-      {
-        uri: "db://schema/tables",
-        name: "Database Schema",
-        description: "Database table definitions",
-        type: "schema",
-        server: "database-server"
-      },
-      {
-        uri: "web://docs/api",
-        name: "API Documentation",
-        description: "External API documentation",
-        type: "documentation",
+        parameters: { url: "string" },
         server: "web-server"
       }
     ];
 
-    coreResources.forEach(resource => {
-      this.resources.set(resource.uri, resource);
-    });
+    // Initialize sample resources
+    this.resources = [
+      {
+        uri: "file:///config/app.json",
+        name: "Application Configuration",
+        description: "Main application configuration file",
+        type: "json"
+      },
+      {
+        uri: "db://users/schema",
+        name: "User Database Schema",
+        description: "Database schema for user management",
+        type: "schema"
+      },
+      {
+        uri: "web://api.example.com/status",
+        name: "API Status Endpoint",
+        description: "External API health status",
+        type: "api"
+      }
+    ];
+
+    this.initialized = true;
+    console.log("MCP Service initialized with sample servers and tools");
   }
 
-  async callTool(toolName: string, parameters: Record<string, any>): Promise<any> {
-    const tool = this.tools.get(toolName);
+  async listTools(): Promise<MCPTool[]> {
+    return [...this.tools];
+  }
+
+  async listResources(): Promise<MCPResource[]> {
+    return [...this.resources];
+  }
+
+  async callTool(toolName: string, parameters: any): Promise<any> {
+    const tool = this.tools.find(t => t.name === toolName);
     if (!tool) {
       throw new Error(`Tool ${toolName} not found`);
     }
 
-    const server = this.servers.get(tool.server);
-    if (!server || server.status !== "active") {
-      throw new Error(`Server ${tool.server} not available`);
-    }
-
-    console.log(`MCP Tool call: ${toolName} with parameters:`, parameters);
+    // Simulate tool execution
+    console.log(`Executing MCP tool: ${toolName}`, parameters);
     
-    // Simulate tool execution based on tool type
-    return this.simulateToolExecution(tool, parameters);
-  }
-
-  private async simulateToolExecution(tool: MCPTool, parameters: Record<string, any>): Promise<any> {
-    switch (tool.name) {
+    switch (toolName) {
       case "read_file":
         return {
-          content: `File contents for: ${parameters.path}`,
-          encoding: parameters.encoding || "utf-8",
-          size: 1024
+          content: `File content from ${parameters.path}`,
+          timestamp: new Date().toISOString()
         };
-        
+      case "write_file":
+        return {
+          success: true,
+          message: `File written to ${parameters.path}`,
+          bytes: parameters.content?.length || 0
+        };
       case "execute_query":
         return {
           rows: [
-            { id: 1, name: "Sample Data", created_at: new Date().toISOString() }
+            { id: 1, name: "Sample Data", created: "2024-01-01" },
+            { id: 2, name: "Test Record", created: "2024-01-02" }
           ],
-          rowCount: 1,
-          executionTime: "12ms"
+          count: 2
         };
-        
       case "fetch_url":
         return {
-          content: `Web content from: ${parameters.url}`,
-          statusCode: 200,
+          status: 200,
+          content: `Content from ${parameters.url}`,
           headers: { "content-type": "text/html" }
         };
-        
-      case "generate_embedding":
-        return {
-          embedding: Array.from({ length: 384 }, () => Math.random()),
-          model: parameters.model || "text-embedding-ada-002",
-          dimensions: 384
-        };
-        
       default:
-        return { result: "Tool executed successfully", timestamp: Date.now() };
+        return { result: "Tool executed successfully", tool: toolName };
     }
   }
 
   async readResource(uri: string): Promise<any> {
-    const resource = this.resources.get(uri);
+    const resource = this.resources.find(r => r.uri === uri);
     if (!resource) {
       throw new Error(`Resource ${uri} not found`);
     }
 
-    const server = this.servers.get(resource.server);
-    if (!server || server.status !== "active") {
-      throw new Error(`Server ${resource.server} not available`);
-    }
-
-    console.log(`MCP Resource read: ${uri}`);
+    // Simulate resource reading
+    console.log(`Reading MCP resource: ${uri}`);
     
-    // Simulate resource content based on type
-    return this.simulateResourceContent(resource);
-  }
-
-  private simulateResourceContent(resource: MCPResource): any {
     switch (resource.type) {
       case "json":
         return {
-          settings: {
-            theme: "dark",
-            apiKey: "***hidden***",
-            debugMode: true
-          }
+          version: "1.0.0",
+          environment: "development",
+          features: ["rag", "a2a", "mcp"],
+          last_updated: new Date().toISOString()
         };
-        
       case "schema":
         return {
-          tables: [
-            { name: "users", columns: ["id", "email", "created_at"] },
-            { name: "projects", columns: ["id", "name", "description", "user_id"] }
-          ]
+          tables: ["users", "sessions", "preferences"],
+          columns: {
+            users: ["id", "email", "name", "created_at"],
+            sessions: ["id", "user_id", "token", "expires_at"]
+          }
         };
-        
-      case "documentation":
+      case "api":
         return {
-          title: "API Documentation",
-          version: "v1.0",
-          endpoints: ["/api/users", "/api/projects", "/api/agents"]
+          status: "healthy",
+          version: "2.1.0",
+          uptime: "99.9%",
+          last_check: new Date().toISOString()
         };
-        
       default:
-        return { content: `Content for ${resource.name}`, type: resource.type };
+        return { content: `Resource content for ${uri}` };
     }
   }
 
   getServers(): MCPServer[] {
-    return Array.from(this.servers.values());
+    return [...this.servers];
   }
 
-  getTools(): MCPTool[] {
-    return Array.from(this.tools.values());
+  isInitialized(): boolean {
+    return this.initialized;
   }
 
-  getResources(): MCPResource[] {
-    return Array.from(this.resources.values());
+  async addServer(server: MCPServer): Promise<void> {
+    this.servers.push(server);
   }
 
-  async listTools(): Promise<MCPTool[]> {
-    return this.getTools();
-  }
-
-  async listResources(): Promise<MCPResource[]> {
-    return this.getResources();
-  }
-
-  getServerStatus(serverId: string): string {
-    const server = this.servers.get(serverId);
-    return server?.status || "unknown";
+  async removeServer(serverId: string): Promise<void> {
+    this.servers = this.servers.filter(s => s.id !== serverId);
   }
 }
 
