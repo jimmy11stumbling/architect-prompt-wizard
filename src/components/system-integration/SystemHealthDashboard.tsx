@@ -136,7 +136,7 @@ const SystemHealthDashboard: React.FC = () => {
                   System Health Score
                 </div>
                 <Progress value={getOverallHealthPercentage()} className="w-full" />
-                <Badge className={getHealthColor(systemHealth.overallStatus)} size="lg">
+                <Badge className={`${getHealthColor(systemHealth.overallStatus)} text-lg px-4 py-2 mt-4`}>
                   {systemHealth.overallStatus.toUpperCase()}
                 </Badge>
               </div>
