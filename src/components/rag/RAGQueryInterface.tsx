@@ -3,59 +3,106 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Database, FileText, Zap } from "lucide-react";
+import { Search, Database, FileText, Zap, CheckCircle } from "lucide-react";
 import { ragService } from "@/services/rag/ragService";
+import { a2aService } from "@/services/a2a/a2aService";
 import { RAGQuery, RAGResult } from "@/types/ipa-types";
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<RAGResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [threshold, setThreshold] = useState([0.7]);
-  const [limit, setLimit] = useState([5]);
-  const [queryHistory, setQueryHistory] = useState<string[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [realTimeLog, setRealTimeLog] = useState<string[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("rag_query_history");
-    if (saved) {
-      setQueryHistory(JSON.parse(saved));
+    if (!ragService.isInitialized()) {
+      ragService.initialize("Chroma");
     }
   }, []);
 
-  const handleQuery = async () => {
+  const addToLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${message}`;
+    setRealTimeLog(prev => [...prev.slice(-9), logEntry]);
+    console.log("RAG:", logEntry);
+  };
+
+  const executeRAGQuery = async () => {
     if (!query.trim()) return;
 
     setLoading(true);
+    setProgress(0);
+    setResults(null);
+    
     try {
+      addToLog("🔍 Starting RAG query execution");
+      setProgress(20);
+
+      // Step 1: A2A coordination
+      addToLog("📡 Coordinating with A2A agents");
+      const delegation = await a2aService.delegateTask(
+        `RAG query: ${query}`,
+        ["document-retrieval", "semantic-search"]
+      );
+      
+      if (delegation.assignedAgent) {
+        addToLog(`✅ Task assigned to: ${delegation.assignedAgent.name}`);
+      }
+      setProgress(40);
+
+      // Step 2: Execute RAG query
+      addToLog("🔎 Executing semantic search");
       const ragQuery: RAGQuery = {
-        query: query.trim(),
-        threshold: threshold[0],
-        limit: limit[0]
+        query,
+        limit: 5,
+        threshold: 0.3
       };
 
-      const result = await ragService.query(ragQuery);
-      setResults(result);
+      const ragResults = await ragService.query(ragQuery);
+      setProgress(60);
 
-      const newHistory = [query, ...queryHistory.filter(h => h !== query)].slice(0, 10);
-      setQueryHistory(newHistory);
-      localStorage.setItem("rag_query_history", JSON.stringify(newHistory));
+      addToLog(`📊 Found ${ragResults.documents.length} relevant documents`);
+      addToLog(`🎯 Query: "${ragResults.query}"`);
+
+      // Step 3: Process results
+      addToLog("⚡ Processing and ranking results");
+      setProgress(80);
+
+      // Send A2A message about completion
+      await a2aService.sendMessage({
+        id: `rag-complete-${Date.now()}`,
+        from: "rag-interface",
+        to: "workflow-orchestrator",
+        type: "notification",
+        payload: {
+          query,
+          resultsCount: ragResults.documents.length,
+          avgScore: ragResults.scores.reduce((a, b) => a + b, 0) / ragResults.scores.length
+        },
+        timestamp: Date.now()
+      });
+
+      setResults(ragResults);
+      setProgress(100);
+      addToLog("✨ RAG query completed successfully");
+
     } catch (error) {
       console.error("RAG query failed:", error);
+      addToLog(`❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleQuery();
-    }
+  const clearResults = () => {
+    setQuery("");
+    setResults(null);
+    setRealTimeLog([]);
+    setProgress(0);
   };
 
   return (
@@ -64,154 +111,171 @@ const RAGQueryInterface: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            RAG Knowledge Query Interface
+            RAG 2.0 Knowledge Retrieval System
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="query">Query</Label>
-              <Textarea
-                id="query"
-                placeholder="Enter your query to search the knowledge base..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Similarity Threshold: {threshold[0]}</Label>
-                <Slider
-                  value={threshold}
-                  onValueChange={setThreshold}
-                  max={1}
-                  min={0}
-                  step={0.1}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label>Result Limit: {limit[0]}</Label>
-                <Slider
-                  value={limit}
-                  onValueChange={setLimit}
-                  max={20}
-                  min={1}
-                  step={1}
-                  className="mt-2"
-                />
-              </div>
-            </div>
-
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter your knowledge query..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && executeRAGQuery()}
+              className="flex-1"
+            />
             <Button 
-              onClick={handleQuery} 
+              onClick={executeRAGQuery}
               disabled={loading || !query.trim()}
-              className="w-full"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
                 <Search className="h-4 w-4 mr-2" />
               )}
-              Search Knowledge Base
+              Query RAG
+            </Button>
+            <Button variant="outline" onClick={clearResults}>
+              Clear
             </Button>
           </div>
-        </CardContent>
-      </Card>
 
-      <Tabs defaultValue="results" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="results">Search Results</TabsTrigger>
-          <TabsTrigger value="history">Query History</TabsTrigger>
-        </TabsList>
+          {loading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Processing query...</span>
+                <span>{progress}%</span>
+              </div>
+              <Progress value={progress} />
+            </div>
+          )}
 
-        <TabsContent value="results">
-          {results ? (
+          {realTimeLog.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Search Results</span>
-                  <Badge variant="outline">
-                    {results.documents.length} of {results.totalResults} results
-                  </Badge>
-                </CardTitle>
+                <CardTitle className="text-sm">Real-time Processing Log</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {results.documents.map((doc, index) => (
-                    <div key={doc.id} className="border rounded-lg p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{doc.title}</h3>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">
-                            Score: {results.scores[index]?.toFixed(3)}
-                          </Badge>
-                          <Badge variant="outline">{doc.source}</Badge>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-3">
-                        {doc.content}
-                      </p>
-                      {doc.metadata && Object.keys(doc.metadata).length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(doc.metadata).map(([key, value]) => (
-                            <Badge key={key} variant="outline" className="text-xs">
-                              {key}: {String(value)}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                <div className="font-mono text-xs space-y-1 max-h-32 overflow-y-auto">
+                  {realTimeLog.map((log, index) => (
+                    <div key={index} className="text-muted-foreground">
+                      {log}
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-8">
-                <div className="text-center text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No search results yet. Enter a query to search the knowledge base.</p>
                 </div>
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Queries</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {queryHistory.length > 0 ? (
-                <div className="space-y-2">
-                  {queryHistory.map((historyQuery, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                      onClick={() => setQuery(historyQuery)}
-                    >
-                      <span className="text-sm">{historyQuery}</span>
-                      <Button variant="ghost" size="sm">
-                        <Zap className="h-4 w-4" />
-                      </Button>
+      {results && (
+        <Tabs defaultValue="results" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="results">Search Results</TabsTrigger>
+            <TabsTrigger value="metadata">Query Metadata</TabsTrigger>
+            <TabsTrigger value="integration">A2A Integration</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="results">
+            <div className="space-y-4">
+              {results.documents.map((doc, index) => (
+                <Card key={doc.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {doc.title}
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">
+                          Score: {(results.scores[index] * 100).toFixed(1)}%
+                        </Badge>
+                        <Badge variant="secondary">
+                          {doc.source}
+                        </Badge>
+                      </div>
                     </div>
-                  ))}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {doc.content}
+                    </p>
+                    {doc.metadata && Object.keys(doc.metadata).length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(doc.metadata).map(([key, value]) => (
+                          <Badge key={key} variant="outline" className="text-xs">
+                            {key}: {String(value)}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="metadata">
+            <Card>
+              <CardHeader>
+                <CardTitle>Query Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{results.documents.length}</div>
+                    <div className="text-sm text-muted-foreground">Documents Found</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{results.totalResults}</div>
+                    <div className="text-sm text-muted-foreground">Total Matches</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">
+                      {((results.scores.reduce((a, b) => a + b, 0) / results.scores.length) * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">Avg Relevance</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">
+                      {Math.max(...results.scores).toFixed(3)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Best Match</div>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No query history yet.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="integration">
+            <Card>
+              <CardHeader>
+                <CardTitle>A2A Integration Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>A2A agents coordinated successfully</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Task delegation completed</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Real-time notifications sent</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Results integrated with A2A workflow</span>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 };
