@@ -42,7 +42,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Router>
-            <SidebarProvider collapsedWidth={56}>
+            <SidebarProvider>
               <div className="min-h-screen flex w-full">
                 <NavigationSidebar />
                 <main className="flex-1">

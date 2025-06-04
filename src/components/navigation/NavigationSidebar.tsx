@@ -83,16 +83,16 @@ const navigationItems = [
 ];
 
 const NavigationSidebar: React.FC = () => {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const isActive = (path: string) => currentPath === path;
+  const isCollapsed = state === "collapsed";
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-muted text-primary font-medium" : "hover:bg-muted/50";
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible>
+    <Sidebar collapsible="icon">
       <SidebarTrigger className="m-2 self-end" />
       
       <SidebarContent>
@@ -105,7 +105,7 @@ const NavigationSidebar: React.FC = () => {
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={getNavClass}>
                       <item.icon className="h-4 w-4" />
-                      {!collapsed && (
+                      {!isCollapsed && (
                         <div className="flex flex-col">
                           <span>{item.title}</span>
                           <span className="text-xs text-muted-foreground">
