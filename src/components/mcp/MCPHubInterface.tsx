@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Tool, FileText, Zap, Play, Server } from "lucide-react";
+import { Settings, Wrench, FileText, Zap, Play, Server } from "lucide-react";
 import { mcpService } from "@/services/mcp/mcpService";
 import { MCPServer } from "@/types/ipa-types";
 
@@ -157,7 +157,7 @@ const MCPHubInterface: React.FC = () => {
                   <div key={tool.name} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium flex items-center gap-2">
-                        <Tool className="h-4 w-4" />
+                        <Wrench className="h-4 w-4" />
                         {tool.name}
                       </h3>
                       <Badge variant="outline">{tool.server}</Badge>
@@ -180,7 +180,7 @@ const MCPHubInterface: React.FC = () => {
                 
                 {tools.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
-                    <Tool className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <Wrench className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No tools available.</p>
                   </div>
                 )}
@@ -223,7 +223,7 @@ const MCPHubInterface: React.FC = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Tool className="h-5 w-5" />
+                      <Wrench className="h-5 w-5" />
                       Tool Testing
                     </CardTitle>
                   </CardHeader>
