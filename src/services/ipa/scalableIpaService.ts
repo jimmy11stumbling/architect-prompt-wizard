@@ -1,35 +1,30 @@
+
 import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
-import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
-import { mockTaskId, agentList, initialMockStatus } from "./mockData";
+import { invokeDeepSeekAgent, buildConversationHistory } from "../deepseekAPI";
+import { mockTaskId, agentList } from "../mockData";
 import { toast } from "@/hooks/use-toast";
-import { savePrompt } from "../db/promptDatabaseService";
-import { connectionPool } from "./connectionPool";
-import { requestBatcher } from "./requestBatcher";
-import { cacheService } from "./cacheService";
-import { performanceMonitor } from "./performanceMonitor";
+import { savePrompt } from "../../db/promptDatabaseService";
+import { connectionPool } from "../connectionPool";
+import { requestBatcher } from "../requestBatcher";
+import { cacheService } from "../cacheService";
+import { performanceMonitor } from "../performanceMonitor";
+import { SpecValidator } from "../validation/specValidator";
+import { StatusManager } from "../status/statusManager";
+import { MetricsService } from "../metrics/metricsService";
+import { FinalPromptGenerator } from "../finalPromptGenerator";
+import { IpaServiceInterface } from "../types/serviceTypes";
 
 // Enhanced service with scalability optimizations
+const statusManager = new StatusManager();
 let currentProjectSpec: ProjectSpec | null = null;
-let currentStatus: GenerationStatus = { ...initialMockStatus };
-let conversationMessages: DeepSeekMessage[] = [];
 
-export const scalableIpaService = {
+export const scalableIpaService: IpaServiceInterface = {
   generatePrompt: async (spec: ProjectSpec): Promise<string> => {
     const startTime = performance.now();
     
     try {
       // Validate the spec
-      if (!spec.projectDescription?.trim()) {
-        throw new Error("Project description is required");
-      }
-      
-      if (!spec.frontendTechStack || spec.frontendTechStack.length === 0) {
-        throw new Error("At least one frontend technology must be selected");
-      }
-      
-      if (!spec.backendTechStack || spec.backendTechStack.length === 0) {
-        throw new Error("At least one backend technology must be selected");
-      }
+      SpecValidator.validate(spec);
 
       // Check cache first
       const cacheKey = `prompt_${JSON.stringify(spec).slice(0, 100)}`;
@@ -45,14 +40,7 @@ export const scalableIpaService = {
       try {
         // Store the spec for use by getGenerationStatus
         currentProjectSpec = spec;
-        currentStatus = { 
-          ...initialMockStatus,
-          spec: spec,
-          messages: []
-        };
-        
-        // Initialize conversation messages
-        conversationMessages = [];
+        statusManager.initializeStatus(spec);
         
         // Cache the task ID
         cacheService.set(cacheKey, mockTaskId, 600000); // 10 minute cache
@@ -86,6 +74,7 @@ export const scalableIpaService = {
     return new Promise(async (resolve) => {
       try {
         // Check cache first
+        const currentStatus = statusManager.getCurrentStatus();
         const cacheKey = `status_${taskId}_${currentStatus.progress}`;
         const cachedStatus = cacheService.get<GenerationStatus>(cacheKey);
         if (cachedStatus) {
@@ -109,10 +98,14 @@ export const scalableIpaService = {
             
             try {
               // Mark the current agent as processing first
-              currentStatus.agents[currentStep - 1] = {
+              statusManager.updateAgentStatus(currentStep - 1, {
+                id: `agent-${Date.now()}`,
+                name: currentAgent,
                 agent: currentAgent,
-                status: "processing"
-              };
+                status: "processing",
+                progress: 0,
+                timestamp: Date.now()
+              });
               
               // For multi-round conversation, build history of previous agents
               const messageHistory = buildConversationHistory(agentList.slice(0, currentStep - 1), currentProjectSpec!);
@@ -122,13 +115,18 @@ export const scalableIpaService = {
               const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec!, messageHistory);
               
               // Update the agent status with the actual response
-              currentStatus.agents[currentStep - 1] = {
+              statusManager.updateAgentStatus(currentStep - 1, {
+                id: `agent-${Date.now()}`,
+                name: currentAgent,
                 agent: currentAgent,
                 status: "completed",
-                output: agentResponse.content
-              };
+                progress: 100,
+                output: agentResponse.content,
+                timestamp: Date.now()
+              });
               
               // Add this agent's response to the conversation
+              let conversationMessages = statusManager.getConversationMessages();
               if (conversationMessages.length === 0) {
                 conversationMessages = [...messageHistory];
               }
@@ -145,15 +143,19 @@ export const scalableIpaService = {
                 content: agentResponse.content
               });
               
-              // Update the messages in the generation status
-              currentStatus.messages = [...conversationMessages];
+              // Update the messages in the status manager
+              statusManager.updateMessages(conversationMessages);
             } catch (error) {
               console.error(`Error invoking DeepSeek for agent ${currentAgent}:`, error);
-              currentStatus.agents[currentStep - 1] = {
+              statusManager.updateAgentStatus(currentStep - 1, {
+                id: `agent-${Date.now()}`,
+                name: currentAgent,
                 agent: currentAgent,
                 status: "failed",
-                output: `Error: ${error instanceof Error ? error.message : String(error)}`
-              };
+                progress: 0,
+                output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                timestamp: Date.now()
+              });
               
               toast({
                 title: "Agent Error",
@@ -163,26 +165,22 @@ export const scalableIpaService = {
             }
           }
           
-          // Update current status
-          currentStatus = {
-            ...currentStatus,
-            progress: currentStep,
-            status: currentStep <= agentList.length ? "processing" : "completed",
-            agents: currentStatus.agents
-          };
+          // Update progress
+          statusManager.updateProgress(currentStep);
           
           // If we've completed all agents, generate the final result
-          if (currentStep > agentList.length && !currentStatus.result) {
+          const updatedStatus = statusManager.getCurrentStatus();
+          if (currentStep > agentList.length && !updatedStatus.result) {
             try {
-              const completedAgents = currentStatus.agents.filter(agent => agent.status === "completed");
+              const completedAgents = updatedStatus.agents.filter(agent => agent.status === "completed");
               
               if (completedAgents.length === agentList.length) {
-                const finalPrompt = await generateFinalPrompt(currentStatus.agents);
-                currentStatus.result = finalPrompt;
+                const finalPrompt = await FinalPromptGenerator.generate(updatedStatus.agents);
+                statusManager.setResult(finalPrompt);
                 
                 // Save the completed prompt to the database
                 try {
-                  await savePrompt(currentStatus, "Cursor AI Prompt");
+                  await savePrompt(statusManager.getCurrentStatus(), "Cursor AI Prompt");
                   console.log("Prompt successfully saved to database");
                   
                   toast({
@@ -198,9 +196,10 @@ export const scalableIpaService = {
                   });
                 }
               } else {
-                currentStatus.result = `⚠️ Warning: ${agentList.length - completedAgents.length} out of ${agentList.length} agents failed to complete. The generated prompt may be incomplete.\n\n` +
+                const errorResult = `⚠️ Warning: ${agentList.length - completedAgents.length} out of ${agentList.length} agents failed to complete. The generated prompt may be incomplete.\n\n` +
                   completedAgents.map(agent => `## ${agent.agent} Output\n${agent.output || "No output available"}\n`).join('\n');
-                currentStatus.status = "failed";
+                statusManager.setResult(errorResult);
+                statusManager.setError("Partial completion");
                 
                 toast({
                   title: "Partial Generation",
@@ -210,8 +209,9 @@ export const scalableIpaService = {
               }
             } catch (error) {
               console.error("Error generating final prompt:", error);
-              currentStatus.result = `Error generating final prompt: ${error instanceof Error ? error.message : String(error)}`;
-              currentStatus.status = "failed";
+              const errorMessage = `Error generating final prompt: ${error instanceof Error ? error.message : String(error)}`;
+              statusManager.setResult(errorMessage);
+              statusManager.setError(errorMessage);
               
               toast({
                 title: "Final Generation Error",
@@ -221,7 +221,7 @@ export const scalableIpaService = {
             }
           }
           
-          return { ...currentStatus };
+          return statusManager.getCurrentStatus();
         });
 
         // Cache the result
@@ -232,93 +232,19 @@ export const scalableIpaService = {
       } catch (error) {
         performanceMonitor.trackApiCall('getGenerationStatus', performance.now() - startTime, false);
         console.error("Error in getGenerationStatus:", error);
-        currentStatus.status = "failed";
-        currentStatus.error = error instanceof Error ? error.message : String(error);
-        resolve({ ...currentStatus });
+        statusManager.setError(error instanceof Error ? error.message : String(error));
+        resolve(statusManager.getCurrentStatus());
       }
     });
   },
 
   // Get system performance metrics
   getSystemMetrics: () => {
-    return {
-      connectionPool: connectionPool.getPoolStatus(),
-      requestBatcher: requestBatcher.getBatchStats(),
-      cache: cacheService.getStats(),
-      performance: performanceMonitor.getMetricsSummary()
-    };
+    return MetricsService.getSystemMetrics();
   },
 
   // Health check endpoint
   healthCheck: async (): Promise<{ status: string; metrics: any }> => {
-    const startTime = performance.now();
-    
-    try {
-      const metrics = scalableIpaService.getSystemMetrics();
-      const performanceBudget = performanceMonitor.checkPerformanceBudget();
-      
-      const status = performanceBudget.passed ? 'healthy' : 'degraded';
-      
-      performanceMonitor.trackApiCall('healthCheck', performance.now() - startTime, true);
-      
-      return {
-        status,
-        metrics: {
-          ...metrics,
-          performanceBudget,
-          timestamp: new Date().toISOString()
-        }
-      };
-    } catch (error) {
-      performanceMonitor.trackApiCall('healthCheck', performance.now() - startTime, false);
-      return {
-        status: 'unhealthy',
-        metrics: { error: error instanceof Error ? error.message : String(error) }
-      };
-    }
+    return MetricsService.healthCheck();
   }
-};
-
-// Function to generate the final prompt using agent outputs
-const generateFinalPrompt = async (agents: AgentStatus[]): Promise<string> => {
-  const agentOutputs = agents
-    .filter(agent => agent.status === "completed" && agent.output)
-    .map(agent => ({ agent: agent.agent, output: agent.output || "" }));
-  
-  if (agentOutputs.length === 0) {
-    throw new Error("No completed agent outputs found");
-  }
-  
-  const finalPrompt = `# Cursor AI - Project Implementation Prompt
-Generated by Intelligent Prompt Architect (IPA)
-
-## Project Overview
-${agentOutputs.find(a => a.agent === "RequirementDecompositionAgent")?.output || "No project overview available."}
-
-## Technical Implementation Guide
-
-${agentOutputs
-  .filter(a => a.agent !== "RequirementDecompositionAgent" && a.agent !== "QualityAssuranceAgent")
-  .map(a => `### ${a.agent.replace("Agent", "").replace("TechStackImplementation", "Tech Stack").replace("_", " - ")}\n${a.output}`)
-  .join('\n\n')}
-
-## Quality Assurance & Best Practices
-${agentOutputs.find(a => a.agent === "QualityAssuranceAgent")?.output || "No quality considerations available."}
-
-## Implementation Roadmap
-1. **Setup & Configuration**: Initialize project with selected tech stack
-2. **Core Architecture**: Implement basic application structure and routing
-3. **Database & Storage**: Set up data persistence and vector storage (if applicable)
-4. **Authentication**: Implement user authentication and authorization
-5. **API Development**: Create backend APIs and endpoints
-6. **Frontend Development**: Build user interface components and pages
-7. **Agent Integration**: Implement A2A communication and MCP protocols
-8. **RAG Implementation**: Set up retrieval-augmented generation (if applicable)
-9. **Testing & QA**: Comprehensive testing and quality assurance
-10. **Deployment**: Deploy to production environment
-
----
-*This comprehensive prompt has been compiled from ${agentOutputs.length} specialized AI agents to ensure complete coverage of your project requirements.*`;
-
-  return finalPrompt;
 };
