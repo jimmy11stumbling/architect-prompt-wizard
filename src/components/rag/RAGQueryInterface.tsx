@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ const RAGQueryInterface: React.FC = () => {
   const [realTimeLog, setRealTimeLog] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!ragService.isInitialized()) {
+    if (!ragService.getInitializationStatus()) {
       ragService.initialize();
     }
   }, []);
@@ -189,7 +190,7 @@ const RAGQueryInterface: React.FC = () => {
                           Score: {(results.scores[index] * 100).toFixed(1)}%
                         </Badge>
                         <Badge variant="secondary">
-                          {doc.metadata.source}
+                          {doc.metadata?.source || "Unknown"}
                         </Badge>
                       </div>
                     </div>

@@ -73,6 +73,8 @@ export type VectorDatabase =
   | "FAISS" 
   | "PGVector"
   | "Milvus"
+  | "Elasticsearch"
+  | "OpenSearch"
   | "Custom"
   | "None";
 
@@ -110,6 +112,14 @@ export interface GenerationStatus {
   progress: number;
   startTime: number;
   endTime?: number;
+  spec?: ProjectSpec;
+  messages?: DeepSeekMessage[];
+}
+
+export interface DeepSeekMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+  reasoning_content?: string;
 }
 
 export interface DeepSeekCompletionRequest {

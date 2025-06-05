@@ -1,10 +1,9 @@
-
 import React from "react";
 import { Database, Brain, Network, Code, Zap, Shield } from "lucide-react";
 import { CustomOptionSelector, TextAreaField } from "./";
-import { VectorDatabaseType, MCPType } from "@/types/ipa-types";
+import { VectorDatabase, MCPType } from "@/types/ipa-types";
 
-const VECTOR_DB_OPTIONS: VectorDatabaseType[] = [
+const VECTOR_DB_OPTIONS: VectorDatabase[] = [
   "Pinecone", 
   "Weaviate", 
   "Milvus", 
@@ -54,7 +53,7 @@ const AUTHENTICATION_OPTIONS = [
 ];
 
 interface AdvancedFeaturesSectionProps {
-  ragVectorDb: VectorDatabaseType;
+  ragVectorDb: VectorDatabase;
   customRagVectorDb: string;
   mcpType: MCPType;
   customMcpType: string;

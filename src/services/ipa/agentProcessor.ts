@@ -14,9 +14,13 @@ export class AgentProcessor {
       const agentResponse = await invokeDeepSeekAgent(agent, spec, messageHistory);
       
       return {
+        id: `agent-${Date.now()}`,
+        name: agent,
         agent,
         status: "completed",
-        output: agentResponse.content
+        progress: 100,
+        output: agentResponse.content,
+        timestamp: Date.now()
       };
     } catch (error) {
       console.error(`Error invoking DeepSeek for agent ${agent}:`, error);
@@ -28,9 +32,13 @@ export class AgentProcessor {
       });
       
       return {
+        id: `agent-${Date.now()}`,
+        name: agent,
         agent,
         status: "failed",
-        output: `Error: ${error instanceof Error ? error.message : String(error)}`
+        progress: 0,
+        output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: Date.now()
       };
     }
   }
