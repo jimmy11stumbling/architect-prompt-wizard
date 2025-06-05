@@ -42,7 +42,7 @@ const SystemHealthDashboard: React.FC = () => {
       const metrics = {
         ragDocuments: ragService.isInitialized() ? ragService.getDocumentCount() : 0,
         ragVectorDb: ragService.isInitialized() ? ragService.getVectorDatabase() : "None",
-        a2aAgents: a2aService.isInitialized() ? a2aService.getAgents().length : 0,
+        a2aAgents: a2aService.isInitialized() ? a2aService.getAllAgents().length : 0,
         a2aMessages: a2aService.isInitialized() ? a2aService.getMessages().length : 0,
         mcpServers: mcpService.isInitialized() ? mcpService.getServers().length : 0,
         mcpTools: mcpService.isInitialized() ? (await mcpService.listTools()).length : 0,
@@ -89,12 +89,12 @@ const SystemHealthDashboard: React.FC = () => {
   const getOverallHealthPercentage = () => {
     if (!systemHealth) return 0;
     const services = [
-      systemHealth.ragService,
-      systemHealth.a2aService,
-      systemHealth.mcpService,
-      systemHealth.deepseekAPI
+      systemHealth.services.rag,
+      systemHealth.services.a2a,
+      systemHealth.services.mcp,
+      systemHealth.services.deepseek
     ];
-    const healthyCount = services.filter(s => s === "healthy").length;
+    const healthyCount = services.filter(s => s === true).length;
     return (healthyCount / services.length) * 100;
   };
 
@@ -145,21 +145,21 @@ const SystemHealthDashboard: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-2">
-                      {getHealthIcon(systemHealth.ragService)}
+                      {getHealthIcon(systemHealth.services.rag ? "healthy" : "offline")}
                       <span className="font-medium">RAG Service</span>
                     </div>
-                    <Badge className={getHealthColor(systemHealth.ragService)}>
-                      {systemHealth.ragService}
+                    <Badge className={getHealthColor(systemHealth.services.rag ? "healthy" : "offline")}>
+                      {systemHealth.services.rag ? "healthy" : "offline"}
                     </Badge>
                   </div>
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-2">
-                      {getHealthIcon(systemHealth.a2aService)}
+                      {getHealthIcon(systemHealth.services.a2a ? "healthy" : "offline")}
                       <span className="font-medium">A2A Service</span>
                     </div>
-                    <Badge className={getHealthColor(systemHealth.a2aService)}>
-                      {systemHealth.a2aService}
+                    <Badge className={getHealthColor(systemHealth.services.a2a ? "healthy" : "offline")}>
+                      {systemHealth.services.a2a ? "healthy" : "offline"}
                     </Badge>
                   </div>
                 </div>
@@ -167,21 +167,21 @@ const SystemHealthDashboard: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-2">
-                      {getHealthIcon(systemHealth.mcpService)}
+                      {getHealthIcon(systemHealth.services.mcp ? "healthy" : "offline")}
                       <span className="font-medium">MCP Service</span>
                     </div>
-                    <Badge className={getHealthColor(systemHealth.mcpService)}>
-                      {systemHealth.mcpService}
+                    <Badge className={getHealthColor(systemHealth.services.mcp ? "healthy" : "offline")}>
+                      {systemHealth.services.mcp ? "healthy" : "offline"}
                     </Badge>
                   </div>
 
                   <div className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-2">
-                      {getHealthIcon(systemHealth.deepseekAPI)}
+                      {getHealthIcon(systemHealth.services.deepseek ? "healthy" : "offline")}
                       <span className="font-medium">DeepSeek API</span>
                     </div>
-                    <Badge className={getHealthColor(systemHealth.deepseekAPI)}>
-                      {systemHealth.deepseekAPI}
+                    <Badge className={getHealthColor(systemHealth.services.deepseek ? "healthy" : "offline")}>
+                      {systemHealth.services.deepseek ? "healthy" : "offline"}
                     </Badge>
                   </div>
                 </div>

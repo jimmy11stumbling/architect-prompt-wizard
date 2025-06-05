@@ -1,186 +1,185 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Workflow, Play, CheckCircle, Clock, AlertCircle } from "lucide-react";
-import { systemIntegrationService } from "@/services/integration/systemIntegrationService";
-import { ProjectSpec, AgentName } from "@/types/ipa-types";
+import { Workflow, Zap, Settings, Activity, CheckCircle, AlertCircle } from "lucide-react";
+import { ragService } from "@/services/rag/ragService";
+import { a2aService } from "@/services/a2a/a2aService";
+import { mcpService } from "@/services/mcp/mcpService";
+import { AgentName } from "@/types/ipa-types";
 
 interface WorkflowStep {
   id: string;
   name: string;
-  status: "pending" | "running" | "completed" | "failed";
+  status: "pending" | "running" | "completed" | "error";
+  duration?: number;
   result?: any;
-  error?: string;
 }
 
 const IntegratedWorkflow: React.FC = () => {
-  const [query, setQuery] = useState("");
   const [workflow, setWorkflow] = useState<WorkflowStep[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [finalResult, setFinalResult] = useState<any>(null);
+  const [progress, setProgress] = useState(0);
+  const [realTimeLog, setRealTimeLog] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState<string | null>(null);
 
-  const executeIntegratedWorkflow = async () => {
-    if (!query.trim()) return;
+  const addToLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = `[${timestamp}] ${message}`;
+    setRealTimeLog(prev => [...prev.slice(-9), logEntry]);
+    console.log("Workflow:", logEntry);
+  };
 
-    setIsRunning(true);
-    setFinalResult(null);
-
+  const initializeWorkflow = () => {
     const steps: WorkflowStep[] = [
-      { id: "rag", name: "RAG Knowledge Retrieval", status: "pending" },
-      { id: "a2a", name: "A2A Agent Coordination", status: "pending" },
-      { id: "mcp", name: "MCP Tool Integration", status: "pending" },
-      { id: "reasoning", name: "DeepSeek Reasoning", status: "pending" },
-      { id: "synthesis", name: "Result Synthesis", status: "pending" }
+      { id: "init", name: "Initialize Services", status: "pending" },
+      { id: "rag", name: "RAG Knowledge Query", status: "pending" },
+      { id: "a2a", name: "Agent Communication", status: "pending" },
+      { id: "mcp", name: "Tool Execution", status: "pending" },
+      { id: "integration", name: "Cross-Service Integration", status: "pending" },
+      { id: "finalize", name: "Workflow Completion", status: "pending" }
     ];
-
+    
     setWorkflow(steps);
+    setProgress(0);
+    setRealTimeLog([]);
+  };
 
+  const updateStepStatus = (stepId: string, status: WorkflowStep["status"], result?: any) => {
+    setWorkflow(prev => prev.map(step => 
+      step.id === stepId 
+        ? { ...step, status, result, duration: Date.now() }
+        : step
+    ));
+  };
+
+  const runIntegratedWorkflow = async () => {
+    setIsRunning(true);
+    setCurrentStep(null);
+    initializeWorkflow();
+    
     try {
-      const demoSpec: ProjectSpec = {
-        projectDescription: query,
-        frontendTechStack: ["React"],
-        backendTechStack: ["Express"],
-        customFrontendTech: [],
-        customBackendTech: [],
-        a2aIntegrationDetails: "Integrated workflow processing",
-        additionalFeatures: "End-to-end AI processing",
-        ragVectorDb: "Chroma",
-        customRagVectorDb: "",
-        mcpType: "Standard MCP",
-        customMcpType: "",
-        advancedPromptDetails: "Comprehensive analysis"
-      };
+      addToLog("🚀 Starting integrated workflow demonstration");
+      
+      // Step 1: Initialize Services
+      setCurrentStep("init");
+      updateStepStatus("init", "running");
+      addToLog("🔧 Initializing all services...");
+      
+      await ragService.initialize();
+      await a2aService.initialize();
+      await mcpService.initialize();
+      
+      updateStepStatus("init", "completed", { services: ["RAG", "A2A", "MCP"] });
+      setProgress(16);
+      addToLog("✅ All services initialized successfully");
 
-      // Step 1: RAG Knowledge Retrieval
-      setWorkflow(prev => prev.map(step => 
-        step.id === "rag" ? { ...step, status: "running" } : step
-      ));
-
-      const ragResult = await new Promise(resolve => {
-        setTimeout(() => resolve({ documents: [`Retrieved knowledge for: ${query}`] }), 1000);
+      // Step 2: RAG Knowledge Query
+      setCurrentStep("rag");
+      updateStepStatus("rag", "running");
+      addToLog("📚 Executing RAG knowledge query...");
+      
+      const ragResult = await ragService.query({
+        query: "integrated workflow demonstration",
+        limit: 3
       });
+      
+      updateStepStatus("rag", "completed", ragResult);
+      setProgress(33);
+      addToLog(`✅ RAG query completed - found ${ragResult.documents.length} documents`);
 
-      setWorkflow(prev => prev.map(step => 
-        step.id === "rag" ? { ...step, status: "completed", result: ragResult } : step
-      ));
-
-      // Step 2: A2A Agent Coordination
-      setWorkflow(prev => prev.map(step => 
-        step.id === "a2a" ? { ...step, status: "running" } : step
-      ));
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      setWorkflow(prev => prev.map(step => 
-        step.id === "a2a" ? { 
-          ...step, 
-          status: "completed", 
-          result: { coordinatedAgents: ["rag-agent", "mcp-coordinator"] }
-        } : step
-      ));
-
-      // Step 3: MCP Tool Integration
-      setWorkflow(prev => prev.map(step => 
-        step.id === "mcp" ? { ...step, status: "running" } : step
-      ));
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      setWorkflow(prev => prev.map(step => 
-        step.id === "mcp" ? { 
-          ...step, 
-          status: "completed", 
-          result: { toolsUsed: ["document-processor", "semantic-analyzer"] }
-        } : step
-      ));
-
-      // Step 4: DeepSeek Reasoning
-      setWorkflow(prev => prev.map(step => 
-        step.id === "reasoning" ? { ...step, status: "running" } : step
-      ));
-
-      const enhancedResult = await systemIntegrationService.processEnhancedAgentRequest(
-        "RequirementDecompositionAgent" as AgentName,
-        demoSpec,
-        query
+      // Step 3: Agent Communication
+      setCurrentStep("a2a");
+      updateStepStatus("a2a", "running");
+      addToLog("🤖 Coordinating with A2A agents...");
+      
+      const delegation = await a2aService.delegateTask(
+        "Integrated workflow coordination",
+        ["workflow-coordination", "task-management"]
       );
+      
+      updateStepStatus("a2a", "completed", delegation);
+      setProgress(50);
+      addToLog(`✅ A2A coordination completed - task: ${delegation.taskId}`);
 
-      setWorkflow(prev => prev.map(step => 
-        step.id === "reasoning" ? { 
-          ...step, 
-          status: "completed", 
-          result: enhancedResult
-        } : step
-      ));
+      // Step 4: Tool Execution
+      setCurrentStep("mcp");
+      updateStepStatus("mcp", "running");
+      addToLog("🔧 Executing MCP tools...");
+      
+      const toolResult = await mcpService.callTool("read_file", {
+        path: "/project/README.md"
+      });
+      
+      updateStepStatus("mcp", "completed", toolResult);
+      setProgress(66);
+      addToLog("✅ MCP tool execution completed");
 
-      // Step 5: Result Synthesis
-      setWorkflow(prev => prev.map(step => 
-        step.id === "synthesis" ? { ...step, status: "running" } : step
-      ));
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const synthesizedResult = {
-        query,
-        ragContext: ragResult,
-        enhancedResponse: enhancedResult,
-        timestamp: new Date().toISOString(),
-        integrationDemo: await systemIntegrationService.demonstrateIntegration()
+      // Step 5: Cross-Service Integration
+      setCurrentStep("integration");
+      updateStepStatus("integration", "running");
+      addToLog("🔗 Demonstrating cross-service integration...");
+      
+      // Simulate complex integration
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const integrationResult = {
+        ragDocuments: ragResult.documents.length,
+        a2aTaskId: delegation.taskId,
+        mcpToolResult: toolResult.status,
+        timestamp: new Date().toISOString()
       };
+      
+      updateStepStatus("integration", "completed", integrationResult);
+      setProgress(83);
+      addToLog("✅ Cross-service integration demonstrated");
 
-      setWorkflow(prev => prev.map(step => 
-        step.id === "synthesis" ? { 
-          ...step, 
-          status: "completed", 
-          result: synthesizedResult
-        } : step
-      ));
-
-      setFinalResult(synthesizedResult);
-
+      // Step 6: Finalize
+      setCurrentStep("finalize");
+      updateStepStatus("finalize", "running");
+      addToLog("🎯 Finalizing workflow...");
+      
+      const finalResult = {
+        workflowId: `workflow-${Date.now()}`,
+        totalSteps: workflow.length,
+        completedSteps: workflow.length,
+        success: true
+      };
+      
+      updateStepStatus("finalize", "completed", finalResult);
+      setProgress(100);
+      addToLog("🎉 Integrated workflow completed successfully!");
+      
     } catch (error) {
-      console.error("Workflow execution failed:", error);
-      setWorkflow(prev => prev.map(step => 
-        step.status === "running" ? { 
-          ...step, 
-          status: "failed", 
-          error: error instanceof Error ? error.message : "Unknown error"
-        } : step
-      ));
+      const currentStepId = currentStep || "unknown";
+      updateStepStatus(currentStepId, "error", { error: error instanceof Error ? error.message : "Unknown error" });
+      addToLog(`❌ Workflow failed at step ${currentStepId}: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsRunning(false);
+      setCurrentStep(null);
     }
   };
 
-  const getStepIcon = (status: string) => {
+  const getStepIcon = (status: WorkflowStep["status"]) => {
     switch (status) {
-      case "completed":
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "running":
-        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />;
-      case "failed":
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <div className="h-4 w-4 rounded-full border-2 border-gray-300" />;
+      case "completed": return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "error": return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case "running": return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />;
+      default: return <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStepColor = (status: WorkflowStep["status"]) => {
     switch (status) {
       case "completed": return "bg-green-100 text-green-800";
+      case "error": return "bg-red-100 text-red-800";
       case "running": return "bg-blue-100 text-blue-800";
-      case "failed": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
-
-  const completedSteps = workflow.filter(step => step.status === "completed").length;
-  const progress = workflow.length > 0 ? (completedSteps / workflow.length) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -188,148 +187,112 @@ const IntegratedWorkflow: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Workflow className="h-5 w-5" />
-            Integrated AI Workflow Engine
+            Integrated System Workflow
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Textarea
-              placeholder="Enter a complex query that requires RAG knowledge, A2A coordination, MCP tools, and DeepSeek reasoning..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="min-h-[100px]"
-            />
+          <div className="flex justify-between items-center">
+            <Button 
+              onClick={runIntegratedWorkflow}
+              disabled={isRunning}
+              size="lg"
+            >
+              {isRunning ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              {isRunning ? "Running Workflow..." : "Start Integrated Workflow"}
+            </Button>
+            
+            {isRunning && (
+              <div className="text-sm text-muted-foreground">
+                Progress: {progress}%
+              </div>
+            )}
           </div>
 
-          <Button 
-            onClick={executeIntegratedWorkflow}
-            disabled={isRunning || !query.trim()}
-            className="w-full"
-          >
-            {isRunning ? (
-              <Clock className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Play className="h-4 w-4 mr-2" />
-            )}
-            Execute Integrated Workflow
-          </Button>
+          {isRunning && (
+            <Progress value={progress} className="w-full" />
+          )}
 
-          {workflow.length > 0 && (
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Workflow Progress</span>
-                  <span>{Math.round(progress)}%</span>
-                </div>
-                <Progress value={progress} />
-              </div>
+          <Tabs defaultValue="steps" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="steps">Workflow Steps</TabsTrigger>
+              <TabsTrigger value="results">Results</TabsTrigger>
+              <TabsTrigger value="logs">Real-time Logs</TabsTrigger>
+            </TabsList>
 
-              <div className="space-y-2">
+            <TabsContent value="steps">
+              <div className="space-y-3">
                 {workflow.map((step, index) => (
                   <div key={step.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg font-mono text-muted-foreground">
-                        {(index + 1).toString().padStart(2, '0')}
-                      </span>
-                      {getStepIcon(step.status)}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono text-muted-foreground">
+                          {(index + 1).toString().padStart(2, '0')}
+                        </span>
+                        {getStepIcon(step.status)}
+                      </div>
                       <span className="font-medium">{step.name}</span>
                     </div>
-                    <Badge className={getStatusColor(step.status)}>
+                    <Badge className={getStepColor(step.status)}>
                       {step.status}
                     </Badge>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            </TabsContent>
+
+            <TabsContent value="results">
+              <div className="space-y-4">
+                {workflow.filter(step => step.result).map((step) => (
+                  <Card key={step.id}>
+                    <CardHeader>
+                      <CardTitle className="text-sm">{step.name} Result</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                        {JSON.stringify(step.result, null, 2)}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {workflow.filter(step => step.result).length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No results yet. Run the workflow to see step results.</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="logs">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Real-time Activity Log</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="font-mono text-xs space-y-1 max-h-64 overflow-y-auto bg-muted p-3 rounded">
+                    {realTimeLog.length > 0 ? (
+                      realTimeLog.map((log, index) => (
+                        <div key={index} className="text-muted-foreground">
+                          {log}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-muted-foreground py-4">
+                        No activity logs yet. Start the workflow to see real-time updates.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
-
-      {finalResult && (
-        <Tabs defaultValue="response" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="response">Final Response</TabsTrigger>
-            <TabsTrigger value="details">Detailed Results</TabsTrigger>
-            <TabsTrigger value="integration">Integration Test</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="response">
-            <Card>
-              <CardHeader>
-                <CardTitle>Enhanced AI Response</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Generated Response</h4>
-                    <div className="bg-muted p-4 rounded">
-                      {finalResult.enhancedResponse?.response || "No response generated"}
-                    </div>
-                  </div>
-                  
-                  {finalResult.enhancedResponse?.reasoning && (
-                    <div>
-                      <h4 className="font-medium mb-2">Reasoning Process</h4>
-                      <div className="bg-muted p-4 rounded text-sm max-h-48 overflow-y-auto">
-                        {finalResult.enhancedResponse.reasoning}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="details">
-            <Card>
-              <CardHeader>
-                <CardTitle>Workflow Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <pre className="text-xs bg-muted p-4 rounded overflow-x-auto">
-                  {JSON.stringify(finalResult, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="integration">
-            <Card>
-              <CardHeader>
-                <CardTitle>System Integration Test Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {finalResult.integrationDemo && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="font-medium mb-2">RAG Integration</h4>
-                        <Badge variant={finalResult.integrationDemo.integrationTest.ragIntegration ? "default" : "destructive"}>
-                          {finalResult.integrationDemo.integrationTest.ragIntegration ? "✓ Working" : "✗ Failed"}
-                        </Badge>
-                      </div>
-                      
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="font-medium mb-2">A2A Integration</h4>
-                        <Badge variant={finalResult.integrationDemo.integrationTest.a2aIntegration ? "default" : "destructive"}>
-                          {finalResult.integrationDemo.integrationTest.a2aIntegration ? "✓ Working" : "✗ Failed"}
-                        </Badge>
-                      </div>
-                      
-                      <div className="p-4 border rounded-lg">
-                        <h4 className="font-medium mb-2">MCP Integration</h4>
-                        <Badge variant={finalResult.integrationDemo.integrationTest.mcpIntegration ? "default" : "destructive"}>
-                          {finalResult.integrationDemo.integrationTest.mcpIntegration ? "✓ Working" : "✗ Failed"}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
     </div>
   );
 };

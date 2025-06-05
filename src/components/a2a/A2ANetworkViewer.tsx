@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Network, MessageSquare, Settings, Activity, Send } from "lucide-react";
-import { a2aService, A2AMessage } from "@/services/a2a/a2aService";
-import { A2AAgent } from "@/types/ipa-types";
+import { a2aService, A2AMessage, A2AAgent } from "@/services/a2a/a2aService";
 
 const A2ANetworkViewer: React.FC = () => {
   const [agents, setAgents] = useState<A2AAgent[]>([]);
@@ -32,7 +30,7 @@ const A2ANetworkViewer: React.FC = () => {
   };
 
   const refreshNetworkStatus = () => {
-    setAgents(a2aService.getAgents());
+    setAgents(a2aService.getAllAgents());
     setMessages(a2aService.getMessages());
     setNetworkMetrics(a2aService.getAgentMetrics());
   };
@@ -54,7 +52,7 @@ const A2ANetworkViewer: React.FC = () => {
       type: "request",
       payload: { content: messageContent },
       timestamp: Date.now(),
-      priority: "medium"
+      priority: "normal"
     };
 
     try {
@@ -74,9 +72,9 @@ const A2ANetworkViewer: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "online": return "bg-green-100 text-green-800";
+      case "active": return "bg-green-100 text-green-800";
       case "busy": return "bg-yellow-100 text-yellow-800";
-      case "offline": return "bg-red-100 text-red-800";
+      case "inactive": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -228,7 +226,7 @@ const A2ANetworkViewer: React.FC = () => {
                         onChange={(e) => setSelectedAgent(e.target.value)}
                       >
                         <option value="">Select an agent...</option>
-                        {agents.filter(a => a.status === "online").map((agent) => (
+                        {agents.filter(a => a.status === "active").map((agent) => (
                           <option key={agent.id} value={agent.id}>
                             {agent.name}
                           </option>

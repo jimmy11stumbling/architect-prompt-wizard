@@ -12,6 +12,8 @@ export interface ProjectSpec {
   mcpType: MCPType;
   customMcpType: string;
   advancedPromptDetails: string;
+  deploymentPreference?: string;
+  authenticationMethod?: string;
 }
 
 export type TechStack = 
@@ -46,12 +48,21 @@ export type TechStack =
   | "MongoDB"
   | "Redis"
   | "SQLite"
+  | "Supabase"
+  | "Firebase"
+  | "DynamoDB"
+  | "CouchDB"
+  | "Cassandra"
   | "GraphQL"
   | "REST API"
+  | "WebSockets"
+  | "Microservices"
+  | "Serverless"
   | "Docker"
   | "Kubernetes"
   | "AWS"
   | "Azure"
+  | "Google Cloud"
   | "GCP";
 
 export type VectorDatabase = 
@@ -61,6 +72,7 @@ export type VectorDatabase =
   | "Qdrant" 
   | "FAISS" 
   | "PGVector"
+  | "Milvus"
   | "Custom"
   | "None";
 
@@ -79,12 +91,12 @@ export type MCPType =
 export interface AgentStatus {
   id: string;
   name: string;
-  agent: string; // Add this missing property
-  status: "idle" | "processing" | "completed" | "error" | "failed"; // Add "failed" status
+  agent: string;
+  status: "idle" | "processing" | "completed" | "error" | "failed";
   progress: number;
   currentTask?: string;
   result?: string;
-  output?: string; // Add this missing property
+  output?: string;
   error?: string;
   timestamp: number;
 }
@@ -159,7 +171,7 @@ export interface RAGResult {
   searchTime?: number;
 }
 
-// A2A types - Export these missing types
+// A2A types
 export interface A2AAgent {
   id: string;
   name: string;
@@ -176,10 +188,10 @@ export interface A2AMessage {
   type: "request" | "response" | "notification";
   payload: any;
   timestamp: number;
-  priority?: "low" | "normal" | "high"; // Fixed priority type
+  priority?: "low" | "normal" | "high";
 }
 
-// MCP types - Export these missing types
+// MCP types
 export interface MCPServer {
   id: string;
   name: string;
@@ -187,6 +199,7 @@ export interface MCPServer {
   endpoint: string;
   toolCount: number;
   resourceCount: number;
+  capabilities: string[];
 }
 
 export interface MCPTool {
@@ -203,7 +216,7 @@ export interface MCPResource {
   mimeType?: string;
 }
 
-// System Integration types - Export missing type
+// System Integration types
 export interface SystemHealth {
   overall: boolean;
   services: {
@@ -223,4 +236,14 @@ export type AgentName =
   | "context-analyzer" 
   | "documentation-expert"
   | "workflow-coordinator"
-  | "reasoning-coordinator";
+  | "reasoning-coordinator"
+  | "RequirementDecompositionAgent"
+  | "RAGContextIntegrationAgent"
+  | "A2AProtocolExpertAgent"
+  | "TechStackImplementationAgent_Frontend"
+  | "TechStackImplementationAgent_Backend"
+  | "CursorOptimizationAgent"
+  | "QualityAssuranceAgent";
+
+// Type alias for compatibility
+export type VectorDatabaseType = VectorDatabase;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, Wrench, FileText, Zap, Play, Server, CheckCircle, AlertCircle } from "lucide-react";
-import { mcpService } from "@/services/mcp/mcpService";
+import { mcpService, MCPServer } from "@/services/mcp/mcpService";
 import { a2aService } from "@/services/a2a/a2aService";
-import { MCPServer } from "@/types/ipa-types";
 
 const MCPHubInterface: React.FC = () => {
   const [servers, setServers] = useState<MCPServer[]>([]);
@@ -64,7 +62,7 @@ const MCPHubInterface: React.FC = () => {
     for (const server of servers) {
       try {
         // Simulate connection validation
-        const isConnected = server.status === "active";
+        const isConnected = server.status === "online";
         results[server.id] = {
           connected: isConnected,
           lastCheck: new Date().toISOString(),
@@ -155,8 +153,8 @@ const MCPHubInterface: React.FC = () => {
 
   const getServerStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-green-100 text-green-800";
-      case "inactive": return "bg-yellow-100 text-yellow-800";
+      case "online": return "bg-green-100 text-green-800";
+      case "offline": return "bg-yellow-100 text-yellow-800";
       case "error": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }

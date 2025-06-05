@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,20 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Database, FileText, Zap, CheckCircle } from "lucide-react";
-import { ragService } from "@/services/rag/ragService";
+import { ragService, RAGQuery, RAGResponse } from "@/services/rag/ragService";
 import { a2aService } from "@/services/a2a/a2aService";
-import { RAGQuery, RAGResult } from "@/types/ipa-types";
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<RAGResult | null>(null);
+  const [results, setResults] = useState<RAGResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [realTimeLog, setRealTimeLog] = useState<string[]>([]);
 
   useEffect(() => {
     if (!ragService.isInitialized()) {
-      ragService.initialize("Chroma");
+      ragService.initialize();
     }
   }, []);
 
@@ -191,7 +189,7 @@ const RAGQueryInterface: React.FC = () => {
                           Score: {(results.scores[index] * 100).toFixed(1)}%
                         </Badge>
                         <Badge variant="secondary">
-                          {doc.source}
+                          {doc.metadata.source}
                         </Badge>
                       </div>
                     </div>
