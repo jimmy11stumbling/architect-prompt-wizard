@@ -22,6 +22,7 @@ const AgentStatusIcon: React.FC<AgentStatusIconProps> = ({ status }) => {
         </motion.div>
       );
     case "failed":
+    case "error":
       return <AlertCircle className="h-5 w-5 text-ipa-error" />;
     default:
       return <Circle className="h-5 w-5 text-ipa-muted" />;

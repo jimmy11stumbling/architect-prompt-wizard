@@ -21,9 +21,9 @@ const ProjectSpecForm = forwardRef<ProjectSpecFormRef, ProjectSpecFormProps>(
       customBackendTech: [],
       a2aIntegrationDetails: "",
       additionalFeatures: "",
-      ragVectorDb: "None",
+      ragVectorDb: "Chroma", // Fixed: use valid VectorDatabase
       customRagVectorDb: "",
-      mcpType: "None",
+      mcpType: "Standard MCP", // Fixed: use valid MCPType
       customMcpType: "",
       advancedPromptDetails: ""
     });

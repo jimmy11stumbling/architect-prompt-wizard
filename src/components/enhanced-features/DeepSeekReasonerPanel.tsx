@@ -53,7 +53,12 @@ const DeepSeekReasonerPanel: React.FC = () => {
       setCurrentResponse({
         reasoning: "",
         answer: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+        usage: { 
+          promptTokens: 0, 
+          completionTokens: 0, 
+          reasoningTokens: 0, // Add missing property
+          totalTokens: 0 
+        },
         conversationId: conversationId || "error"
       });
     } finally {

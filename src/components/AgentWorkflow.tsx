@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
@@ -37,7 +36,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
         <div className="flex flex-col">
           {agents.map((agent, index) => {
             // Create a unique key for each agent
-            const key = `${agent.agent}-${index}`;
+            const key = `${agent.name}-${index}`;
             return (
               <React.Fragment key={key}>
                 <motion.div
@@ -46,7 +45,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
                       ? "bg-ipa-primary/10"
                       : agent.status === "completed"
                       ? "bg-ipa-success/10"
-                      : agent.status === "failed"
+                      : agent.status === "failed" || agent.status === "error"
                       ? "bg-ipa-error/10"
                       : ""
                   }`}
@@ -56,8 +55,8 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
                 >
                   <AgentContent 
                     agent={agent} 
-                    isOpen={!!openAgents[agent.agent]} 
-                    onToggle={() => toggleAgent(agent.agent)} 
+                    isOpen={!!openAgents[agent.name]} 
+                    onToggle={() => toggleAgent(agent.name)} 
                   />
                 </motion.div>
                 

@@ -17,7 +17,7 @@ interface AgentContentProps {
 
 const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) => {
   // Determine if there's any content to show
-  const hasContent = agent.output;
+  const hasContent = agent.output || agent.result;
 
   return (
     <Collapsible
@@ -29,13 +29,13 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
           <AgentStatusIcon status={agent.status} />
         </div>
         <div className="flex-1">
-          <div className="font-medium">{agent.agent}</div>
+          <div className="font-medium">{agent.name}</div>
           <div className="text-sm text-ipa-muted">
             {agent.status === "processing"
               ? "Working..."
               : agent.status === "completed"
               ? "Completed"
-              : agent.status === "failed"
+              : agent.status === "failed" || agent.status === "error"
               ? "Failed"
               : "Waiting"}
           </div>
@@ -54,11 +54,11 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
       </div>
       
       <CollapsibleContent>
-        {agent.output && (
+        {(agent.output || agent.result) && (
           <div className="mt-3 border-t border-ipa-border pt-3">
             <div className="text-sm font-medium mb-1">Output:</div>
             <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
-              {agent.output}
+              {agent.output || agent.result}
             </pre>
           </div>
         )}

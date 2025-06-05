@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -47,7 +46,7 @@ function App() {
           additionalFeatures: "Enhanced AI system with DeepSeek Reasoner",
           ragVectorDb: "Chroma",
           customRagVectorDb: "",
-          mcpType: "Extended MCP",
+          mcpType: "Enterprise MCP", // Fixed: use valid MCPType
           customMcpType: "",
           advancedPromptDetails: "Advanced prompting with chain-of-thought"
         });

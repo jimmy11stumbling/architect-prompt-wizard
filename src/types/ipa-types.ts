@@ -1,3 +1,4 @@
+
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
@@ -18,10 +19,22 @@ export type TechStack =
   | "Vue"
   | "Angular"
   | "Next.js"
+  | "Svelte"
+  | "Nuxt.js"
+  | "Gatsby"
+  | "Remix"
   | "Express"
   | "FastAPI"
   | "Django"
   | "Node.js"
+  | "NestJS"
+  | "Flask"
+  | "Spring Boot"
+  | "Laravel"
+  | "Ruby on Rails"
+  | "ASP.NET Core"
+  | "Koa.js"
+  | "Hapi.js"
   | "TypeScript"
   | "JavaScript"
   | "Python"
@@ -32,6 +45,7 @@ export type TechStack =
   | "MySQL"
   | "MongoDB"
   | "Redis"
+  | "SQLite"
   | "GraphQL"
   | "REST API"
   | "Docker"
@@ -40,16 +54,37 @@ export type TechStack =
   | "Azure"
   | "GCP";
 
-export type VectorDatabase = "Chroma" | "Pinecone" | "Weaviate" | "Qdrant" | "FAISS" | "Custom";
-export type MCPType = "Standard MCP" | "Custom MCP" | "Enterprise MCP";
+export type VectorDatabase = 
+  | "Chroma" 
+  | "Pinecone" 
+  | "Weaviate" 
+  | "Qdrant" 
+  | "FAISS" 
+  | "PGVector"
+  | "Custom"
+  | "None";
+
+export type MCPType = 
+  | "Standard MCP" 
+  | "Custom MCP" 
+  | "Enterprise MCP"
+  | "Extended MCP"
+  | "MCP with Tools"
+  | "MCP with Resources"
+  | "MCP with Prompts"
+  | "MCP with Sampling"
+  | "Custom MCP Implementation"
+  | "None";
 
 export interface AgentStatus {
   id: string;
   name: string;
-  status: "idle" | "processing" | "completed" | "error";
+  agent: string; // Add this missing property
+  status: "idle" | "processing" | "completed" | "error" | "failed"; // Add "failed" status
   progress: number;
   currentTask?: string;
   result?: string;
+  output?: string; // Add this missing property
   error?: string;
   timestamp: number;
 }
@@ -102,7 +137,7 @@ export interface DeepSeekCompletionResponse {
   };
 }
 
-// Fixed RAG types
+// RAG types
 export interface RAGQuery {
   query: string;
   limit?: number;
@@ -123,3 +158,69 @@ export interface RAGResult {
   scores: number[];
   searchTime?: number;
 }
+
+// A2A types - Export these missing types
+export interface A2AAgent {
+  id: string;
+  name: string;
+  status: "active" | "inactive" | "busy";
+  capabilities: string[];
+  endpoint?: string;
+  lastSeen: number;
+}
+
+export interface A2AMessage {
+  id: string;
+  from: string;
+  to: string;
+  type: "request" | "response" | "notification";
+  payload: any;
+  timestamp: number;
+  priority?: "low" | "normal" | "high"; // Fixed priority type
+}
+
+// MCP types - Export these missing types
+export interface MCPServer {
+  id: string;
+  name: string;
+  status: "online" | "offline" | "error";
+  endpoint: string;
+  toolCount: number;
+  resourceCount: number;
+}
+
+export interface MCPTool {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+  category?: string;
+}
+
+export interface MCPResource {
+  uri: string;
+  name: string;
+  description: string;
+  mimeType?: string;
+}
+
+// System Integration types - Export missing type
+export interface SystemHealth {
+  overall: boolean;
+  services: {
+    rag: boolean;
+    a2a: boolean;
+    mcp: boolean;
+    deepseek: boolean;
+  };
+  details: any;
+  lastCheck: number;
+  overallStatus: "healthy" | "degraded" | "unhealthy";
+}
+
+// Agent name type for enhanced features
+export type AgentName = 
+  | "reasoning-assistant"
+  | "context-analyzer" 
+  | "documentation-expert"
+  | "workflow-coordinator"
+  | "reasoning-coordinator";
