@@ -46,6 +46,10 @@ export class SystemIntegrationService {
     return SystemIntegrationService.instance;
   }
 
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
   async initialize(spec: ProjectSpec): Promise<void> {
     if (this.initialized && this.currentSpec === spec) {
       return;
@@ -144,10 +148,6 @@ export class SystemIntegrationService {
       message: `Service ${service.toUpperCase()} status: ${status}`,
       data: { service, status, timestamp: Date.now() }
     });
-  }
-
-  isInitialized(): boolean {
-    return this.initialized;
   }
 
   getSystemHealth(): SystemHealth {

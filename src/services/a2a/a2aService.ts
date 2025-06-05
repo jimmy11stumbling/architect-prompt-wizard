@@ -40,7 +40,7 @@ export class A2AService {
   private static instance: A2AService;
   private agents: Map<string, A2AAgent> = new Map();
   private messages: A2AMessage[] = [];
-  private isInitialized = false;
+  private initialized = false;
 
   static getInstance(): A2AService {
     if (!A2AService.instance) {
@@ -49,8 +49,12 @@ export class A2AService {
     return A2AService.instance;
   }
 
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
   public getInitializationStatus(): boolean {
-    return this.isInitialized;
+    return this.initialized;
   }
 
   public getAgentMetrics(): AgentMetrics {
@@ -65,7 +69,7 @@ export class A2AService {
   }
 
   async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+    if (this.initialized) return;
 
     realTimeResponseService.addResponse({
       source: "a2a-service",
@@ -116,7 +120,7 @@ export class A2AService {
       this.agents.set(agent.id, agent);
     }
 
-    this.isInitialized = true;
+    this.initialized = true;
 
     realTimeResponseService.addResponse({
       source: "a2a-service",
@@ -129,7 +133,7 @@ export class A2AService {
     });
   }
 
-  async sendMessage(message: A2AMessage): Promise<void> {
+  async sendMessage(message: A2AMessage): Promise<A2AMessage | null> {
     await this.initialize();
 
     realTimeResponseService.addResponse({
@@ -144,17 +148,32 @@ export class A2AService {
     // Simulate message processing
     await new Promise(resolve => setTimeout(resolve, 100));
 
+    const response: A2AMessage = {
+      id: `response-${Date.now()}`,
+      from: message.to,
+      to: message.from,
+      type: "response",
+      payload: { status: "received", originalMessage: message.id },
+      timestamp: Date.now(),
+      priority: "normal"
+    };
+
+    this.messages.push(response);
+
     realTimeResponseService.addResponse({
       source: "a2a-service",
       status: "success",
       message: `A2A message delivered successfully`,
       data: { 
         messageId: message.id,
+        responseId: response.id,
         from: message.from,
         to: message.to,
         deliveryTime: new Date().toISOString()
       }
     });
+
+    return response;
   }
 
   async delegateTask(description: string, requiredCapabilities: string[]): Promise<TaskDelegation> {

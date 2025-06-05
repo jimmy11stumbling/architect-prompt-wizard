@@ -5,8 +5,8 @@ export interface RAGDocument {
   id: string;
   title: string;
   content: string;
+  source: string;
   metadata: {
-    source: string;
     timestamp: string;
     tags: string[];
   };
@@ -32,7 +32,7 @@ export interface RAGResponse {
 export class RAGService {
   private static instance: RAGService;
   private documents: RAGDocument[] = [];
-  private isInitialized = false;
+  private initialized = false;
   private vectorDatabase = "Chroma";
 
   static getInstance(): RAGService {
@@ -42,8 +42,12 @@ export class RAGService {
     return RAGService.instance;
   }
 
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+
   public getInitializationStatus(): boolean {
-    return this.isInitialized;
+    return this.initialized;
   }
 
   public getVectorDatabase(): string {
@@ -51,7 +55,7 @@ export class RAGService {
   }
 
   async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+    if (this.initialized) return;
 
     realTimeResponseService.addResponse({
       source: "rag-service",
@@ -71,8 +75,8 @@ export class RAGService {
         - Self-reflection and correction mechanisms
         - Multi-hop reasoning capabilities
         - Integration with agent frameworks for dynamic retrieval`,
+        source: "RAG 2.0 Technical Documentation",
         metadata: {
-          source: "RAG 2.0 Technical Documentation",
           timestamp: new Date().toISOString(),
           tags: ["rag", "architecture", "retrieval", "generation"]
         }
@@ -87,8 +91,8 @@ export class RAGService {
         - Secure authentication using OAuth 2.0/2.1
         - Multi-modal communication supporting text, files, and structured data
         - Workflow orchestration across heterogeneous agent systems`,
+        source: "A2A Protocol Documentation",
         metadata: {
-          source: "A2A Protocol Documentation",
           timestamp: new Date().toISOString(),
           tags: ["a2a", "protocol", "agents", "communication"]
         }
@@ -103,8 +107,8 @@ export class RAGService {
         - Prompt templates for guided interactions
         - Server lifecycle management and monitoring
         - Security through OAuth integration and permission controls`,
+        source: "MCP Protocol Specification",
         metadata: {
-          source: "MCP Protocol Specification",
           timestamp: new Date().toISOString(),
           tags: ["mcp", "protocol", "tools", "resources"]
         }
@@ -119,8 +123,8 @@ export class RAGService {
         - Integration with RAG systems for knowledge-grounded reasoning
         - Real-time reasoning process visibility and debugging
         - Conversation history management and retrieval`,
+        source: "DeepSeek API Documentation",
         metadata: {
-          source: "DeepSeek API Documentation",
           timestamp: new Date().toISOString(),
           tags: ["deepseek", "reasoning", "chat", "ai"]
         }
@@ -135,15 +139,15 @@ export class RAGService {
         - Performance monitoring and metrics collection
         - Distributed logging and debugging capabilities
         - Scalable communication patterns for enterprise deployment`,
+        source: "System Integration Guide",
         metadata: {
-          source: "System Integration Guide",
           timestamp: new Date().toISOString(),
           tags: ["integration", "patterns", "architecture", "monitoring"]
         }
       }
     ];
 
-    this.isInitialized = true;
+    this.initialized = true;
 
     realTimeResponseService.addResponse({
       source: "rag-service",
