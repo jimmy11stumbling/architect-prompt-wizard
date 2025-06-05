@@ -1,134 +1,51 @@
 
-// Advanced caching system for high-performance data access
 interface CacheEntry<T> {
   data: T;
-  timestamp: number;
-  ttl: number;
-  hitCount: number;
+  expiry: number;
 }
 
-class CacheService {
+export class CacheService {
   private cache: Map<string, CacheEntry<any>> = new Map();
-  private maxSize: number = 10000; // Maximum cache entries
-  private defaultTTL: number = 300000; // 5 minutes default TTL
-  private cleanupInterval: NodeJS.Timeout;
 
-  constructor() {
-    // Periodic cleanup of expired entries
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup();
-    }, 60000); // Cleanup every minute
-  }
-
-  set<T>(key: string, data: T, ttl?: number): void {
-    // Implement LRU eviction if cache is full
-    if (this.cache.size >= this.maxSize) {
-      this.evictLRU();
-    }
-
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl: ttl || this.defaultTTL,
-      hitCount: 0
-    });
+  set<T>(key: string, data: T, ttlMs: number = 300000): void { // 5 minute default
+    const expiry = Date.now() + ttlMs;
+    this.cache.set(key, { data, expiry });
+    console.log(`💾 Cache set: ${key} (TTL: ${ttlMs}ms)`);
   }
 
   get<T>(key: string): T | null {
     const entry = this.cache.get(key);
-    if (!entry) return null;
-
-    // Check if entry has expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.cache.delete(key);
+    
+    if (!entry) {
       return null;
     }
-
-    // Update hit count for LRU tracking
-    entry.hitCount++;
-    entry.timestamp = Date.now(); // Update access time
     
-    return entry.data as T;
-  }
-
-  has(key: string): boolean {
-    const entry = this.cache.get(key);
-    if (!entry) return false;
-
-    // Check if expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
+    if (Date.now() > entry.expiry) {
       this.cache.delete(key);
-      return false;
+      console.log(`💾 Cache expired: ${key}`);
+      return null;
     }
-
-    return true;
+    
+    console.log(`💾 Cache hit: ${key}`);
+    return entry.data;
   }
 
-  delete(key: string): boolean {
-    return this.cache.delete(key);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  private evictLRU(): void {
-    let oldestKey: string | null = null;
-    let oldestTime = Date.now();
-    let lowestHitCount = Infinity;
-
-    // Find least recently used entry with lowest hit count
-    for (const [key, entry] of this.cache.entries()) {
-      if (entry.hitCount < lowestHitCount || 
-          (entry.hitCount === lowestHitCount && entry.timestamp < oldestTime)) {
-        oldestKey = key;
-        oldestTime = entry.timestamp;
-        lowestHitCount = entry.hitCount;
-      }
-    }
-
-    if (oldestKey) {
-      this.cache.delete(oldestKey);
+  clear(prefix?: string): void {
+    if (prefix) {
+      const keysToDelete = Array.from(this.cache.keys()).filter(key => key.startsWith(prefix));
+      keysToDelete.forEach(key => this.cache.delete(key));
+      console.log(`💾 Cache cleared with prefix: ${prefix} (${keysToDelete.length} entries)`);
+    } else {
+      this.cache.clear();
+      console.log(`💾 Cache cleared completely`);
     }
   }
 
-  private cleanup(): void {
-    const now = Date.now();
-    const expiredKeys: string[] = [];
-
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > entry.ttl) {
-        expiredKeys.push(key);
-      }
-    }
-
-    expiredKeys.forEach(key => this.cache.delete(key));
-  }
-
-  getStats() {
-    const now = Date.now();
-    let totalHits = 0;
-    let expiredCount = 0;
-
-    for (const entry of this.cache.values()) {
-      totalHits += entry.hitCount;
-      if (now - entry.timestamp > entry.ttl) {
-        expiredCount++;
-      }
-    }
-
+  getStats(): { size: number; keys: string[] } {
     return {
       size: this.cache.size,
-      maxSize: this.maxSize,
-      totalHits,
-      expiredEntries: expiredCount,
-      utilization: (this.cache.size / this.maxSize) * 100
+      keys: Array.from(this.cache.keys())
     };
-  }
-
-  destroy(): void {
-    clearInterval(this.cleanupInterval);
-    this.cache.clear();
   }
 }
 

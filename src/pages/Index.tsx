@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
@@ -6,11 +7,13 @@ import PromptOutput from "@/components/PromptOutput";
 import SavedPrompts from "@/components/SavedPrompts";
 import { ApiKeyForm } from "@/components/ApiKeyForm";
 import { ComponentTester, AgentResponseTester } from "@/components/testing";
+import RealTimeResponseMonitor from "@/components/enhanced-features/RealTimeResponseMonitor";
 import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
 
 const Index: React.FC = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
@@ -21,6 +24,18 @@ const Index: React.FC = () => {
 
   const handleSubmit = async (spec: ProjectSpec) => {
     try {
+      // Add real-time response for form submission
+      realTimeResponseService.addResponse({
+        source: "form-submission",
+        status: "processing",
+        message: "Processing project specification submission",
+        data: { 
+          projectDescription: spec.projectDescription.substring(0, 100),
+          frontendTech: spec.frontendTechStack,
+          backendTech: spec.backendTechStack
+        }
+      });
+
       // Prepare a complete spec with all tech stacks (standard + custom)
       const completeSpec: ProjectSpec = {
         ...spec,
@@ -39,10 +54,26 @@ const Index: React.FC = () => {
       
       const taskId = await ipaService.generatePrompt(completeSpec);
       console.log("Starting generation with task ID:", taskId);
+      
+      realTimeResponseService.addResponse({
+        source: "form-submission",
+        status: "success",
+        message: "Prompt generation started successfully",
+        data: { taskId, specValidated: true }
+      });
+      
       startPolling(taskId);
     } catch (error) {
       console.error("Error generating prompt:", error);
       setIsGenerating(false);
+      
+      realTimeResponseService.addResponse({
+        source: "form-submission",
+        status: "error",
+        message: `Generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+      
       toast({
         title: "Generation Failed",
         description: error instanceof Error ? error.message : "Failed to start prompt generation",
@@ -56,6 +87,20 @@ const Index: React.FC = () => {
       const status = await ipaService.getGenerationStatus(taskId);
       setGenerationStatus(status);
       
+      // Add real-time response for polling updates
+      realTimeResponseService.addResponse({
+        source: "polling-service",
+        status: status.status === "completed" ? "success" : 
+                status.status === "failed" ? "error" : "processing",
+        message: `Status update: ${status.status} (Progress: ${status.progress})`,
+        data: { 
+          taskId, 
+          status: status.status, 
+          progress: status.progress,
+          agentCount: status.agents.length
+        }
+      });
+      
       if (status.status !== "completed" && status.status !== "failed") {
         // Continue polling with a 2-second interval
         setTimeout(() => startPolling(taskId), 2000);
@@ -65,6 +110,17 @@ const Index: React.FC = () => {
         console.log("Generation completed with status:", status.status);
         
         if (status.status === "completed") {
+          realTimeResponseService.addResponse({
+            source: "polling-service",
+            status: "success",
+            message: "Prompt generation completed successfully",
+            data: { 
+              taskId, 
+              finalStatus: status.status,
+              resultLength: status.result?.length || 0
+            }
+          });
+          
           toast({
             title: "Generation Complete",
             description: "Your Cursor AI prompt has been successfully generated!",
@@ -74,6 +130,14 @@ const Index: React.FC = () => {
     } catch (error) {
       console.error("Error polling status:", error);
       setIsGenerating(false);
+      
+      realTimeResponseService.addResponse({
+        source: "polling-service",
+        status: "error",
+        message: `Polling error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { taskId, error: error instanceof Error ? error.message : String(error) }
+      });
+      
       toast({
         title: "Polling Error",
         description: "Failed to check generation status",
@@ -87,6 +151,14 @@ const Index: React.FC = () => {
       projectFormRef.current.setSpec(spec);
     }
     setActiveTab("create");
+    
+    realTimeResponseService.addResponse({
+      source: "template-selection",
+      status: "success",
+      message: "Project template applied successfully",
+      data: { templateProject: spec.projectDescription.substring(0, 50) }
+    });
+    
     toast({
       title: "Template Applied",
       description: "Project template has been loaded into the form",
@@ -108,10 +180,11 @@ const Index: React.FC = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="create">Create New Prompt</TabsTrigger>
               <TabsTrigger value="saved">Saved Prompts</TabsTrigger>
               <TabsTrigger value="test">Component Tests</TabsTrigger>
+              <TabsTrigger value="monitor">Real-time Monitor</TabsTrigger>
             </TabsList>
             <TabsContent value="create">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -136,6 +209,9 @@ const Index: React.FC = () => {
                 <AgentResponseTester />
                 <ComponentTester />
               </div>
+            </TabsContent>
+            <TabsContent value="monitor">
+              <RealTimeResponseMonitor />
             </TabsContent>
           </Tabs>
         </div>

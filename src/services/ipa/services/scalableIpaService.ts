@@ -13,6 +13,7 @@ import { StatusManager } from "../status/statusManager";
 import { MetricsService } from "../metrics/metricsService";
 import { FinalPromptGenerator } from "../finalPromptGenerator";
 import { IpaServiceInterface } from "../types/serviceTypes";
+import { realTimeResponseService } from "../../integration/realTimeResponseService";
 
 // Enhanced service with scalability optimizations
 const statusManager = new StatusManager();
@@ -23,6 +24,14 @@ export const scalableIpaService: IpaServiceInterface = {
     const startTime = performance.now();
     
     try {
+      // Add real-time response for generation start
+      realTimeResponseService.addResponse({
+        source: "scalable-ipa-service",
+        status: "processing",
+        message: "Starting prompt generation with scalable service",
+        data: { projectDescription: spec.projectDescription.substring(0, 100) }
+      });
+
       // Validate the spec
       SpecValidator.validate(spec);
 
@@ -31,6 +40,14 @@ export const scalableIpaService: IpaServiceInterface = {
       const cachedResult = cacheService.get<string>(cacheKey);
       if (cachedResult) {
         performanceMonitor.trackApiCall('generatePrompt', performance.now() - startTime, true);
+        
+        realTimeResponseService.addResponse({
+          source: "scalable-ipa-service",
+          status: "success",
+          message: "Prompt generation retrieved from cache",
+          data: { cacheHit: true, cacheKey }
+        });
+        
         return cachedResult;
       }
 
@@ -47,6 +64,13 @@ export const scalableIpaService: IpaServiceInterface = {
         
         performanceMonitor.trackApiCall('generatePrompt', performance.now() - startTime, true);
         
+        realTimeResponseService.addResponse({
+          source: "scalable-ipa-service",
+          status: "success",
+          message: "Prompt generation initialized successfully",
+          data: { taskId: mockTaskId, connectionId }
+        });
+        
         toast({
           title: "Generation Started",
           description: "Starting to generate your Cursor AI prompt with specialized agents",
@@ -59,6 +83,14 @@ export const scalableIpaService: IpaServiceInterface = {
     } catch (error) {
       performanceMonitor.trackApiCall('generatePrompt', performance.now() - startTime, false);
       console.error("Error starting prompt generation:", error);
+      
+      realTimeResponseService.addResponse({
+        source: "scalable-ipa-service",
+        status: "error",
+        message: `Generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+      
       toast({
         title: "Generation Error",
         description: error instanceof Error ? error.message : "Failed to start prompt generation",
@@ -73,6 +105,14 @@ export const scalableIpaService: IpaServiceInterface = {
     
     return new Promise(async (resolve) => {
       try {
+        // Add real-time response for status check
+        realTimeResponseService.addResponse({
+          source: "scalable-ipa-service",
+          status: "processing",
+          message: "Checking generation status",
+          data: { taskId }
+        });
+
         // Check cache first
         const currentStatus = statusManager.getCurrentStatus();
         const cacheKey = `status_${taskId}_${currentStatus.progress}`;
@@ -107,6 +147,13 @@ export const scalableIpaService: IpaServiceInterface = {
                 timestamp: Date.now()
               });
               
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "processing",
+                message: `Processing agent: ${currentAgent}`,
+                data: { agent: currentAgent, step: currentStep }
+              });
+              
               // For multi-round conversation, build history of previous agents
               const messageHistory = buildConversationHistory(agentList.slice(0, currentStep - 1), currentProjectSpec!);
               
@@ -123,6 +170,17 @@ export const scalableIpaService: IpaServiceInterface = {
                 progress: 100,
                 output: agentResponse.content,
                 timestamp: Date.now()
+              });
+              
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "success",
+                message: `Agent ${currentAgent} completed successfully`,
+                data: { 
+                  agent: currentAgent, 
+                  responseLength: agentResponse.content.length,
+                  reasoning: agentResponse.content.substring(0, 200) + "..."
+                }
               });
               
               // Add this agent's response to the conversation
@@ -157,6 +215,13 @@ export const scalableIpaService: IpaServiceInterface = {
                 timestamp: Date.now()
               });
               
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "error",
+                message: `Agent ${currentAgent} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+                data: { agent: currentAgent, error: error instanceof Error ? error.message : String(error) }
+              });
+              
               toast({
                 title: "Agent Error",
                 description: `${currentAgent} failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -175,6 +240,13 @@ export const scalableIpaService: IpaServiceInterface = {
               const completedAgents = updatedStatus.agents.filter(agent => agent.status === "completed");
               
               if (completedAgents.length === agentList.length) {
+                realTimeResponseService.addResponse({
+                  source: "final-generator",
+                  status: "processing",
+                  message: "Generating final prompt from all agent responses",
+                  data: { completedAgents: completedAgents.length }
+                });
+
                 const finalPrompt = await FinalPromptGenerator.generate(updatedStatus.agents);
                 statusManager.setResult(finalPrompt);
                 
@@ -182,6 +254,16 @@ export const scalableIpaService: IpaServiceInterface = {
                 try {
                   await savePrompt(statusManager.getCurrentStatus(), "Cursor AI Prompt");
                   console.log("Prompt successfully saved to database");
+                  
+                  realTimeResponseService.addResponse({
+                    source: "final-generator",
+                    status: "success",
+                    message: "Final prompt generated and saved successfully",
+                    data: { 
+                      promptLength: finalPrompt.length,
+                      savedToDatabase: true
+                    }
+                  });
                   
                   toast({
                     title: "Prompt Generated Successfully",
