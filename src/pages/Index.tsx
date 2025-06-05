@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm from "@/components/ProjectSpecForm";
@@ -23,15 +22,15 @@ const Index: React.FC = () => {
   const handleSubmit = async (spec: ProjectSpec) => {
     try {
       // Prepare a complete spec with all tech stacks (standard + custom)
-      const completeSpec = {
+      const completeSpec: ProjectSpec = {
         ...spec,
         frontendTechStack: [
           ...spec.frontendTechStack,
-          ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack))
+          ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack)).map(tech => tech as TechStack)
         ],
         backendTechStack: [
           ...spec.backendTechStack,
-          ...spec.customBackendTech.filter(tech => !spec.backendTechStack.includes(tech as TechStack))
+          ...spec.customBackendTech.filter(tech => !spec.backendTechStack.includes(tech as TechStack)).map(tech => tech as TechStack)
         ]
       };
 

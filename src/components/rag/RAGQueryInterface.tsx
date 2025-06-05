@@ -190,7 +190,7 @@ const RAGQueryInterface: React.FC = () => {
                           Score: {(results.scores[index] * 100).toFixed(1)}%
                         </Badge>
                         <Badge variant="secondary">
-                          {doc.metadata?.source || "Unknown"}
+                          {doc.source || "Unknown"}
                         </Badge>
                       </div>
                     </div>

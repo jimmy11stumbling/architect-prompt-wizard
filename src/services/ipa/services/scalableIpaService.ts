@@ -99,8 +99,12 @@ export const scalableIpaService: IpaServiceInterface = {
             try {
               // Mark the current agent as processing first
               statusManager.updateAgentStatus(currentStep - 1, {
+                id: `agent-${Date.now()}`,
+                name: currentAgent,
                 agent: currentAgent,
-                status: "processing"
+                status: "processing",
+                progress: 0,
+                timestamp: Date.now()
               });
               
               // For multi-round conversation, build history of previous agents
@@ -112,9 +116,13 @@ export const scalableIpaService: IpaServiceInterface = {
               
               // Update the agent status with the actual response
               statusManager.updateAgentStatus(currentStep - 1, {
+                id: `agent-${Date.now()}`,
+                name: currentAgent,
                 agent: currentAgent,
                 status: "completed",
-                output: agentResponse.content
+                progress: 100,
+                output: agentResponse.content,
+                timestamp: Date.now()
               });
               
               // Add this agent's response to the conversation
@@ -140,9 +148,13 @@ export const scalableIpaService: IpaServiceInterface = {
             } catch (error) {
               console.error(`Error invoking DeepSeek for agent ${currentAgent}:`, error);
               statusManager.updateAgentStatus(currentStep - 1, {
+                id: `agent-${Date.now()}`,
+                name: currentAgent,
                 agent: currentAgent,
                 status: "failed",
-                output: `Error: ${error instanceof Error ? error.message : String(error)}`
+                progress: 0,
+                output: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                timestamp: Date.now()
               });
               
               toast({

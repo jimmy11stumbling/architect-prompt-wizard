@@ -1,4 +1,3 @@
-
 import { GenerationStatus, ProjectSpec, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
 import { agentList, initialMockStatus } from "./mockData";
 import { buildConversationHistory } from "./deepseekAPI";
@@ -37,8 +36,12 @@ export class GenerationOrchestrator {
       
       // Mark the current agent as processing first
       this.currentStatus.agents[currentStep - 1] = {
+        id: `agent-${Date.now()}`,
+        name: currentAgent,
         agent: currentAgent,
-        status: "processing"
+        status: "processing",
+        progress: 0,
+        timestamp: Date.now()
       };
       
       // For multi-round conversation, build history of previous agents
