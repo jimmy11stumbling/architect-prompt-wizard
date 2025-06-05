@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { NavigationSidebar } from "@/components/navigation/NavigationSidebar";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { systemIntegrationService } from "@/services/integration/systemIntegrationService";
 
 // Pages
