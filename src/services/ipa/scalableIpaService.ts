@@ -1,18 +1,18 @@
 
 import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
-import { invokeDeepSeekAgent, buildConversationHistory } from "../deepseekAPI";
-import { mockTaskId, agentList } from "../mockData";
+import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
+import { mockTaskId, agentList } from "./mockData";
 import { toast } from "@/hooks/use-toast";
-import { savePrompt } from "../../db/promptDatabaseService";
-import { connectionPool } from "../connectionPool";
-import { requestBatcher } from "../requestBatcher";
-import { cacheService } from "../cacheService";
-import { performanceMonitor } from "../performanceMonitor";
-import { SpecValidator } from "../validation/specValidator";
-import { StatusManager } from "../status/statusManager";
-import { MetricsService } from "../metrics/metricsService";
-import { FinalPromptGenerator } from "../finalPromptGenerator";
-import { IpaServiceInterface } from "../types/serviceTypes";
+import { savePrompt } from "../db/promptDatabaseService";
+import { connectionPool } from "./connectionPool";
+import { requestBatcher } from "./requestBatcher";
+import { cacheService } from "./cacheService";
+import { performanceMonitor } from "./performanceMonitor";
+import { SpecValidator } from "./validation/specValidator";
+import { StatusManager } from "./status/statusManager";
+import { MetricsService } from "./metrics/metricsService";
+import { FinalPromptGenerator } from "./finalPromptGenerator";
+import { IpaServiceInterface } from "./types/serviceTypes";
 
 // Enhanced service with scalability optimizations
 const statusManager = new StatusManager();
