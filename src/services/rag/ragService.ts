@@ -26,18 +26,28 @@ export interface RAGResponse {
   query: string;
   totalResults: number;
   searchTime: number;
+  scores: number[];
 }
 
 export class RAGService {
   private static instance: RAGService;
   private documents: RAGDocument[] = [];
   private isInitialized = false;
+  private vectorDatabase = "Chroma";
 
   static getInstance(): RAGService {
     if (!RAGService.instance) {
       RAGService.instance = new RAGService();
     }
     return RAGService.instance;
+  }
+
+  public getInitializationStatus(): boolean {
+    return this.isInitialized;
+  }
+
+  public getVectorDatabase(): string {
+    return this.vectorDatabase;
   }
 
   async initialize(): Promise<void> {
@@ -169,12 +179,14 @@ export class RAGService {
       .slice(0, queryParams.limit || 10);
 
     const searchTime = Date.now() - startTime;
+    const scores = results.map(r => r.score || 0);
 
     const response: RAGResponse = {
       documents: results,
       query: queryParams.query,
       totalResults: results.length,
-      searchTime
+      searchTime,
+      scores
     };
 
     realTimeResponseService.addResponse({

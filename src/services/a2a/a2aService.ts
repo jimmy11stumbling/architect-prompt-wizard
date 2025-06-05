@@ -28,6 +28,14 @@ export interface TaskDelegation {
   status: "pending" | "assigned" | "completed" | "failed";
 }
 
+export interface AgentMetrics {
+  totalAgents: number;
+  activeAgents: number;
+  busyAgents: number;
+  totalMessages: number;
+  lastActivity: number;
+}
+
 export class A2AService {
   private static instance: A2AService;
   private agents: Map<string, A2AAgent> = new Map();
@@ -39,6 +47,21 @@ export class A2AService {
       A2AService.instance = new A2AService();
     }
     return A2AService.instance;
+  }
+
+  public getInitializationStatus(): boolean {
+    return this.isInitialized;
+  }
+
+  public getAgentMetrics(): AgentMetrics {
+    const agents = Array.from(this.agents.values());
+    return {
+      totalAgents: agents.length,
+      activeAgents: agents.filter(a => a.status === "active").length,
+      busyAgents: agents.filter(a => a.status === "busy").length,
+      totalMessages: this.messages.length,
+      lastActivity: Math.max(...agents.map(a => a.lastSeen))
+    };
   }
 
   async initialize(): Promise<void> {

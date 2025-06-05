@@ -1,13 +1,3 @@
-
-export type TechStack = "React" | "Next.js" | "Vue" | "Angular" | "Svelte" | "Nuxt.js" | "Gatsby" | "Remix" |
-  "Express" | "NestJS" | "FastAPI" | "Django" | "Flask" | "Spring Boot" | "Laravel" | "Ruby on Rails" | "ASP.NET Core" | "Koa.js" | "Hapi.js" |
-  "PostgreSQL" | "MongoDB" | "Redis" | "MySQL" | "SQLite" | "Supabase" | "Firebase" | "DynamoDB" | "CouchDB" | "Cassandra" |
-  "Docker" | "Kubernetes" | "GraphQL" | "REST API" | "WebSockets" | "Microservices" | "Serverless" | "AWS" | "Google Cloud" | "Azure" | string;
-
-export type VectorDatabaseType = "Pinecone" | "Weaviate" | "Milvus" | "Qdrant" | "Chroma" | "PGVector" | "FAISS" | "Elasticsearch" | "OpenSearch" | "None" | string;
-
-export type MCPType = "Standard MCP" | "Extended MCP" | "MCP with Tools" | "MCP with Resources" | "MCP with Prompts" | "MCP with Sampling" | "Custom MCP Implementation" | "None" | string;
-
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
@@ -16,65 +6,78 @@ export interface ProjectSpec {
   customBackendTech: string[];
   a2aIntegrationDetails: string;
   additionalFeatures: string;
-  ragVectorDb: VectorDatabaseType;
+  ragVectorDb: VectorDatabase;
   customRagVectorDb: string;
   mcpType: MCPType;
   customMcpType: string;
   advancedPromptDetails: string;
-  deploymentPreference?: string;
-  authenticationMethod?: string;
-  performanceRequirements?: string;
-  securityConsiderations?: string;
 }
 
-export type AgentName = 
-  | "RequirementDecompositionAgent" 
-  | "RAGContextIntegrationAgent" 
-  | "A2AProtocolExpertAgent" 
-  | "TechStackImplementationAgent_Frontend" 
-  | "TechStackImplementationAgent_Backend" 
-  | "CursorOptimizationAgent" 
-  | "QualityAssuranceAgent";
+export type TechStack = 
+  | "React"
+  | "Vue"
+  | "Angular"
+  | "Next.js"
+  | "Express"
+  | "FastAPI"
+  | "Django"
+  | "Node.js"
+  | "TypeScript"
+  | "JavaScript"
+  | "Python"
+  | "Java"
+  | "Go"
+  | "Rust"
+  | "PostgreSQL"
+  | "MySQL"
+  | "MongoDB"
+  | "Redis"
+  | "GraphQL"
+  | "REST API"
+  | "Docker"
+  | "Kubernetes"
+  | "AWS"
+  | "Azure"
+  | "GCP";
+
+export type VectorDatabase = "Chroma" | "Pinecone" | "Weaviate" | "Qdrant" | "FAISS" | "Custom";
+export type MCPType = "Standard MCP" | "Custom MCP" | "Enterprise MCP";
 
 export interface AgentStatus {
-  agent: AgentName;
-  status: "idle" | "processing" | "completed" | "failed";
-  output?: string;
-  reasoning?: string; // Add reasoning content support
+  id: string;
+  name: string;
+  status: "idle" | "processing" | "completed" | "error";
+  progress: number;
+  currentTask?: string;
+  result?: string;
+  error?: string;
+  timestamp: number;
 }
 
 export interface GenerationStatus {
   taskId: string;
   status: "pending" | "processing" | "completed" | "failed";
-  progress: number;
   agents: AgentStatus[];
   result?: string;
   error?: string;
-  spec?: ProjectSpec;
-  messages?: DeepSeekMessage[];
-  reasoningHistory?: ReasoningStep[]; // Add reasoning history
-}
-
-export interface DeepSeekMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-  reasoning_content?: string; // Add reasoning content support
-}
-
-export interface ReasoningStep {
-  agent: AgentName;
-  reasoning: string;
-  timestamp: number;
+  progress: number;
+  startTime: number;
+  endTime?: number;
 }
 
 export interface DeepSeekCompletionRequest {
   model: string;
-  messages: DeepSeekMessage[];
+  messages: Array<{
+    role: "system" | "user" | "assistant";
+    content: string;
+    reasoning_content?: string;
+  }>;
   max_tokens?: number;
-  temperature?: number; // Not supported for deepseek-reasoner
-  top_p?: number; // Not supported for deepseek-reasoner
-  frequency_penalty?: number; // Not supported for deepseek-reasoner
-  presence_penalty?: number; // Not supported for deepseek-reasoner
+  temperature?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  stream?: boolean;
 }
 
 export interface DeepSeekCompletionResponse {
@@ -82,59 +85,41 @@ export interface DeepSeekCompletionResponse {
   object: string;
   created: number;
   model: string;
-  choices: {
+  choices: Array<{
     index: number;
     message: {
       role: string;
       content: string;
-      reasoning_content?: string; // Add reasoning content support
+      reasoning_content?: string;
     };
     finish_reason: string;
-  }[];
+  }>;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
-    reasoning_tokens?: number; // Add reasoning tokens tracking
+    reasoning_tokens?: number;
   };
 }
 
-// Add MCP and A2A related types
-export interface MCPServer {
-  id: string;
-  name: string;
-  endpoint: string;
-  capabilities: string[];
-  status: "active" | "inactive" | "error";
-}
-
-export interface A2AAgent {
-  id: string;
-  name: string;
-  capabilities: string[];
-  endpoint: string;
-  status: "online" | "offline" | "busy";
-}
-
-export interface RAGDocument {
-  id: string;
-  title: string;
-  content: string;
-  embedding?: number[];
-  metadata: Record<string, any>;
-  source: string;
-}
-
+// Fixed RAG types
 export interface RAGQuery {
   query: string;
-  filters?: Record<string, any>;
   limit?: number;
   threshold?: number;
+  filters?: Record<string, any>;
 }
 
 export interface RAGResult {
-  documents: RAGDocument[];
-  scores: number[];
+  documents: Array<{
+    id: string;
+    title: string;
+    content: string;
+    source: string;
+    metadata?: Record<string, any>;
+  }>;
   query: string;
   totalResults: number;
+  scores: number[];
+  searchTime?: number;
 }

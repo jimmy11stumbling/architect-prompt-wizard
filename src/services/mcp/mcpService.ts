@@ -4,8 +4,8 @@ import { realTimeResponseService } from "../integration/realTimeResponseService"
 export interface MCPTool {
   name: string;
   description: string;
-  inputSchema: any;
-  outputSchema?: any;
+  parameters: Record<string, any>;
+  category?: string;
 }
 
 export interface MCPResource {
@@ -18,22 +18,30 @@ export interface MCPResource {
 export interface MCPPrompt {
   name: string;
   description: string;
-  arguments?: any[];
+  arguments: Record<string, any>;
 }
 
-export interface MCPServerInfo {
+export interface MCPServer {
+  id: string;
   name: string;
-  version: string;
-  capabilities: string[];
-  status: "connected" | "disconnected" | "error";
+  status: "online" | "offline" | "error";
+  endpoint: string;
+  toolCount: number;
+  resourceCount: number;
+}
+
+export interface MCPToolResult {
+  content: string;
+  isError?: boolean;
+  metadata?: Record<string, any>;
 }
 
 export class MCPService {
   private static instance: MCPService;
-  private servers: Map<string, MCPServerInfo> = new Map();
   private tools: MCPTool[] = [];
   private resources: MCPResource[] = [];
   private prompts: MCPPrompt[] = [];
+  private servers: MCPServer[] = [];
   private isInitialized = false;
 
   static getInstance(): MCPService {
@@ -43,88 +51,59 @@ export class MCPService {
     return MCPService.instance;
   }
 
+  public getInitializationStatus(): boolean {
+    return this.isInitialized;
+  }
+
+  public getServers(): MCPServer[] {
+    return [...this.servers];
+  }
+
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "processing",
-      message: "Initializing MCP Hub and connecting to servers"
+      message: "Initializing MCP Hub with tools and resources"
     });
-
-    // Initialize demo servers
-    const demoServers: MCPServerInfo[] = [
-      {
-        name: "filesystem-server",
-        version: "1.0.0",
-        capabilities: ["read_file", "write_file", "list_directory"],
-        status: "connected"
-      },
-      {
-        name: "git-server",
-        version: "1.2.0",
-        capabilities: ["git_status", "git_log", "git_diff"],
-        status: "connected"
-      },
-      {
-        name: "web-server",
-        version: "2.1.0",
-        capabilities: ["fetch_url", "scrape_content", "validate_links"],
-        status: "connected"
-      }
-    ];
-
-    for (const server of demoServers) {
-      this.servers.set(server.name, server);
-    }
 
     // Initialize demo tools
     this.tools = [
       {
         name: "read_file",
-        description: "Read the contents of a file from the filesystem",
-        inputSchema: {
-          type: "object",
-          properties: {
-            path: { type: "string", description: "Path to the file to read" }
-          },
-          required: ["path"]
-        }
+        description: "Read content from a file",
+        parameters: {
+          path: { type: "string", description: "File path to read" }
+        },
+        category: "filesystem"
       },
       {
         name: "write_file",
-        description: "Write content to a file on the filesystem",
-        inputSchema: {
-          type: "object",
-          properties: {
-            path: { type: "string", description: "Path to the file to write" },
-            content: { type: "string", description: "Content to write to the file" }
-          },
-          required: ["path", "content"]
-        }
+        description: "Write content to a file",
+        parameters: {
+          path: { type: "string", description: "File path to write" },
+          content: { type: "string", description: "Content to write" }
+        },
+        category: "filesystem"
       },
       {
-        name: "fetch_url",
-        description: "Fetch content from a web URL",
-        inputSchema: {
-          type: "object",
-          properties: {
-            url: { type: "string", description: "URL to fetch content from" },
-            timeout: { type: "number", description: "Request timeout in seconds" }
-          },
-          required: ["url"]
-        }
+        name: "search_web",
+        description: "Search the web for information",
+        parameters: {
+          query: { type: "string", description: "Search query" },
+          limit: { type: "number", description: "Number of results", default: 5 }
+        },
+        category: "web"
       },
       {
-        name: "git_status",
-        description: "Get the current Git repository status",
-        inputSchema: {
-          type: "object",
-          properties: {
-            repository: { type: "string", description: "Path to the Git repository" }
-          },
-          required: ["repository"]
-        }
+        name: "send_notification",
+        description: "Send a notification",
+        parameters: {
+          message: { type: "string", description: "Notification message" },
+          priority: { type: "string", enum: ["low", "normal", "high"], default: "normal" }
+        },
+        category: "communication"
       }
     ];
 
@@ -137,14 +116,16 @@ export class MCPService {
         mimeType: "application/json"
       },
       {
-        uri: "git://repository/status",
-        name: "Repository Status",
-        description: "Current Git repository status information"
+        uri: "db://projects/current",
+        name: "Current Project Data",
+        description: "Information about the current project",
+        mimeType: "application/json"
       },
       {
-        uri: "web://api/health",
-        name: "Health Check",
-        description: "System health check endpoint"
+        uri: "api://status/health",
+        name: "System Health Status",
+        description: "Current health status of all systems",
+        mimeType: "application/json"
       }
     ];
 
@@ -152,13 +133,47 @@ export class MCPService {
     this.prompts = [
       {
         name: "analyze_code",
-        description: "Analyze code quality and suggest improvements",
-        arguments: ["file_path", "analysis_type"]
+        description: "Analyze code for potential issues",
+        arguments: {
+          code: { type: "string", description: "Code to analyze" },
+          language: { type: "string", description: "Programming language" }
+        }
       },
       {
-        name: "generate_docs",
-        description: "Generate documentation for code files",
-        arguments: ["source_files", "output_format"]
+        name: "generate_documentation",
+        description: "Generate documentation for a project",
+        arguments: {
+          project_path: { type: "string", description: "Path to project" },
+          format: { type: "string", enum: ["markdown", "html", "pdf"], default: "markdown" }
+        }
+      }
+    ];
+
+    // Initialize demo servers
+    this.servers = [
+      {
+        id: "filesystem-server",
+        name: "Filesystem MCP Server",
+        status: "online",
+        endpoint: "stdio://filesystem",
+        toolCount: 2,
+        resourceCount: 1
+      },
+      {
+        id: "web-server",
+        name: "Web Search MCP Server",
+        status: "online",
+        endpoint: "https://mcp-web.example.com",
+        toolCount: 1,
+        resourceCount: 0
+      },
+      {
+        id: "notification-server",
+        name: "Notification MCP Server",
+        status: "online",
+        endpoint: "stdio://notifications",
+        toolCount: 1,
+        resourceCount: 0
       }
     ];
 
@@ -167,12 +182,12 @@ export class MCPService {
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "success",
-      message: `MCP Hub initialized with ${this.servers.size} servers and ${this.tools.length} tools`,
-      data: { 
-        serverCount: this.servers.size,
+      message: `MCP Hub initialized with ${this.tools.length} tools, ${this.resources.length} resources, and ${this.servers.length} servers`,
+      data: {
         toolCount: this.tools.length,
         resourceCount: this.resources.length,
-        connectedServers: Array.from(this.servers.keys())
+        serverCount: this.servers.length,
+        categories: [...new Set(this.tools.map(t => t.category))]
       }
     });
   }
@@ -183,11 +198,8 @@ export class MCPService {
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "success",
-      message: `Listed ${this.tools.length} available MCP tools`,
-      data: { 
-        toolNames: this.tools.map(t => t.name),
-        toolCount: this.tools.length
-      }
+      message: `Retrieved ${this.tools.length} MCP tools`,
+      data: { toolCount: this.tools.length, tools: this.tools.map(t => t.name) }
     });
 
     return [...this.tools];
@@ -199,96 +211,99 @@ export class MCPService {
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "success",
-      message: `Listed ${this.resources.length} available MCP resources`,
-      data: { 
-        resourceUris: this.resources.map(r => r.uri),
-        resourceCount: this.resources.length
-      }
+      message: `Retrieved ${this.resources.length} MCP resources`,
+      data: { resourceCount: this.resources.length, resources: this.resources.map(r => r.name) }
     });
 
     return [...this.resources];
   }
 
-  async callTool(toolName: string, parameters: any): Promise<any> {
+  async listPrompts(): Promise<MCPPrompt[]> {
+    await this.initialize();
+    
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "success",
+      message: `Retrieved ${this.prompts.length} MCP prompts`,
+      data: { promptCount: this.prompts.length, prompts: this.prompts.map(p => p.name) }
+    });
+
+    return [...this.prompts];
+  }
+
+  async callTool(toolName: string, parameters: Record<string, any>): Promise<MCPToolResult> {
     await this.initialize();
 
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "processing",
-      message: `Calling MCP tool: ${toolName}`,
+      message: `Executing MCP tool: ${toolName}`,
       data: { toolName, parameters }
     });
 
     const tool = this.tools.find(t => t.name === toolName);
     if (!tool) {
-      const errorMsg = `Tool '${toolName}' not found`;
+      const error = `Tool ${toolName} not found`;
       realTimeResponseService.addResponse({
         source: "mcp-service",
         status: "error",
-        message: errorMsg,
+        message: error,
         data: { toolName, availableTools: this.tools.map(t => t.name) }
       });
-      throw new Error(errorMsg);
+      throw new Error(error);
     }
 
     // Simulate tool execution
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    let result: any;
+    let result: MCPToolResult;
     
     switch (toolName) {
       case "read_file":
         result = {
-          content: `{
-  "system": {
-    "name": "Enhanced AI System",
-    "version": "2.0.0",
-    "components": ["RAG", "A2A", "MCP", "DeepSeek"],
-    "status": "operational"
-  }
-}`,
-          encoding: "utf-8",
-          size: 156
+          content: `{"system": "IPA System", "version": "2.0", "services": ["RAG", "A2A", "MCP", "DeepSeek"], "status": "operational"}`,
+          metadata: { fileSize: 156, lastModified: new Date().toISOString() }
         };
         break;
       case "write_file":
         result = {
-          success: true,
-          bytesWritten: parameters.content?.length || 0,
-          path: parameters.path
+          content: `File written successfully to ${parameters.path}`,
+          metadata: { bytesWritten: parameters.content?.length || 0 }
         };
         break;
-      case "fetch_url":
+      case "search_web":
         result = {
-          content: "Successfully fetched content from URL",
-          statusCode: 200,
-          headers: { "content-type": "text/html" }
+          content: JSON.stringify([
+            { title: "RAG 2.0 Documentation", url: "https://example.com/rag2", snippet: "Advanced RAG techniques..." },
+            { title: "A2A Protocol Guide", url: "https://example.com/a2a", snippet: "Agent-to-agent communication..." }
+          ]),
+          metadata: { resultsCount: 2, searchTime: 450 }
         };
         break;
-      case "git_status":
+      case "send_notification":
         result = {
-          branch: "main",
-          modified: 3,
-          staged: 1,
-          untracked: 2,
-          clean: false
+          content: `Notification sent: ${parameters.message}`,
+          metadata: { priority: parameters.priority || "normal", timestamp: new Date().toISOString() }
         };
         break;
       default:
-        result = { message: `Tool ${toolName} executed successfully`, parameters };
+        result = {
+          content: `Tool ${toolName} executed successfully`,
+          metadata: { executionTime: Date.now() }
+        };
     }
 
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "success",
-      message: `MCP tool '${toolName}' executed successfully`,
-      data: { toolName, result, executionTime: "200ms" }
+      message: `MCP tool ${toolName} executed successfully`,
+      data: { toolName, result: result.content, metadata: result.metadata }
     });
 
     return result;
   }
 
-  async readResource(uri: string): Promise<any> {
+  async readResource(uri: string): Promise<string> {
     await this.initialize();
 
     realTimeResponseService.addResponse({
@@ -300,48 +315,75 @@ export class MCPService {
 
     const resource = this.resources.find(r => r.uri === uri);
     if (!resource) {
-      const errorMsg = `Resource '${uri}' not found`;
+      const error = `Resource ${uri} not found`;
       realTimeResponseService.addResponse({
         source: "mcp-service",
         status: "error",
-        message: errorMsg,
+        message: error,
         data: { uri, availableResources: this.resources.map(r => r.uri) }
       });
-      throw new Error(errorMsg);
+      throw new Error(error);
     }
 
     // Simulate resource reading
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-    const result = {
-      uri,
-      content: `Resource content for ${resource.name}`,
-      mimeType: resource.mimeType || "text/plain",
-      lastModified: new Date().toISOString()
-    };
+    let content: string;
+    switch (uri) {
+      case "file:///config/system.json":
+        content = JSON.stringify({
+          system: "IPA System",
+          version: "2.0",
+          services: ["RAG", "A2A", "MCP", "DeepSeek"],
+          status: "operational",
+          lastUpdated: new Date().toISOString()
+        }, null, 2);
+        break;
+      case "db://projects/current":
+        content = JSON.stringify({
+          projectId: "ipa-system",
+          name: "Intelligent Prompt Architect",
+          status: "active",
+          components: 4,
+          lastActivity: new Date().toISOString()
+        }, null, 2);
+        break;
+      case "api://status/health":
+        content = JSON.stringify({
+          overall: "healthy",
+          services: {
+            rag: "operational",
+            a2a: "operational",
+            mcp: "operational",
+            deepseek: "operational"
+          },
+          timestamp: new Date().toISOString()
+        }, null, 2);
+        break;
+      default:
+        content = `Content of resource: ${resource.name}`;
+    }
 
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "success",
-      message: `MCP resource '${uri}' read successfully`,
-      data: { uri, contentLength: result.content.length }
+      message: `MCP resource ${uri} read successfully`,
+      data: { uri, contentLength: content.length }
     });
 
-    return result;
+    return content;
   }
 
-  getServerStatus(): MCPServerInfo[] {
-    return Array.from(this.servers.values());
+  getToolsByCategory(category: string): MCPTool[] {
+    return this.tools.filter(tool => tool.category === category);
   }
 
-  getHubStatus() {
+  getServerStatus() {
     return {
-      initialized: this.isInitialized,
-      serverCount: this.servers.size,
-      connectedServers: Array.from(this.servers.values()).filter(s => s.status === "connected").length,
-      toolCount: this.tools.length,
-      resourceCount: this.resources.length,
-      promptCount: this.prompts.length
+      totalServers: this.servers.length,
+      onlineServers: this.servers.filter(s => s.status === "online").length,
+      totalTools: this.tools.length,
+      totalResources: this.resources.length
     };
   }
 }

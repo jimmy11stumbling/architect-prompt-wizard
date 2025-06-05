@@ -1,3 +1,4 @@
+
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
@@ -14,7 +15,7 @@ interface IntegrationStatus {
 
 type ServiceStatus = "pending" | "initializing" | "connected" | "error";
 
-interface SystemHealth {
+export interface SystemHealth {
   overall: boolean;
   services: {
     rag: boolean;
@@ -24,6 +25,7 @@ interface SystemHealth {
   };
   details: IntegrationStatus;
   lastCheck: number;
+  overallStatus: "healthy" | "degraded" | "unhealthy";
 }
 
 export class SystemIntegrationService {
@@ -155,6 +157,16 @@ export class SystemIntegrationService {
     const deepseekHealth = this.integrationStatus.deepseek.status === "connected";
 
     const overall = ragHealth && a2aHealth && mcpHealth && deepseekHealth;
+    const healthyCount = [ragHealth, a2aHealth, mcpHealth, deepseekHealth].filter(Boolean).length;
+    
+    let overallStatus: "healthy" | "degraded" | "unhealthy";
+    if (healthyCount === 4) {
+      overallStatus = "healthy";
+    } else if (healthyCount >= 2) {
+      overallStatus = "degraded";
+    } else {
+      overallStatus = "unhealthy";
+    }
 
     return {
       overall,
@@ -165,7 +177,8 @@ export class SystemIntegrationService {
         deepseek: deepseekHealth
       },
       details: this.integrationStatus,
-      lastCheck: Date.now()
+      lastCheck: Date.now(),
+      overallStatus
     };
   }
 
@@ -185,7 +198,7 @@ export class SystemIntegrationService {
     realTimeResponseService.addResponse({
       source: "system-integration",
       status: health.overall ? "success" : "validation",
-      message: `Health check completed - System status: ${health.overall ? "Healthy" : "Issues detected"}`,
+      message: `Health check completed - System status: ${health.overallStatus}`,
       data: {
         overallHealth: health.overall,
         serviceStatuses: health.services,
@@ -195,6 +208,62 @@ export class SystemIntegrationService {
     });
 
     return health;
+  }
+
+  async demonstrateIntegration(): Promise<void> {
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Demonstrating system integration capabilities"
+    });
+
+    try {
+      // Demonstrate RAG query
+      await ragService.query({
+        query: "system integration patterns",
+        limit: 3
+      });
+
+      // Demonstrate A2A coordination
+      await a2aService.delegateTask("Integration demo", ["coordination"]);
+
+      // Demonstrate MCP tool usage
+      await mcpService.callTool("read_file", { path: "/config/system.json" });
+
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "success",
+        message: "Integration demonstration completed successfully"
+      });
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "error",
+        message: `Integration demonstration failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
+  }
+
+  async processEnhancedAgentRequest(request: string): Promise<string> {
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Processing enhanced agent request"
+    });
+
+    // Simulate processing
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const response = `Processed request: ${request}`;
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "success",
+      message: "Enhanced agent request processed successfully",
+      data: { request, response }
+    });
+
+    return response;
   }
 }
 
