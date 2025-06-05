@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Brain, Zap, Database, Network, Settings, FileText, MessageSquare, Code, Activity } from "lucide-react";
 import { enhancedSystemService, EnhancedQuery, EnhancedResponse } from "@/services/integration/enhancedSystemService";
+import RealTimeResponseMonitor from "./RealTimeResponseMonitor";
 
 const EnhancedQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
@@ -145,28 +146,11 @@ const EnhancedQueryInterface: React.FC = () => {
               Clear
             </Button>
           </div>
-
-          {realTimeLog.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  Real-time Processing Log
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="font-mono text-xs space-y-1 max-h-32 overflow-y-auto bg-muted p-3 rounded">
-                  {realTimeLog.map((log, index) => (
-                    <div key={index} className="text-muted-foreground">
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </CardContent>
       </Card>
+
+      {/* Real-Time Response Monitor */}
+      <RealTimeResponseMonitor />
 
       {response && (
         <Tabs defaultValue="response" className="w-full">
