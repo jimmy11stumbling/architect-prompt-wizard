@@ -1,21 +1,41 @@
-
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
-import { DeepSeekClient } from "../ipa/api/deepseekClient";
-import { ProjectSpec, AgentName, VectorDatabaseType } from "@/types/ipa-types";
+import { deepseekReasonerService } from "../deepseek/deepseekReasonerService";
+import { realTimeResponseService } from "./realTimeResponseService";
+import { ProjectSpec } from "@/types/ipa-types";
 
-export interface SystemHealth {
-  ragService: "healthy" | "degraded" | "offline";
-  a2aService: "healthy" | "degraded" | "offline";
-  mcpService: "healthy" | "degraded" | "offline";
-  deepseekAPI: "healthy" | "degraded" | "offline";
-  overallStatus: "operational" | "degraded" | "critical";
+interface IntegrationStatus {
+  rag: { status: ServiceStatus; lastUpdated: number };
+  a2a: { status: ServiceStatus; lastUpdated: number };
+  mcp: { status: ServiceStatus; lastUpdated: number };
+  deepseek: { status: ServiceStatus; lastUpdated: number };
+}
+
+type ServiceStatus = "pending" | "initializing" | "connected" | "error";
+
+interface SystemHealth {
+  overall: boolean;
+  services: {
+    rag: boolean;
+    a2a: boolean;
+    mcp: boolean;
+    deepseek: boolean;
+  };
+  details: IntegrationStatus;
+  lastCheck: number;
 }
 
 export class SystemIntegrationService {
   private static instance: SystemIntegrationService;
   private initialized = false;
+  private currentSpec: ProjectSpec | null = null;
+  private integrationStatus: IntegrationStatus = {
+    rag: { status: "pending", lastUpdated: Date.now() },
+    a2a: { status: "pending", lastUpdated: Date.now() },
+    mcp: { status: "pending", lastUpdated: Date.now() },
+    deepseek: { status: "pending", lastUpdated: Date.now() }
+  };
 
   static getInstance(): SystemIntegrationService {
     if (!SystemIntegrationService.instance) {
@@ -25,217 +45,156 @@ export class SystemIntegrationService {
   }
 
   async initialize(spec: ProjectSpec): Promise<void> {
-    if (this.initialized) {
-      console.log("System already initialized");
+    if (this.initialized && this.currentSpec === spec) {
       return;
     }
 
-    console.log("Initializing integrated system...");
-    
+    this.currentSpec = spec;
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Starting system integration initialization",
+      data: { projectDescription: spec.projectDescription }
+    });
+
     try {
-      // Initialize RAG service with project's vector database
-      await ragService.initialize(spec.ragVectorDb);
+      // Initialize RAG service
+      this.updateIntegrationStatus("rag", "initializing");
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "processing",
+        message: "Initializing RAG 2.0 service"
+      });
       
-      // Initialize A2A communication
+      await ragService.initialize();
+      this.updateIntegrationStatus("rag", "connected");
+
+      // Initialize A2A service
+      this.updateIntegrationStatus("a2a", "initializing");
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "processing",
+        message: "Initializing A2A protocol service"
+      });
+      
       await a2aService.initialize();
+      this.updateIntegrationStatus("a2a", "connected");
+
+      // Initialize MCP service
+      this.updateIntegrationStatus("mcp", "initializing");
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "processing",
+        message: "Initializing MCP Hub service"
+      });
       
-      // Initialize MCP hub
       await mcpService.initialize();
+      this.updateIntegrationStatus("mcp", "connected");
+
+      // Initialize DeepSeek service
+      this.updateIntegrationStatus("deepseek", "initializing");
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "processing",
+        message: "Initializing DeepSeek Reasoner service"
+      });
       
-      // Test DeepSeek API connectivity
-      const apiKey = localStorage.getItem("deepseek_api_key");
-      if (apiKey) {
-        const isValid = await DeepSeekClient.validateApiKey(apiKey);
-        console.log("DeepSeek API validation:", isValid ? "success" : "failed");
-      }
-      
+      await deepseekReasonerService.initialize();
+      this.updateIntegrationStatus("deepseek", "connected");
+
       this.initialized = true;
-      console.log("System integration complete");
-      
+
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "success",
+        message: "System integration completed successfully",
+        data: {
+          initializedServices: ["RAG 2.0", "A2A Protocol", "MCP Hub", "DeepSeek Reasoner"],
+          projectSpec: spec.projectDescription,
+          timestamp: new Date().toISOString()
+        }
+      });
+
     } catch (error) {
-      console.error("System initialization failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "error",
+        message: `System integration failed: ${errorMessage}`,
+        data: { error: errorMessage, spec }
+      });
+      
       throw error;
     }
   }
 
-  async processEnhancedAgentRequest(
-    agent: AgentName,
-    spec: ProjectSpec,
-    userQuery: string
-  ): Promise<{
-    response: string;
-    reasoning?: string;
-    ragContext?: any[];
-    mcpTools?: any[];
-    a2aCoordination?: any;
-  }> {
-    console.log(`Processing enhanced request for ${agent}:`, userQuery);
-    
-    // Step 1: Query RAG database for relevant documentation
-    const ragResults = await ragService.query({
-      query: `${agent} ${userQuery} ${spec.frontendTechStack.join(' ')} ${spec.backendTechStack.join(' ')}`,
-      limit: 3,
-      threshold: 0.4
+  private updateIntegrationStatus(service: keyof IntegrationStatus, status: ServiceStatus): void {
+    this.integrationStatus[service] = {
+      status,
+      lastUpdated: Date.now()
+    };
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: status === "connected" ? "success" : status === "error" ? "error" : "processing",
+      message: `Service ${service.toUpperCase()} status: ${status}`,
+      data: { service, status, timestamp: Date.now() }
     });
-
-    // Step 2: Coordinate with other agents via A2A
-    const coordinationResult = await a2aService.delegateTask(
-      `Assist with ${agent} processing: ${userQuery}`,
-      ["document-retrieval", "semantic-search", "tool-orchestration"]
-    );
-
-    // Step 3: Gather MCP tools and resources
-    const relevantTools = await mcpService.listTools();
-    const relevantResources = await mcpService.listResources();
-
-    // Step 4: Use DeepSeek Reasoner for enhanced processing
-    const enhancedRequest = {
-      model: "deepseek-reasoner",
-      messages: [
-        {
-          role: "system" as const,
-          content: `You are ${agent}, an expert AI agent with access to:
-            
-            RAG Context: ${JSON.stringify(ragResults.documents.map(d => d.title))}
-            Available MCP Tools: ${relevantTools.map(t => t.name).join(', ')}
-            A2A Coordination: ${coordinationResult.assignedAgent?.name || 'None'}
-            
-            Use this context to provide comprehensive, accurate responses.`
-        },
-        {
-          role: "user" as const,
-          content: `Project Spec: ${JSON.stringify(spec, null, 2)}
-          
-          Query: ${userQuery}
-          
-          Please provide a detailed response incorporating the available context and tools.`
-        }
-      ],
-      max_tokens: 4096
-    };
-
-    const reasonerResponse = await DeepSeekClient.makeReasonerCall(enhancedRequest);
-
-    return {
-      response: reasonerResponse.content,
-      reasoning: reasonerResponse.reasoning_content,
-      ragContext: ragResults.documents,
-      mcpTools: relevantTools.slice(0, 5),
-      a2aCoordination: coordinationResult
-    };
-  }
-
-  async getSystemHealth(): Promise<SystemHealth> {
-    const health: SystemHealth = {
-      ragService: "offline",
-      a2aService: "offline", 
-      mcpService: "offline",
-      deepseekAPI: "offline",
-      overallStatus: "critical"
-    };
-
-    try {
-      // Check RAG service
-      const ragDocCount = ragService.getDocumentCount();
-      health.ragService = ragDocCount > 0 ? "healthy" : "degraded";
-    } catch {
-      health.ragService = "offline";
-    }
-
-    try {
-      // Check A2A service
-      const agents = a2aService.getAgents();
-      health.a2aService = agents.length > 0 ? "healthy" : "degraded";
-    } catch {
-      health.a2aService = "offline";
-    }
-
-    try {
-      // Check MCP service
-      const servers = mcpService.getServers();
-      health.mcpService = servers.length > 0 ? "healthy" : "degraded";
-    } catch {
-      health.mcpService = "offline";
-    }
-
-    try {
-      // Check DeepSeek API
-      const apiKey = localStorage.getItem("deepseek_api_key");
-      if (apiKey) {
-        const isValid = await DeepSeekClient.validateApiKey(apiKey);
-        health.deepseekAPI = isValid ? "healthy" : "degraded";
-      } else {
-        health.deepseekAPI = "degraded";
-      }
-    } catch {
-      health.deepseekAPI = "offline";
-    }
-
-    // Determine overall status
-    const healthyServices = Object.values(health).filter(status => status === "healthy").length;
-    if (healthyServices >= 3) {
-      health.overallStatus = "operational";
-    } else if (healthyServices >= 2) {
-      health.overallStatus = "degraded";
-    } else {
-      health.overallStatus = "critical";
-    }
-
-    return health;
-  }
-
-  async demonstrateIntegration(): Promise<{
-    ragDemo: any;
-    a2aDemo: any;
-    mcpDemo: any;
-    integrationTest: any;
-  }> {
-    console.log("Running integration demonstration...");
-
-    // RAG demonstration
-    const ragDemo = await ragService.query({
-      query: "Cursor AI MCP integration best practices",
-      limit: 2
-    });
-
-    // A2A demonstration
-    const a2aDemo = await a2aService.sendMessage({
-      id: "demo-msg",
-      from: "system",
-      to: "rag-agent",
-      type: "request",
-      payload: { query: "Test coordination", priority: "low" },
-      timestamp: Date.now()
-    });
-
-    // MCP demonstration
-    const mcpDemo = await mcpService.callTool("read_file", {
-      path: "/config/app.json"
-    });
-
-    // Integration test
-    const integrationTest = {
-      ragIntegration: ragDemo.documents.length > 0,
-      a2aIntegration: a2aDemo !== null,
-      mcpIntegration: mcpDemo.content !== undefined,
-      timestamp: new Date().toISOString()
-    };
-
-    return {
-      ragDemo,
-      a2aDemo,
-      mcpDemo,
-      integrationTest
-    };
   }
 
   isInitialized(): boolean {
     return this.initialized;
   }
 
-  async reset(): Promise<void> {
-    this.initialized = false;
-    console.log("System integration reset");
+  getSystemHealth(): SystemHealth {
+    const ragHealth = this.integrationStatus.rag.status === "connected";
+    const a2aHealth = this.integrationStatus.a2a.status === "connected";
+    const mcpHealth = this.integrationStatus.mcp.status === "connected";
+    const deepseekHealth = this.integrationStatus.deepseek.status === "connected";
+
+    const overall = ragHealth && a2aHealth && mcpHealth && deepseekHealth;
+
+    return {
+      overall,
+      services: {
+        rag: ragHealth,
+        a2a: a2aHealth,
+        mcp: mcpHealth,
+        deepseek: deepseekHealth
+      },
+      details: this.integrationStatus,
+      lastCheck: Date.now()
+    };
+  }
+
+  getCurrentSpec(): ProjectSpec | null {
+    return this.currentSpec;
+  }
+
+  async performHealthCheck(): Promise<SystemHealth> {
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Performing comprehensive system health check"
+    });
+
+    const health = this.getSystemHealth();
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: health.overall ? "success" : "validation",
+      message: `Health check completed - System status: ${health.overall ? "Healthy" : "Issues detected"}`,
+      data: {
+        overallHealth: health.overall,
+        serviceStatuses: health.services,
+        healthySevices: Object.values(health.services).filter(Boolean).length,
+        totalServices: Object.keys(health.services).length
+      }
+    });
+
+    return health;
   }
 }
 

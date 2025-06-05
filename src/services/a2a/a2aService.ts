@@ -1,17 +1,26 @@
 
-import { A2AAgent } from "@/types/ipa-types";
+import { realTimeResponseService } from "../integration/realTimeResponseService";
+
+export interface A2AAgent {
+  id: string;
+  name: string;
+  status: "active" | "inactive" | "busy";
+  capabilities: string[];
+  endpoint?: string;
+  lastSeen: number;
+}
 
 export interface A2AMessage {
   id: string;
   from: string;
   to: string;
-  type: "request" | "response" | "notification" | "delegation";
+  type: "request" | "response" | "notification";
   payload: any;
   timestamp: number;
-  priority?: "low" | "medium" | "high";
+  priority?: "low" | "normal" | "high";
 }
 
-export interface A2ATaskDelegation {
+export interface TaskDelegation {
   taskId: string;
   description: string;
   requiredCapabilities: string[];
@@ -21,10 +30,9 @@ export interface A2ATaskDelegation {
 
 export class A2AService {
   private static instance: A2AService;
-  private agents: A2AAgent[] = [];
-  private messageQueue: A2AMessage[] = [];
-  private activeTasks: Map<string, A2ATaskDelegation> = new Map();
-  private initialized = false;
+  private agents: Map<string, A2AAgent> = new Map();
+  private messages: A2AMessage[] = [];
+  private isInitialized = false;
 
   static getInstance(): A2AService {
     if (!A2AService.instance) {
@@ -34,128 +42,189 @@ export class A2AService {
   }
 
   async initialize(): Promise<void> {
-    // Initialize with sample A2A agents
-    this.agents = [
+    if (this.isInitialized) return;
+
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "processing",
+      message: "Initializing A2A agent network"
+    });
+
+    // Initialize with demo agents
+    const demoAgents: A2AAgent[] = [
       {
-        id: "rag-agent",
-        name: "RAG Knowledge Agent",
-        capabilities: ["document-retrieval", "semantic-search", "knowledge-extraction"],
-        endpoint: "a2a://rag-agent",
-        status: "online"
+        id: "reasoning-assistant",
+        name: "Reasoning Assistant",
+        status: "active",
+        capabilities: ["logical-reasoning", "problem-solving", "analysis"],
+        lastSeen: Date.now()
       },
       {
-        id: "mcp-coordinator",
-        name: "MCP Tool Coordinator",
-        capabilities: ["tool-orchestration", "resource-management", "protocol-bridging"],
-        endpoint: "a2a://mcp-coordinator", 
-        status: "online"
+        id: "context-analyzer",
+        name: "Context Analyzer",
+        status: "active",
+        capabilities: ["context-analysis", "information-extraction", "summarization"],
+        lastSeen: Date.now()
       },
       {
-        id: "deepseek-reasoner",
-        name: "DeepSeek Reasoning Agent",
-        capabilities: ["complex-reasoning", "chain-of-thought", "problem-solving"],
-        endpoint: "a2a://deepseek-reasoner",
-        status: "online"
+        id: "documentation-expert",
+        name: "Documentation Expert",
+        status: "active",
+        capabilities: ["documentation", "knowledge-management", "content-creation"],
+        lastSeen: Date.now()
       },
       {
-        id: "workflow-orchestrator",
-        name: "Workflow Orchestration Agent",
-        capabilities: ["task-delegation", "process-coordination", "system-integration"],
-        endpoint: "a2a://workflow-orchestrator",
-        status: "online"
+        id: "workflow-coordinator",
+        name: "Workflow Coordinator",
+        status: "active",
+        capabilities: ["task-management", "coordination", "scheduling"],
+        lastSeen: Date.now()
+      },
+      {
+        id: "reasoning-coordinator",
+        name: "Reasoning Coordinator",
+        status: "active",
+        capabilities: ["coordination", "reasoning", "task-delegation"],
+        lastSeen: Date.now()
       }
     ];
 
-    this.initialized = true;
-    console.log("A2A Service initialized with", this.agents.length, "agents");
-  }
-
-  async sendMessage(message: A2AMessage): Promise<A2AMessage | null> {
-    console.log("A2A Message sent:", message);
-    
-    const targetAgent = this.agents.find(agent => agent.id === message.to);
-    if (!targetAgent) {
-      console.warn(`Target agent ${message.to} not found`);
-      return null;
+    for (const agent of demoAgents) {
+      this.agents.set(agent.id, agent);
     }
 
-    // Simulate message processing
-    this.messageQueue.push(message);
-    
-    // Simulate response based on message type
-    const response: A2AMessage = {
-      id: `resp-${Date.now()}`,
-      from: message.to,
-      to: message.from,
-      type: "response",
-      payload: {
-        originalMessage: message.id,
-        result: `Processed by ${targetAgent.name}`,
-        capabilities: targetAgent.capabilities,
-        timestamp: Date.now()
-      },
-      timestamp: Date.now()
-    };
+    this.isInitialized = true;
 
-    this.messageQueue.push(response);
-    return response;
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "success",
+      message: `A2A network initialized with ${this.agents.size} agents`,
+      data: { 
+        agentCount: this.agents.size,
+        activeAgents: Array.from(this.agents.values()).filter(a => a.status === "active").length
+      }
+    });
   }
 
-  async delegateTask(description: string, requiredCapabilities: string[]): Promise<A2ATaskDelegation> {
-    const taskId = `task-${Date.now()}`;
+  async sendMessage(message: A2AMessage): Promise<void> {
+    await this.initialize();
+
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "processing",
+      message: `Sending A2A message from ${message.from} to ${message.to}`,
+      data: { messageType: message.type, messageId: message.id }
+    });
+
+    this.messages.push(message);
+
+    // Simulate message processing
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "success",
+      message: `A2A message delivered successfully`,
+      data: { 
+        messageId: message.id,
+        from: message.from,
+        to: message.to,
+        deliveryTime: new Date().toISOString()
+      }
+    });
+  }
+
+  async delegateTask(description: string, requiredCapabilities: string[]): Promise<TaskDelegation> {
+    await this.initialize();
+
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "processing",
+      message: `Delegating task with capabilities: ${requiredCapabilities.join(", ")}`,
+      data: { description, requiredCapabilities }
+    });
+
+    const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    // Find suitable agent based on capabilities
-    const suitableAgent = this.agents.find(agent => 
-      requiredCapabilities.some(cap => agent.capabilities.includes(cap)) &&
-      agent.status === "online"
+    // Find suitable agent
+    const suitableAgents = Array.from(this.agents.values()).filter(agent => 
+      agent.status === "active" && 
+      requiredCapabilities.some(cap => agent.capabilities.includes(cap))
     );
 
-    const delegation: A2ATaskDelegation = {
+    const delegation: TaskDelegation = {
       taskId,
       description,
       requiredCapabilities,
-      assignedAgent: suitableAgent,
-      status: suitableAgent ? "assigned" : "pending"
+      status: "pending"
     };
 
-    this.activeTasks.set(taskId, delegation);
-    
-    console.log(`Task ${taskId} delegated to:`, suitableAgent?.name || "No suitable agent");
-    
+    if (suitableAgents.length > 0) {
+      // Assign to first suitable agent
+      delegation.assignedAgent = suitableAgents[0];
+      delegation.status = "assigned";
+      
+      // Update agent status
+      suitableAgents[0].status = "busy";
+
+      realTimeResponseService.addResponse({
+        source: "a2a-service",
+        status: "success",
+        message: `Task assigned to agent: ${suitableAgents[0].name}`,
+        data: { 
+          taskId,
+          assignedAgent: suitableAgents[0].name,
+          capabilities: suitableAgents[0].capabilities
+        }
+      });
+    } else {
+      realTimeResponseService.addResponse({
+        source: "a2a-service",
+        status: "validation",
+        message: "No suitable agents available for task delegation",
+        data: { taskId, requiredCapabilities }
+      });
+    }
+
     return delegation;
   }
 
-  getAgents(): A2AAgent[] {
-    return [...this.agents];
+  async registerAgent(agent: Omit<A2AAgent, "lastSeen">): Promise<void> {
+    const fullAgent: A2AAgent = {
+      ...agent,
+      lastSeen: Date.now()
+    };
+
+    this.agents.set(agent.id, fullAgent);
+
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "success",
+      message: `New agent registered: ${agent.name}`,
+      data: { agentId: agent.id, capabilities: agent.capabilities }
+    });
   }
 
-  getMessages(): A2AMessage[] {
-    return [...this.messageQueue];
+  getActiveAgents(): A2AAgent[] {
+    return Array.from(this.agents.values()).filter(agent => agent.status === "active");
   }
 
-  getActiveTasks(): A2ATaskDelegation[] {
-    return Array.from(this.activeTasks.values());
+  getAllAgents(): A2AAgent[] {
+    return Array.from(this.agents.values());
   }
 
-  isInitialized(): boolean {
-    return this.initialized;
+  getMessages(limit: number = 50): A2AMessage[] {
+    return this.messages.slice(-limit);
   }
 
-  async updateAgentStatus(agentId: string, status: "online" | "offline" | "busy"): Promise<void> {
-    const agent = this.agents.find(a => a.id === agentId);
-    if (agent) {
-      agent.status = status;
-    }
-  }
-
-  getAgentMetrics(): any {
+  getNetworkStatus() {
+    const agents = Array.from(this.agents.values());
     return {
-      totalAgents: this.agents.length,
-      onlineAgents: this.agents.filter(a => a.status === "online").length,
-      totalMessages: this.messageQueue.length,
-      activeTasks: this.activeTasks.size,
-      lastActivity: this.messageQueue.length > 0 ? 
-        Math.max(...this.messageQueue.map(m => m.timestamp)) : 0
+      totalAgents: agents.length,
+      activeAgents: agents.filter(a => a.status === "active").length,
+      busyAgents: agents.filter(a => a.status === "busy").length,
+      totalMessages: this.messages.length,
+      lastActivity: Math.max(...agents.map(a => a.lastSeen))
     };
   }
 }

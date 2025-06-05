@@ -1,11 +1,37 @@
 
-import { RAGQuery, RAGResult, RAGDocument, VectorDatabaseType } from "@/types/ipa-types";
+import { realTimeResponseService } from "../integration/realTimeResponseService";
+
+export interface RAGDocument {
+  id: string;
+  title: string;
+  content: string;
+  metadata: {
+    source: string;
+    timestamp: string;
+    tags: string[];
+  };
+  embedding?: number[];
+  score?: number;
+}
+
+export interface RAGQuery {
+  query: string;
+  limit?: number;
+  threshold?: number;
+  filters?: Record<string, any>;
+}
+
+export interface RAGResponse {
+  documents: RAGDocument[];
+  query: string;
+  totalResults: number;
+  searchTime: number;
+}
 
 export class RAGService {
   private static instance: RAGService;
   private documents: RAGDocument[] = [];
-  private vectorDb: VectorDatabaseType = "None";
-  private initialized = false;
+  private isInitialized = false;
 
   static getInstance(): RAGService {
     if (!RAGService.instance) {
@@ -14,106 +40,195 @@ export class RAGService {
     return RAGService.instance;
   }
 
-  async initialize(vectorDbType: VectorDatabaseType): Promise<void> {
-    this.vectorDb = vectorDbType;
-    
-    // Initialize with sample documents for demonstration
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "processing",
+      message: "Initializing RAG database with documentation"
+    });
+
+    // Initialize with comprehensive documentation
     this.documents = [
       {
-        id: "doc-1",
-        title: "Cursor AI Integration Guide",
-        content: "Cursor AI is an AI-first code editor that integrates seamlessly with various development workflows. It provides intelligent code completion, refactoring suggestions, and can generate entire functions based on natural language descriptions.",
-        metadata: { category: "development", tool: "cursor" },
-        source: "Documentation"
+        id: "rag-2.0-overview",
+        title: "RAG 2.0 Architecture Overview",
+        content: `RAG 2.0 represents a significant evolution from traditional retrieval-augmented generation systems. Key improvements include:
+        - End-to-end optimization of retriever and generator components
+        - Advanced chunking strategies that preserve semantic meaning
+        - Hybrid search combining dense, sparse, and tensor search methods
+        - Self-reflection and correction mechanisms
+        - Multi-hop reasoning capabilities
+        - Integration with agent frameworks for dynamic retrieval`,
+        metadata: {
+          source: "RAG 2.0 Technical Documentation",
+          timestamp: new Date().toISOString(),
+          tags: ["rag", "architecture", "retrieval", "generation"]
+        }
       },
       {
-        id: "doc-2",
-        title: "RAG 2.0 Architecture Patterns",
-        content: "RAG 2.0 represents the next generation of retrieval-augmented generation systems, featuring end-to-end optimization, sophisticated document processing, and advanced hybrid retrieval strategies combining dense vectors with sparse representations.",
-        metadata: { category: "ai", technique: "rag" },
-        source: "Technical Guide"
+        id: "a2a-protocol-spec",
+        title: "Agent-to-Agent Protocol Specification",
+        content: `The A2A protocol enables seamless communication between autonomous agents:
+        - Agent Cards for dynamic discovery and capability advertisement
+        - Task delegation with request/response patterns
+        - Server-Sent Events for real-time coordination
+        - Secure authentication using OAuth 2.0/2.1
+        - Multi-modal communication supporting text, files, and structured data
+        - Workflow orchestration across heterogeneous agent systems`,
+        metadata: {
+          source: "A2A Protocol Documentation",
+          timestamp: new Date().toISOString(),
+          tags: ["a2a", "protocol", "agents", "communication"]
+        }
       },
       {
-        id: "doc-3",
-        title: "Model Context Protocol Specification",
-        content: "MCP is an open standard protocol that enables AI models to securely interact with external tools and data sources. It provides a standardized way for models to discover, access context from, and invoke actions within external systems.",
-        metadata: { category: "protocol", standard: "mcp" },
-        source: "Specification"
+        id: "mcp-hub-architecture",
+        title: "Model Context Protocol Hub Implementation",
+        content: `MCP Hub provides standardized tool and resource access:
+        - JSON-RPC 2.0 based communication protocol
+        - Tool discovery and execution framework
+        - Resource management with URI-based addressing
+        - Prompt templates for guided interactions
+        - Server lifecycle management and monitoring
+        - Security through OAuth integration and permission controls`,
+        metadata: {
+          source: "MCP Protocol Specification",
+          timestamp: new Date().toISOString(),
+          tags: ["mcp", "protocol", "tools", "resources"]
+        }
       },
       {
-        id: "doc-4",
-        title: "Agent-to-Agent Communication Best Practices",
-        content: "A2A protocols facilitate secure, interoperable communication between autonomous AI agents. Key considerations include message routing, capability discovery, task delegation, and maintaining conversation context across multi-turn interactions.",
-        metadata: { category: "communication", pattern: "a2a" },
-        source: "Best Practices"
+        id: "deepseek-reasoner-integration",
+        title: "DeepSeek Reasoner Chain-of-Thought Processing",
+        content: `DeepSeek Reasoner provides advanced reasoning capabilities:
+        - Chain-of-thought reasoning with up to 32K token reasoning content
+        - Multi-round conversation support with context management
+        - Advanced reasoning patterns for complex problem solving
+        - Integration with RAG systems for knowledge-grounded reasoning
+        - Real-time reasoning process visibility and debugging
+        - Conversation history management and retrieval`,
+        metadata: {
+          source: "DeepSeek API Documentation",
+          timestamp: new Date().toISOString(),
+          tags: ["deepseek", "reasoning", "chat", "ai"]
+        }
       },
       {
-        id: "doc-5",
-        title: "DeepSeek Reasoner Implementation",
-        content: "DeepSeek Reasoner provides advanced chain-of-thought processing, generating detailed reasoning traces before producing final answers. This approach enhances accuracy and provides transparency into the model's decision-making process.",
-        metadata: { category: "ai", model: "deepseek" },
-        source: "API Documentation"
+        id: "system-integration-patterns",
+        title: "Integrated System Communication Patterns",
+        content: `Seamless integration patterns for multi-agent systems:
+        - Event-driven architecture with real-time response tracking
+        - Service orchestration with error handling and recovery
+        - Cross-service validation and consistency checks
+        - Performance monitoring and metrics collection
+        - Distributed logging and debugging capabilities
+        - Scalable communication patterns for enterprise deployment`,
+        metadata: {
+          source: "System Integration Guide",
+          timestamp: new Date().toISOString(),
+          tags: ["integration", "patterns", "architecture", "monitoring"]
+        }
       }
     ];
 
-    this.initialized = true;
-    console.log(`RAG Service initialized with ${this.vectorDb} vector database`);
+    this.isInitialized = true;
+
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "success",
+      message: `RAG database initialized with ${this.documents.length} documentation entries`,
+      data: { 
+        documentCount: this.documents.length,
+        topics: this.documents.map(d => d.title)
+      }
+    });
   }
 
-  async query(query: RAGQuery): Promise<RAGResult> {
-    if (!this.initialized) {
-      throw new Error("RAG Service not initialized");
-    }
-
-    // Simple similarity search simulation
-    const relevantDocs = this.documents.filter(doc => {
-      const searchText = `${doc.title} ${doc.content}`.toLowerCase();
-      const queryTerms = query.query.toLowerCase().split(' ');
-      return queryTerms.some(term => searchText.includes(term));
+  async query(queryParams: RAGQuery): Promise<RAGResponse> {
+    const startTime = Date.now();
+    
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "processing",
+      message: `Processing RAG query: "${queryParams.query}"`,
+      data: { query: queryParams.query, limit: queryParams.limit }
     });
 
-    // Generate mock similarity scores
-    const scores = relevantDocs.map(() => Math.random() * 0.5 + 0.5); // 0.5 to 1.0
+    await this.initialize();
 
-    // Apply threshold filter
-    const filteredResults = relevantDocs.filter((_, index) => scores[index] >= (query.threshold || 0.5));
-    const filteredScores = scores.filter(score => score >= (query.threshold || 0.5));
+    // Simple text-based search with scoring
+    const results = this.documents
+      .map(doc => {
+        const score = this.calculateRelevanceScore(queryParams.query, doc);
+        return { ...doc, score };
+      })
+      .filter(doc => doc.score >= (queryParams.threshold || 0.1))
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, queryParams.limit || 10);
 
-    // Apply limit
-    const limitedDocs = filteredResults.slice(0, query.limit || 5);
-    const limitedScores = filteredScores.slice(0, query.limit || 5);
+    const searchTime = Date.now() - startTime;
 
-    // Sort by score (descending)
-    const sortedResults = limitedDocs
-      .map((doc, index) => ({ doc, score: limitedScores[index] }))
-      .sort((a, b) => b.score - a.score);
-
-    return {
-      documents: sortedResults.map(r => r.doc),
-      scores: sortedResults.map(r => r.score),
-      query: query.query,
-      totalResults: relevantDocs.length
+    const response: RAGResponse = {
+      documents: results,
+      query: queryParams.query,
+      totalResults: results.length,
+      searchTime
     };
+
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "success",
+      message: `RAG query completed: found ${results.length} relevant documents`,
+      data: {
+        query: queryParams.query,
+        resultsCount: results.length,
+        searchTime,
+        topResults: results.slice(0, 3).map(r => ({ title: r.title, score: r.score }))
+      }
+    });
+
+    return response;
   }
 
-  async addDocument(document: RAGDocument): Promise<void> {
-    this.documents.push(document);
+  private calculateRelevanceScore(query: string, document: RAGDocument): number {
+    const queryTerms = query.toLowerCase().split(/\s+/);
+    const docText = (document.title + " " + document.content).toLowerCase();
+    
+    let score = 0;
+    for (const term of queryTerms) {
+      if (docText.includes(term)) {
+        score += 1;
+        // Boost score for title matches
+        if (document.title.toLowerCase().includes(term)) {
+          score += 0.5;
+        }
+      }
+    }
+    
+    // Normalize by query length
+    return score / queryTerms.length;
   }
 
-  async removeDocument(documentId: string): Promise<void> {
-    this.documents = this.documents.filter(doc => doc.id !== documentId);
+  async addDocument(document: Omit<RAGDocument, "id">): Promise<string> {
+    const id = `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newDoc: RAGDocument = { ...document, id };
+    
+    this.documents.push(newDoc);
+    
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "success",
+      message: `Document added to RAG database: ${document.title}`,
+      data: { documentId: id, title: document.title }
+    });
+    
+    return id;
   }
 
   getDocumentCount(): number {
     return this.documents.length;
-  }
-
-  getVectorDatabase(): VectorDatabaseType {
-    return this.vectorDb;
-  }
-
-  isInitialized(): boolean {
-    return this.initialized;
   }
 
   getAllDocuments(): RAGDocument[] {
