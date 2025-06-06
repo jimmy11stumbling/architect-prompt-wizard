@@ -1,149 +1,43 @@
 
-import { AgentName, ProjectSpec } from "@/types/ipa-types";
-
-// Mock responses for each agent when no API key is available
-const mockResponses: Record<AgentName, string> = {
-  "reasoning-assistant": "Providing reasoning assistance for the given task...",
-  "context-analyzer": "Analyzing context and providing insights...",
-  "documentation-expert": "Creating comprehensive documentation...",
-  "workflow-coordinator": "Coordinating workflow between components...",
-  "reasoning-coordinator": "Managing reasoning processes...",
-  "RequirementDecompositionAgent": `# Requirements Analysis
-
-## Core Functional Requirements
-- User authentication and authorization system
-- Data management and storage capabilities
-- API endpoints for client-server communication
-- Real-time updates and notifications
-
-## System Architecture
-- Microservices-based backend architecture
-- RESTful API design with GraphQL capabilities
-- Database optimization and caching strategies
-- Scalable frontend component architecture
-
-## Development Phases
-1. Foundation setup and core infrastructure
-2. Authentication and user management
-3. Core functionality implementation
-4. Integration and testing
-5. Deployment and monitoring`,
-
-  "RAGContextIntegrationAgent": `# RAG 2.0 Implementation Strategy
-
-## Vector Database Architecture
-- Hybrid search implementation combining semantic and keyword search
-- Advanced chunking strategies preserving context
-- Multi-modal embedding support for diverse content types
-
-## Retrieval Optimization
-- Context-aware query transformation
-- Relevance scoring and reranking
-- Adaptive retrieval based on query complexity
-
-## Integration Patterns
-- Seamless integration with existing tech stack
-- Real-time indexing and updates
-- Performance monitoring and optimization`,
-
-  "A2AProtocolExpertAgent": `# Agent-to-Agent Communication Design
-
-## Protocol Implementation
-- Message passing architecture with secure channels
-- Service discovery and agent registration
-- Load balancing and fault tolerance
-
-## Communication Patterns
-- Request-response messaging
-- Publish-subscribe event handling
-- Workflow orchestration between agents
-
-## Security Framework
-- Authentication and authorization
-- Message encryption and validation
-- Audit logging and monitoring`,
-
-  "TechStackImplementationAgent_Frontend": `# Frontend Implementation Guide
-
-## Component Architecture
-- Modular component design with reusable patterns
-- State management using modern patterns
-- Responsive design with mobile-first approach
-
-## Performance Optimization
-- Code splitting and lazy loading
-- Asset optimization and caching
-- Bundle size optimization
-
-## Development Workflow
-- Component testing strategies
-- Build and deployment pipeline
-- Development environment setup`,
-
-  "TechStackImplementationAgent_Backend": `# Backend Implementation Strategy
-
-## API Design
-- RESTful service architecture
-- Database schema optimization
-- Authentication and security implementation
-
-## Scalability Considerations
-- Horizontal scaling patterns
-- Caching strategies
-- Database optimization
-
-## Integration Points
-- External service integration
-- Message queue implementation
-- Monitoring and logging setup`,
-
-  "CursorOptimizationAgent": `# Cursor AI Integration Optimization
-
-## Code Organization
-- Clear file structure and naming conventions
-- Modular component architecture
-- Comprehensive documentation
-
-## AI-Friendly Patterns
-- Descriptive variable and function names
-- Inline comments and documentation
-- Type definitions and interfaces
-
-## Development Workflow
-- Step-by-step implementation guide
-- Testing and validation procedures
-- Error handling and edge cases`,
-
-  "QualityAssuranceAgent": `# Quality Assurance Report
-
-## Code Quality Assessment
-- ✅ Type safety and error handling
-- ✅ Performance optimization
-- ✅ Security best practices
-- ✅ Accessibility compliance
-
-## Testing Strategy
-- Unit testing coverage
-- Integration testing plans
-- End-to-end testing scenarios
-
-## Recommendations
-- Code review checklist
-- Deployment validation steps
-- Monitoring and maintenance guidelines`
-};
+import { AgentName, ProjectSpec, DeepSeekCompletionResponse } from "@/types/ipa-types";
 
 export class ResponseSimulator {
-  static async simulateResponse(agent: AgentName, spec: ProjectSpec): Promise<any> {
+  static async simulateResponse(agent: AgentName, spec: ProjectSpec): Promise<DeepSeekCompletionResponse> {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-    
-    const content = mockResponses[agent] || `Mock response for ${agent}`;
-    
+
+    const simulatedResponses: Record<AgentName, string> = {
+      "reasoning-assistant": `As the Reasoning Assistant, I recommend implementing a multi-step reasoning pipeline for ${spec.projectDescription}. Key considerations include logical flow validation, error handling, and decision tree optimization.`,
+      
+      "context-analyzer": `Context Analysis for ${spec.projectDescription}: The project requires careful integration of ${spec.frontendTechStack.join(", ")} with ${spec.backendTechStack.join(", ")}. Critical context elements include user workflows, data patterns, and system interactions.`,
+      
+      "documentation-expert": `Documentation Strategy: Comprehensive technical documentation should include API specifications, component libraries, deployment guides, and user manuals. Focus on maintainable, version-controlled documentation.`,
+      
+      "workflow-coordinator": `Workflow Design: Implement orchestrated workflows with proper error handling, rollback mechanisms, and monitoring. Consider async processing for heavy operations.`,
+      
+      "reasoning-coordinator": `Reasoning Coordination: Establish clear decision points, validation checkpoints, and logical flow controls throughout the system architecture.`,
+      
+      "RequirementDecompositionAgent": `Requirement Breakdown: Core components include user authentication, data management, API integration, and UI/UX implementation. Each should be independently testable and deployable.`,
+      
+      "RAGContextIntegrationAgent": `RAG 2.0 Implementation: Use ${spec.ragVectorDb} for vector storage with hybrid search capabilities. Implement semantic chunking, reranking, and context compression for optimal retrieval.`,
+      
+      "A2AProtocolExpertAgent": `A2A Protocol Design: Implement agent discovery, message routing, and coordination protocols. Use standardized communication patterns for reliable multi-agent interaction.`,
+      
+      "TechStackImplementationAgent_Frontend": `Frontend Architecture: Build with ${spec.frontendTechStack.join(", ")} using component-based architecture, state management, and responsive design principles.`,
+      
+      "TechStackImplementationAgent_Backend": `Backend Architecture: Implement ${spec.backendTechStack.join(", ")} with microservices architecture, API gateways, and proper data persistence strategies.`,
+      
+      "CursorOptimizationAgent": `Cursor IDE Optimization: Configure intelligent code completion, custom rules, and workflow automation. Implement project-specific templates and shortcuts.`,
+      
+      "QualityAssuranceAgent": `Quality Assurance: Implement comprehensive testing strategy including unit tests, integration tests, and end-to-end testing. Use automated CI/CD pipelines and code quality metrics.`
+    };
+
+    const content = simulatedResponses[agent] || `Simulated response for ${agent} regarding ${spec.projectDescription}`;
+
     return {
-      id: "mock-response",
+      id: `sim-${Date.now()}`,
       object: "chat.completion",
-      created: Date.now(),
+      created: Math.floor(Date.now() / 1000),
       model: "deepseek-chat",
       choices: [{
         index: 0,

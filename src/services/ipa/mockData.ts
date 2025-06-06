@@ -1,11 +1,16 @@
 
-import { GenerationStatus, AgentStatus, AgentName } from "@/types/ipa-types";
+import { GenerationStatus, AgentName } from "@/types/ipa-types";
 
-export const mockTaskId = "task_12345";
+export const mockTaskId = "task-12345-67890";
 
 export const agentList: AgentName[] = [
+  "reasoning-assistant",
+  "context-analyzer", 
+  "documentation-expert",
+  "workflow-coordinator",
+  "reasoning-coordinator",
   "RequirementDecompositionAgent",
-  "RAGContextIntegrationAgent", 
+  "RAGContextIntegrationAgent",
   "A2AProtocolExpertAgent",
   "TechStackImplementationAgent_Frontend",
   "TechStackImplementationAgent_Backend",
@@ -16,15 +21,8 @@ export const agentList: AgentName[] = [
 export const initialMockStatus: GenerationStatus = {
   taskId: mockTaskId,
   status: "pending",
+  agents: [],
   progress: 0,
-  agents: agentList.map((agent): AgentStatus => ({
-    id: `agent-${agent}`,
-    name: agent,
-    agent,
-    status: "idle",
-    progress: 0,
-    timestamp: Date.now()
-  })),
   startTime: Date.now(),
   messages: []
 };

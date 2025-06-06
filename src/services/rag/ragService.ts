@@ -1,61 +1,28 @@
 
+import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export interface RAGDocument {
-  id: string;
-  title: string;
-  content: string;
-  source: string;
-  metadata: {
-    timestamp: string;
-    tags: string[];
-  };
-  embedding?: number[];
-  score?: number;
-}
-
-export interface RAGQuery {
-  query: string;
-  limit?: number;
-  threshold?: number;
-  filters?: Record<string, any>;
-}
-
-export interface RAGResponse {
-  documents: RAGDocument[];
-  query: string;
-  totalResults: number;
-  searchTime: number;
-  scores: number[];
-}
-
 export class RAGService {
-  private static instance: RAGService;
-  private documents: RAGDocument[] = [];
   private initialized = false;
-  private vectorDatabase = "Chroma";
-
-  static getInstance(): RAGService {
-    if (!RAGService.instance) {
-      RAGService.instance = new RAGService();
-    }
-    return RAGService.instance;
-  }
-
-  public isInitialized(): boolean {
-    return this.initialized;
-  }
-
-  public getInitializationStatus(): boolean {
-    return this.initialized;
-  }
-
-  public getVectorDatabase(): string {
-    return this.vectorDatabase;
-  }
+  private knowledgeBase: Array<{
+    id: string;
+    title: string;
+    content: string;
+    source: string;
+    metadata?: Record<string, any>;
+  }> = [];
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "processing", 
+      message: "Initializing RAG 2.0 service"
+    });
+
+    // Simulate initialization
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     realTimeResponseService.addResponse({
       source: "rag-service",
@@ -63,193 +30,98 @@ export class RAGService {
       message: "Initializing RAG database with documentation"
     });
 
-    // Initialize with comprehensive documentation
-    this.documents = [
+    // Initialize with sample knowledge base
+    this.knowledgeBase = [
       {
-        id: "rag-2.0-overview",
+        id: "doc-1",
         title: "RAG 2.0 Architecture Overview",
-        content: `RAG 2.0 represents a significant evolution from traditional retrieval-augmented generation systems. Key improvements include:
-        - End-to-end optimization of retriever and generator components
-        - Advanced chunking strategies that preserve semantic meaning
-        - Hybrid search combining dense, sparse, and tensor search methods
-        - Self-reflection and correction mechanisms
-        - Multi-hop reasoning capabilities
-        - Integration with agent frameworks for dynamic retrieval`,
-        source: "RAG 2.0 Technical Documentation",
-        metadata: {
-          timestamp: new Date().toISOString(),
-          tags: ["rag", "architecture", "retrieval", "generation"]
-        }
+        content: "RAG 2.0 represents an evolution in retrieval-augmented generation, featuring end-to-end optimization, advanced indexing strategies, and hybrid search capabilities for enhanced accuracy and performance.",
+        source: "technical-docs"
       },
       {
-        id: "a2a-protocol-spec",
+        id: "doc-2", 
         title: "Agent-to-Agent Protocol Specification",
-        content: `The A2A protocol enables seamless communication between autonomous agents:
-        - Agent Cards for dynamic discovery and capability advertisement
-        - Task delegation with request/response patterns
-        - Server-Sent Events for real-time coordination
-        - Secure authentication using OAuth 2.0/2.1
-        - Multi-modal communication supporting text, files, and structured data
-        - Workflow orchestration across heterogeneous agent systems`,
-        source: "A2A Protocol Documentation",
-        metadata: {
-          timestamp: new Date().toISOString(),
-          tags: ["a2a", "protocol", "agents", "communication"]
-        }
+        content: "A2A protocols enable standardized communication between autonomous agents, facilitating coordination, task delegation, and collaborative problem-solving in multi-agent systems.",
+        source: "protocol-docs"
       },
       {
-        id: "mcp-hub-architecture",
-        title: "Model Context Protocol Hub Implementation",
-        content: `MCP Hub provides standardized tool and resource access:
-        - JSON-RPC 2.0 based communication protocol
-        - Tool discovery and execution framework
-        - Resource management with URI-based addressing
-        - Prompt templates for guided interactions
-        - Server lifecycle management and monitoring
-        - Security through OAuth integration and permission controls`,
-        source: "MCP Protocol Specification",
-        metadata: {
-          timestamp: new Date().toISOString(),
-          tags: ["mcp", "protocol", "tools", "resources"]
-        }
+        id: "doc-3",
+        title: "Model Context Protocol Hub Implementation", 
+        content: "MCP provides a standardized interface for AI models to interact with external tools and data sources, enabling dynamic context provision and action execution.",
+        source: "integration-docs"
       },
       {
-        id: "deepseek-reasoner-integration",
+        id: "doc-4",
         title: "DeepSeek Reasoner Chain-of-Thought Processing",
-        content: `DeepSeek Reasoner provides advanced reasoning capabilities:
-        - Chain-of-thought reasoning with up to 32K token reasoning content
-        - Multi-round conversation support with context management
-        - Advanced reasoning patterns for complex problem solving
-        - Integration with RAG systems for knowledge-grounded reasoning
-        - Real-time reasoning process visibility and debugging
-        - Conversation history management and retrieval`,
-        source: "DeepSeek API Documentation",
-        metadata: {
-          timestamp: new Date().toISOString(),
-          tags: ["deepseek", "reasoning", "chat", "ai"]
-        }
+        content: "Advanced reasoning capabilities with explicit chain-of-thought processing, enabling transparent decision-making and improved problem-solving accuracy.",
+        source: "ai-docs"
       },
       {
-        id: "system-integration-patterns",
+        id: "doc-5",
         title: "Integrated System Communication Patterns",
-        content: `Seamless integration patterns for multi-agent systems:
-        - Event-driven architecture with real-time response tracking
-        - Service orchestration with error handling and recovery
-        - Cross-service validation and consistency checks
-        - Performance monitoring and metrics collection
-        - Distributed logging and debugging capabilities
-        - Scalable communication patterns for enterprise deployment`,
-        source: "System Integration Guide",
-        metadata: {
-          timestamp: new Date().toISOString(),
-          tags: ["integration", "patterns", "architecture", "monitoring"]
-        }
+        content: "Design patterns for integrating RAG, A2A, and MCP systems with proper error handling, monitoring, and scalability considerations for production environments.",
+        source: "architecture-docs"
       }
     ];
-
-    this.initialized = true;
 
     realTimeResponseService.addResponse({
       source: "rag-service",
       status: "success",
-      message: `RAG database initialized with ${this.documents.length} documentation entries`,
-      data: { 
-        documentCount: this.documents.length,
-        topics: this.documents.map(d => d.title)
+      message: "RAG database initialized with 5 documentation entries",
+      data: {
+        documentCount: this.knowledgeBase.length,
+        topics: this.knowledgeBase.map(doc => doc.title)
       }
     });
+
+    this.initialized = true;
   }
 
-  async query(queryParams: RAGQuery): Promise<RAGResponse> {
+  async query(query: RAGQuery): Promise<RAGResult> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
     const startTime = Date.now();
     
-    realTimeResponseService.addResponse({
-      source: "rag-service",
-      status: "processing",
-      message: `Processing RAG query: "${queryParams.query}"`,
-      data: { query: queryParams.query, limit: queryParams.limit }
-    });
+    // Simple keyword-based search for demo
+    const queryTerms = query.query.toLowerCase().split(' ');
+    const scoredDocs = this.knowledgeBase.map(doc => {
+      const content = (doc.title + ' ' + doc.content).toLowerCase();
+      const score = queryTerms.reduce((acc, term) => {
+        const matches = (content.match(new RegExp(term, 'g')) || []).length;
+        return acc + matches;
+      }, 0);
+      return { ...doc, score };
+    }).filter(doc => doc.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, query.limit || 5);
 
-    await this.initialize();
-
-    // Simple text-based search with scoring
-    const results = this.documents
-      .map(doc => {
-        const score = this.calculateRelevanceScore(queryParams.query, doc);
-        return { ...doc, score };
-      })
-      .filter(doc => doc.score >= (queryParams.threshold || 0.1))
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, queryParams.limit || 10);
-
-    const searchTime = Date.now() - startTime;
-    const scores = results.map(r => r.score || 0);
-
-    const response: RAGResponse = {
-      documents: results,
-      query: queryParams.query,
-      totalResults: results.length,
-      searchTime,
-      scores
+    const result: RAGResult = {
+      documents: scoredDocs.map(({ score, ...doc }) => doc),
+      query: query.query,
+      totalResults: scoredDocs.length,
+      scores: scoredDocs.map(doc => doc.score),
+      searchTime: Date.now() - startTime
     };
 
     realTimeResponseService.addResponse({
       source: "rag-service",
       status: "success",
-      message: `RAG query completed: found ${results.length} relevant documents`,
-      data: {
-        query: queryParams.query,
-        resultsCount: results.length,
-        searchTime,
-        topResults: results.slice(0, 3).map(r => ({ title: r.title, score: r.score }))
+      message: `RAG query completed - found ${result.documents.length} results`,
+      data: { 
+        query: query.query,
+        resultCount: result.documents.length,
+        searchTime: result.searchTime
       }
     });
 
-    return response;
+    return result;
   }
 
-  private calculateRelevanceScore(query: string, document: RAGDocument): number {
-    const queryTerms = query.toLowerCase().split(/\s+/);
-    const docText = (document.title + " " + document.content).toLowerCase();
-    
-    let score = 0;
-    for (const term of queryTerms) {
-      if (docText.includes(term)) {
-        score += 1;
-        // Boost score for title matches
-        if (document.title.toLowerCase().includes(term)) {
-          score += 0.5;
-        }
-      }
-    }
-    
-    // Normalize by query length
-    return score / queryTerms.length;
-  }
-
-  async addDocument(document: Omit<RAGDocument, "id">): Promise<string> {
-    const id = `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newDoc: RAGDocument = { ...document, id };
-    
-    this.documents.push(newDoc);
-    
-    realTimeResponseService.addResponse({
-      source: "rag-service",
-      status: "success",
-      message: `Document added to RAG database: ${document.title}`,
-      data: { documentId: id, title: document.title }
-    });
-    
-    return id;
-  }
-
-  getDocumentCount(): number {
-    return this.documents.length;
-  }
-
-  getAllDocuments(): RAGDocument[] {
-    return [...this.documents];
+  async healthCheck(): Promise<boolean> {
+    return this.initialized && this.knowledgeBase.length > 0;
   }
 }
 
-export const ragService = RAGService.getInstance();
+export const ragService = new RAGService();

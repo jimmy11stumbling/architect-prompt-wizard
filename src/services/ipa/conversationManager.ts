@@ -1,17 +1,18 @@
 
-import { DeepSeekMessage, AgentStatus } from "@/types/ipa-types";
+import { DeepSeekMessage } from "@/types/ipa-types";
 
 export class ConversationManager {
   private messages: DeepSeekMessage[] = [];
 
-  addAgentResponse(agent: string, content: string): void {
-    // Add the agent's system prompt
-    this.messages.push({
-      role: "system",
-      content: `Now responding as ${agent}`
-    });
-    
-    // Add the agent's response to the conversation history
+  reset(): void {
+    this.messages = [];
+  }
+
+  initializeFromHistory(history: DeepSeekMessage[]): void {
+    this.messages = [...history];
+  }
+
+  addAgentResponse(agentName: string, content: string): void {
     this.messages.push({
       role: "assistant",
       content: content
@@ -20,13 +21,5 @@ export class ConversationManager {
 
   getMessages(): DeepSeekMessage[] {
     return [...this.messages];
-  }
-
-  reset(): void {
-    this.messages = [];
-  }
-
-  initializeFromHistory(messageHistory: DeepSeekMessage[]): void {
-    this.messages = [...messageHistory];
   }
 }

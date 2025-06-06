@@ -1,44 +1,41 @@
 
-import { AgentName, ProjectSpec, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
+import { AgentStatus, AgentName, ProjectSpec, DeepSeekMessage } from "@/types/ipa-types";
 import { invokeDeepSeekAgent } from "./deepseekAPI";
-import { toast } from "@/hooks/use-toast";
 
 export class AgentProcessor {
   static async processAgent(
-    agent: AgentName,
-    spec: ProjectSpec,
+    agentName: AgentName, 
+    spec: ProjectSpec, 
     messageHistory: DeepSeekMessage[]
   ): Promise<AgentStatus> {
+    const startTime = Date.now();
+    
     try {
-      console.log(`Invoking DeepSeek API for agent ${agent} with ${messageHistory.length} messages in history`);
-      const agentResponse = await invokeDeepSeekAgent(agent, spec, messageHistory);
+      console.log(`Processing agent: ${agentName}`);
+      
+      // Make the API call to DeepSeek
+      const response = await invokeDeepSeekAgent(agentName, spec, messageHistory);
       
       return {
-        id: `agent-${Date.now()}`,
-        name: agent,
-        agent,
+        id: `agent-${startTime}`,
+        name: agentName,
+        agent: agentName,
         status: "completed",
         progress: 100,
-        output: agentResponse.content,
-        timestamp: Date.now()
+        output: response.content,
+        timestamp: startTime
       };
     } catch (error) {
-      console.error(`Error invoking DeepSeek for agent ${agent}:`, error);
-      
-      toast({
-        title: "Agent Error",
-        description: `${agent} failed: ${error instanceof Error ? error.message : String(error)}`,
-        variant: "destructive"
-      });
+      console.error(`Error processing agent ${agentName}:`, error);
       
       return {
-        id: `agent-${Date.now()}`,
-        name: agent,
-        agent,
+        id: `agent-${startTime}`,
+        name: agentName,
+        agent: agentName,
         status: "failed",
         progress: 0,
-        output: `Error: ${error instanceof Error ? error.message : String(error)}`,
-        timestamp: Date.now()
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: startTime
       };
     }
   }

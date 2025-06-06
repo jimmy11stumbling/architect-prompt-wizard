@@ -1,53 +1,12 @@
 
+import { MCPServer, MCPTool, MCPResource } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export interface MCPServer {
-  id: string;
-  name: string;
-  status: "online" | "offline" | "error";
-  endpoint: string;
-  toolCount: number;
-  resourceCount: number;
-  capabilities: string[];
-}
-
-export interface MCPTool {
-  name: string;
-  description: string;
-  parameters: Record<string, any>;
-  server?: string;
-  category?: string;
-}
-
-export interface MCPResource {
-  uri: string;
-  name: string;
-  description: string;
-  type?: string;
-  mimeType?: string;
-}
-
 export class MCPService {
-  private static instance: MCPService;
+  private initialized = false;
   private servers: MCPServer[] = [];
   private tools: MCPTool[] = [];
   private resources: MCPResource[] = [];
-  private initialized = false;
-
-  static getInstance(): MCPService {
-    if (!MCPService.instance) {
-      MCPService.instance = new MCPService();
-    }
-    return MCPService.instance;
-  }
-
-  public isInitialized(): boolean {
-    return this.initialized;
-  }
-
-  public getInitializationStatus(): boolean {
-    return this.initialized;
-  }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -55,209 +14,170 @@ export class MCPService {
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "processing",
-      message: "Initializing MCP servers and tools"
+      message: "Initializing MCP hub service"
     });
 
-    // Initialize with sample servers
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing", 
+      message: "Connecting to MCP servers"
+    });
+
+    // Initialize with sample servers and tools
     this.servers = [
       {
-        id: "filesystem-server",
-        name: "Filesystem Server",
+        id: "server-filesystem",
+        name: "File System Server",
         status: "online",
-        endpoint: "stdio://filesystem-mcp",
+        endpoint: "mcp://localhost:8001",
+        toolCount: 3,
+        resourceCount: 5,
+        capabilities: ["file-operations", "directory-management"]
+      },
+      {
+        id: "server-database",
+        name: "Database Server",
+        status: "online", 
+        endpoint: "mcp://localhost:8002",
         toolCount: 4,
-        resourceCount: 10,
-        capabilities: ["file-operations", "directory-listing"]
+        resourceCount: 2,
+        capabilities: ["data-access", "query-execution"]
       },
       {
-        id: "github-server",
-        name: "GitHub Integration Server",
+        id: "server-api",
+        name: "API Gateway Server",
         status: "online",
-        endpoint: "https://github-mcp.example.com",
-        toolCount: 8,
-        resourceCount: 15,
-        capabilities: ["repository-access", "issue-management"]
-      },
-      {
-        id: "database-server",
-        name: "Database Query Server",
-        status: "offline",
-        endpoint: "stdio://database-mcp",
+        endpoint: "mcp://localhost:8003", 
         toolCount: 6,
-        resourceCount: 20,
-        capabilities: ["sql-queries", "schema-inspection"]
+        resourceCount: 3,
+        capabilities: ["external-apis", "web-services"]
       }
     ];
 
-    // Initialize sample tools
     this.tools = [
       {
         name: "read_file",
-        description: "Read contents of a file",
-        parameters: { path: { type: "string", description: "File path to read" } },
-        server: "filesystem-server"
+        description: "Read contents of a file from the filesystem",
+        parameters: { path: "string", encoding: "string?" },
+        category: "filesystem"
       },
       {
-        name: "list_directory",
-        description: "List contents of a directory",
-        parameters: { path: { type: "string", description: "Directory path to list" } },
-        server: "filesystem-server"
+        name: "write_file", 
+        description: "Write content to a file in the filesystem",
+        parameters: { path: "string", content: "string", mode: "string?" },
+        category: "filesystem"
       },
       {
-        name: "create_issue",
-        description: "Create a new GitHub issue",
-        parameters: { title: { type: "string" }, body: { type: "string" } },
-        server: "github-server"
+        name: "execute_query",
+        description: "Execute a SQL query against the database", 
+        parameters: { query: "string", database: "string?" },
+        category: "database"
+      },
+      {
+        name: "make_http_request",
+        description: "Make an HTTP request to an external API",
+        parameters: { url: "string", method: "string", headers: "object?", body: "string?" },
+        category: "api"
+      },
+      {
+        name: "process_data",
+        description: "Process and transform data using built-in algorithms",
+        parameters: { data: "object", operation: "string", options: "object?" },
+        category: "processing"
       }
     ];
 
-    // Initialize sample resources
     this.resources = [
       {
-        uri: "file:///project/README.md",
-        name: "Project README",
-        description: "Main project documentation",
-        type: "document"
+        uri: "file:///config/app.json",
+        name: "Application Configuration",
+        description: "Main application configuration file",
+        mimeType: "application/json"
       },
       {
-        uri: "github://repo/issues",
-        name: "GitHub Issues",
-        description: "Repository issue tracker",
-        type: "api"
+        uri: "db://main/users", 
+        name: "User Database Table",
+        description: "Main user data table with profiles and preferences",
+        mimeType: "application/sql"
+      },
+      {
+        uri: "api://weather/current",
+        name: "Current Weather Data",
+        description: "Real-time weather information from external service",
+        mimeType: "application/json"
       }
     ];
-
-    this.initialized = true;
 
     realTimeResponseService.addResponse({
       source: "mcp-service",
       status: "success",
-      message: `MCP service initialized with ${this.servers.length} servers, ${this.tools.length} tools, ${this.resources.length} resources`,
-      data: { 
+      message: "MCP hub initialized successfully",
+      data: {
         serverCount: this.servers.length,
         toolCount: this.tools.length,
         resourceCount: this.resources.length
       }
     });
+
+    this.initialized = true;
   }
 
-  public getServers(): MCPServer[] {
-    return [...this.servers];
-  }
-
-  async listTools(): Promise<MCPTool[]> {
-    await this.initialize();
-    
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing",
-      message: "Listing available MCP tools"
-    });
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "success",
-      message: `Found ${this.tools.length} available tools`,
-      data: { toolCount: this.tools.length, tools: this.tools.map(t => t.name) }
-    });
-
-    return [...this.tools];
-  }
-
-  async listResources(): Promise<MCPResource[]> {
-    await this.initialize();
-    
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing",
-      message: "Listing available MCP resources"
-    });
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "success",
-      message: `Found ${this.resources.length} available resources`,
-      data: { resourceCount: this.resources.length, resources: this.resources.map(r => r.name) }
-    });
-
-    return [...this.resources];
-  }
-
-  async callTool(toolName: string, params: any): Promise<any> {
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing",
-      message: `Executing tool: ${toolName}`,
-      data: { tool: toolName, params }
-    });
-
-    const tool = this.tools.find(t => t.name === toolName);
-    if (!tool) {
-      realTimeResponseService.addResponse({
-        source: "mcp-service",
-        status: "error",
-        message: `Tool ${toolName} not found`,
-        data: { requestedTool: toolName, availableTools: this.tools.map(t => t.name) }
-      });
-      throw new Error(`Tool ${toolName} not found`);
+  async getAvailableTools(): Promise<MCPTool[]> {
+    if (!this.initialized) {
+      await this.initialize();
     }
+    return this.tools;
+  }
+
+  async getAvailableResources(): Promise<MCPResource[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    return this.resources;
+  }
+
+  async callTool(toolName: string, parameters: Record<string, any>): Promise<{ status: string; result?: any; error?: string }> {
+    const tool = this.tools.find(t => t.name === toolName);
+    
+    if (!tool) {
+      return { status: "error", error: `Tool '${toolName}' not found` };
+    }
+
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: `Executing MCP tool: ${toolName}`,
+      data: { toolName, parameters }
+    });
 
     // Simulate tool execution
-    const result = {
-      tool: toolName,
-      status: "success",
-      content: `Tool ${toolName} executed successfully with params: ${JSON.stringify(params)}`,
-      params,
-      timestamp: new Date().toISOString()
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const mockResults: Record<string, any> = {
+      read_file: { content: "File content here...", size: 1024 },
+      write_file: { bytesWritten: 1024, success: true },
+      execute_query: { rows: [{ id: 1, name: "Sample" }], count: 1 },
+      make_http_request: { status: 200, data: { result: "API response" } },
+      process_data: { processed: true, outputSize: 256 }
     };
+
+    const result = mockResults[toolName] || { executed: true };
 
     realTimeResponseService.addResponse({
       source: "mcp-service",
-      status: "success",
-      message: `Tool ${toolName} executed successfully`,
-      data: result
+      status: "success", 
+      message: `MCP tool ${toolName} executed successfully`,
+      data: { toolName, result }
     });
 
-    return result;
+    return { status: "success", result };
   }
 
-  async readResource(resourceUri: string): Promise<any> {
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing",
-      message: `Reading resource: ${resourceUri}`,
-      data: { uri: resourceUri }
-    });
-
-    const resource = this.resources.find(r => r.uri === resourceUri);
-    if (!resource) {
-      realTimeResponseService.addResponse({
-        source: "mcp-service",
-        status: "error",
-        message: `Resource ${resourceUri} not found`,
-        data: { requestedUri: resourceUri, availableResources: this.resources.map(r => r.uri) }
-      });
-      throw new Error(`Resource ${resourceUri} not found`);
-    }
-
-    // Simulate resource reading
-    const content = {
-      uri: resourceUri,
-      name: resource.name,
-      content: `Content of ${resource.name}`,
-      mimeType: "text/plain",
-      timestamp: new Date().toISOString()
-    };
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "success",
-      message: `Resource ${resourceUri} read successfully`,
-      data: content
-    });
-
-    return content;
+  async healthCheck(): Promise<boolean> {
+    return this.initialized && this.servers.every(s => s.status === "online");
   }
 }
 
-export const mcpService = MCPService.getInstance();
+export const mcpService = new MCPService();
