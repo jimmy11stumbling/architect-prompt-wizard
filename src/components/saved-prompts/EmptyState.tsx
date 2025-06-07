@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Database } from "lucide-react";
+import { Database, Search } from "lucide-react";
 
 interface EmptyStateProps {
   hasPrompts: boolean;
@@ -8,17 +8,35 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ hasPrompts, isFiltered }) => {
-  return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
-      <Database className="h-10 w-10 text-ipa-muted mb-4 opacity-50" />
-      <h3 className="text-lg font-medium">No saved prompts found</h3>
-      <p className="text-sm text-muted-foreground">
-        {!hasPrompts
-          ? "Generate your first prompt to automatically save it here"
-          : "No prompts match your search criteria"}
-      </p>
-    </div>
-  );
+  if (isFiltered) {
+    return (
+      <div className="text-center py-8">
+        <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p className="text-muted-foreground">
+          No prompts match your search criteria.
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Try adjusting your search terms or clear the search to see all prompts.
+        </p>
+      </div>
+    );
+  }
+
+  if (!hasPrompts) {
+    return (
+      <div className="text-center py-8">
+        <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p className="text-muted-foreground">
+          No saved prompts yet.
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Generate your first prompt to see it saved here.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default EmptyState;

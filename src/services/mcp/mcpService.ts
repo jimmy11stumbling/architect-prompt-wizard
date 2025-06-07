@@ -2,6 +2,8 @@
 import { MCPServer, MCPTool, MCPResource } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
+export { MCPServer, MCPTool, MCPResource };
+
 export class MCPService {
   private initialized = false;
   private servers: MCPServer[] = [];
@@ -18,12 +20,6 @@ export class MCPService {
     });
 
     await new Promise(resolve => setTimeout(resolve, 500));
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing", 
-      message: "Connecting to MCP servers"
-    });
 
     // Initialize with sample servers and tools
     this.servers = [
@@ -124,18 +120,26 @@ export class MCPService {
     this.initialized = true;
   }
 
-  async getAvailableTools(): Promise<MCPTool[]> {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-    return this.tools;
+  isInitialized(): boolean {
+    return this.initialized;
   }
 
-  async getAvailableResources(): Promise<MCPResource[]> {
+  getServers(): MCPServer[] {
+    return [...this.servers];
+  }
+
+  async listTools(): Promise<MCPTool[]> {
     if (!this.initialized) {
       await this.initialize();
     }
-    return this.resources;
+    return [...this.tools];
+  }
+
+  async listResources(): Promise<MCPResource[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    return [...this.resources];
   }
 
   async callTool(toolName: string, parameters: Record<string, any>): Promise<{ status: string; result?: any; error?: string }> {
@@ -173,6 +177,41 @@ export class MCPService {
     });
 
     return { status: "success", result };
+  }
+
+  async readResource(uri: string): Promise<any> {
+    const resource = this.resources.find(r => r.uri === uri);
+    
+    if (!resource) {
+      throw new Error(`Resource '${uri}' not found`);
+    }
+
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: `Reading MCP resource: ${resource.name}`,
+      data: { uri, resourceName: resource.name }
+    });
+
+    // Simulate resource reading
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const mockContent: Record<string, any> = {
+      "file:///config/app.json": { appName: "IPA System", version: "1.0.0", debug: true },
+      "db://main/users": [{ id: 1, name: "John Doe", email: "john@example.com" }],
+      "api://weather/current": { temperature: 22, condition: "sunny", humidity: 65 }
+    };
+
+    const content = mockContent[uri] || `Content of ${resource.name}`;
+
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "success",
+      message: `MCP resource ${resource.name} read successfully`,
+      data: { uri, contentType: typeof content }
+    });
+
+    return content;
   }
 
   async healthCheck(): Promise<boolean> {

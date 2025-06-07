@@ -1,58 +1,43 @@
 
-import { GenerationStatus } from "@/types/ipa-types";
-
-interface SavedPrompt {
-  id: string;
-  title: string;
-  content: string;
-  spec: any;
+export interface SavedPrompt {
+  id?: number;
+  projectName: string;
+  prompt: string;
   timestamp: number;
-  status: string;
+  tags?: string[];
 }
 
-export class PromptDatabaseService {
-  private static readonly STORAGE_KEY = "ipa_saved_prompts";
+class PromptDatabaseService {
+  private prompts: SavedPrompt[] = [];
+  private nextId = 1;
 
-  static async savePrompt(status: GenerationStatus, title: string): Promise<string> {
-    const promptId = `prompt-${Date.now()}`;
-    
-    const savedPrompt: SavedPrompt = {
-      id: promptId,
-      title,
-      content: status.result || "",
-      spec: status.spec,
-      timestamp: Date.now(),
-      status: status.status
+  async savePrompt(prompt: SavedPrompt): Promise<SavedPrompt> {
+    const savedPrompt = {
+      ...prompt,
+      id: this.nextId++,
+      timestamp: prompt.timestamp || Date.now()
     };
-
-    const existingPrompts = this.getAllPrompts();
-    existingPrompts.push(savedPrompt);
-    
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingPrompts));
-    
-    return promptId;
+    this.prompts.push(savedPrompt);
+    return savedPrompt;
   }
 
-  static getAllPrompts(): SavedPrompt[] {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+  async getAllPrompts(): Promise<SavedPrompt[]> {
+    return [...this.prompts];
   }
 
-  static getPrompt(id: string): SavedPrompt | null {
-    const prompts = this.getAllPrompts();
-    return prompts.find(p => p.id === id) || null;
+  async deletePrompt(id: number): Promise<void> {
+    const index = this.prompts.findIndex(p => p.id === id);
+    if (index !== -1) {
+      this.prompts.splice(index, 1);
+    }
   }
 
-  static deletePrompt(id: string): boolean {
-    const prompts = this.getAllPrompts();
-    const filtered = prompts.filter(p => p.id !== id);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filtered));
-    return true;
+  async getPromptById(id: number): Promise<SavedPrompt | null> {
+    return this.prompts.find(p => p.id === id) || null;
   }
 }
 
-// Export functions for backward compatibility
-export const savePrompt = PromptDatabaseService.savePrompt;
-export const getAllPrompts = PromptDatabaseService.getAllPrompts;
-export const getPrompt = PromptDatabaseService.getPrompt;
-export const deletePrompt = PromptDatabaseService.deletePrompt;
+const promptDatabaseService = new PromptDatabaseService();
+
+export { promptDatabaseService, SavedPrompt as default };
+export const { savePrompt, getAllPrompts, deletePrompt, getPromptById } = promptDatabaseService;

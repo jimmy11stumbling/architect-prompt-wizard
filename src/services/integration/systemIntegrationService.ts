@@ -1,147 +1,139 @@
 
-import { ProjectSpec, SystemHealth } from "@/types/ipa-types";
+import { ProjectSpec } from "@/types/ipa-types";
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
 import { realTimeResponseService } from "./realTimeResponseService";
 
+export interface SystemHealth {
+  overall: boolean;
+  services: {
+    rag: boolean;
+    a2a: boolean;
+    mcp: boolean;
+    deepseek: boolean;
+  };
+  details: any;
+  lastCheck: number;
+  overallStatus: "healthy" | "degraded" | "unhealthy";
+}
+
 export class SystemIntegrationService {
   private initialized = false;
-  private currentSpec: ProjectSpec | null = null;
 
   async initialize(spec: ProjectSpec): Promise<void> {
-    if (this.initialized) {
-      return;
-    }
-
-    this.currentSpec = spec;
+    if (this.initialized) return;
 
     realTimeResponseService.addResponse({
       source: "system-integration",
       status: "processing",
-      message: "Starting system integration initialization",
+      message: "Initializing integrated AI system"
+    });
+
+    // Initialize all services
+    await Promise.all([
+      ragService.initialize(),
+      a2aService.initialize(),
+      mcpService.initialize()
+    ]);
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "success",
+      message: "All system services initialized successfully",
       data: { 
-        projectDescription: spec.projectDescription.substring(0, 100) + "...",
-        services: ["RAG", "A2A", "MCP"]
+        projectDescription: spec.projectDescription,
+        ragEnabled: true,
+        a2aEnabled: true,
+        mcpEnabled: true
       }
     });
 
-    try {
-      // Initialize all services
-      await Promise.all([
-        this.initializeRAG(spec),
-        this.initializeA2A(spec),
-        this.initializeMCP(spec)
-      ]);
-
-      this.initialized = true;
-
-      realTimeResponseService.addResponse({
-        source: "system-integration",
-        status: "success",
-        message: "System integration completed successfully",
-        data: { 
-          servicesInitialized: ["RAG", "A2A", "MCP"],
-          timestamp: new Date().toISOString()
-        }
-      });
-
-    } catch (error) {
-      realTimeResponseService.addResponse({
-        source: "system-integration",
-        status: "error",
-        message: `System integration failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        data: { error: error instanceof Error ? error.message : String(error) }
-      });
-      throw error;
-    }
-  }
-
-  private async initializeRAG(spec: ProjectSpec): Promise<void> {
-    realTimeResponseService.addResponse({
-      source: "rag-service",
-      status: "processing",
-      message: "Service RAG status: initializing",
-      data: { service: "rag", status: "initializing", timestamp: Date.now() }
-    });
-
-    await ragService.initialize();
-
-    realTimeResponseService.addResponse({
-      source: "rag-service",
-      status: "success",
-      message: "Service RAG status: connected",
-      data: { service: "rag", status: "connected", timestamp: Date.now() }
-    });
-  }
-
-  private async initializeA2A(spec: ProjectSpec): Promise<void> {
-    realTimeResponseService.addResponse({
-      source: "a2a-service",
-      status: "processing",
-      message: "Service A2A status: initializing",
-      data: { service: "a2a", status: "initializing", timestamp: Date.now() }
-    });
-
-    await a2aService.initialize();
-
-    realTimeResponseService.addResponse({
-      source: "a2a-service",
-      status: "success",
-      message: "Service A2A status: connected",
-      data: { service: "a2a", status: "connected", timestamp: Date.now() }
-    });
-  }
-
-  private async initializeMCP(spec: ProjectSpec): Promise<void> {
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing",
-      message: "Service MCP status: initializing",
-      data: { service: "mcp", status: "initializing", timestamp: Date.now() }
-    });
-
-    await mcpService.initialize();
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "success",
-      message: "Service MCP status: connected",
-      data: { service: "mcp", status: "connected", timestamp: Date.now() }
-    });
-  }
-
-  async getSystemHealth(): Promise<SystemHealth> {
-    const ragHealth = await ragService.healthCheck();
-    const a2aHealth = await a2aService.healthCheck();
-    const mcpHealth = await mcpService.healthCheck();
-
-    const overallHealth = ragHealth && a2aHealth && mcpHealth;
-
-    return {
-      overall: overallHealth,
-      services: {
-        rag: ragHealth,
-        a2a: a2aHealth,
-        mcp: mcpHealth,
-        deepseek: true // Assume healthy if no errors
-      },
-      details: {
-        rag: ragHealth ? "Connected" : "Disconnected",
-        a2a: a2aHealth ? "Connected" : "Disconnected", 
-        mcp: mcpHealth ? "Connected" : "Disconnected"
-      },
-      lastCheck: Date.now(),
-      overallStatus: overallHealth ? "healthy" : "degraded"
-    };
+    this.initialized = true;
   }
 
   isInitialized(): boolean {
     return this.initialized;
   }
 
-  getCurrentSpec(): ProjectSpec | null {
-    return this.currentSpec;
+  async getSystemHealth(): Promise<SystemHealth> {
+    const services = {
+      rag: await ragService.healthCheck(),
+      a2a: await a2aService.healthCheck(),
+      mcp: await mcpService.healthCheck(),
+      deepseek: true // Assume DeepSeek API is available
+    };
+
+    const healthyCount = Object.values(services).filter(Boolean).length;
+    const totalServices = Object.keys(services).length;
+
+    let overallStatus: "healthy" | "degraded" | "unhealthy";
+    if (healthyCount === totalServices) {
+      overallStatus = "healthy";
+    } else if (healthyCount >= totalServices / 2) {
+      overallStatus = "degraded";
+    } else {
+      overallStatus = "unhealthy";
+    }
+
+    return {
+      overall: healthyCount === totalServices,
+      services,
+      details: {
+        healthyServices: healthyCount,
+        totalServices,
+        initializationStatus: this.initialized
+      },
+      lastCheck: Date.now(),
+      overallStatus
+    };
+  }
+
+  async demonstrateIntegration(): Promise<any> {
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Running integration demonstration"
+    });
+
+    // Test RAG integration
+    const ragDemo = await ragService.query({
+      query: "RAG 2.0 architecture",
+      limit: 2
+    });
+
+    // Test A2A integration
+    const a2aDemo = await a2aService.sendMessage({
+      id: `demo-${Date.now()}`,
+      from: "integration-test",
+      to: "agent-rag-coordinator",
+      type: "request",
+      payload: { test: "integration demo" },
+      timestamp: Date.now()
+    });
+
+    // Test MCP integration
+    const mcpDemo = await mcpService.callTool("process_data", {
+      data: { test: "integration" },
+      operation: "validate"
+    });
+
+    const demo = {
+      ragDemo,
+      a2aDemo,
+      mcpDemo,
+      timestamp: Date.now(),
+      status: "completed"
+    };
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "success",
+      message: "Integration demonstration completed successfully",
+      data: demo
+    });
+
+    return demo;
   }
 }
 

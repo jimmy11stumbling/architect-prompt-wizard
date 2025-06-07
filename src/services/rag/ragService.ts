@@ -2,6 +2,22 @@
 import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
+export { RAGQuery };
+
+export interface RAGResponse {
+  documents: Array<{
+    id: string;
+    title: string;
+    content: string;
+    source: string;
+    metadata?: Record<string, any>;
+  }>;
+  query: string;
+  totalResults: number;
+  scores: number[];
+  searchTime?: number;
+}
+
 export class RAGService {
   private initialized = false;
   private knowledgeBase: Array<{
@@ -23,12 +39,6 @@ export class RAGService {
 
     // Simulate initialization
     await new Promise(resolve => setTimeout(resolve, 500));
-
-    realTimeResponseService.addResponse({
-      source: "rag-service",
-      status: "processing",
-      message: "Initializing RAG database with documentation"
-    });
 
     // Initialize with sample knowledge base
     this.knowledgeBase = [
@@ -77,7 +87,23 @@ export class RAGService {
     this.initialized = true;
   }
 
-  async query(query: RAGQuery): Promise<RAGResult> {
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  getInitializationStatus(): boolean {
+    return this.initialized;
+  }
+
+  getDocumentCount(): number {
+    return this.knowledgeBase.length;
+  }
+
+  getVectorDatabase(): string {
+    return "Chroma";
+  }
+
+  async query(query: RAGQuery): Promise<RAGResponse> {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -92,12 +118,12 @@ export class RAGService {
         const matches = (content.match(new RegExp(term, 'g')) || []).length;
         return acc + matches;
       }, 0);
-      return { ...doc, score };
+      return { ...doc, score: score / 10 }; // Normalize score
     }).filter(doc => doc.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, query.limit || 5);
 
-    const result: RAGResult = {
+    const result: RAGResponse = {
       documents: scoredDocs.map(({ score, ...doc }) => doc),
       query: query.query,
       totalResults: scoredDocs.length,
