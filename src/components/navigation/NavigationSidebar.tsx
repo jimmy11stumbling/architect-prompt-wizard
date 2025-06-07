@@ -1,64 +1,212 @@
 
 import React from "react";
-import { NavLink } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
-  Home, 
-  LayoutDashboard, 
-  Brain, 
+  Brain,
+  Database,
+  Network,
+  Wrench,
+  Monitor,
+  Workflow,
+  Settings,
+  BookOpen,
+  TestTube,
   Zap,
-  Database, 
-  Network, 
-  Settings, 
-  GitBranch, 
-  BookOpen, 
-  TestTube 
+  Home,
+  BarChart3
 } from "lucide-react";
 
-const navigation = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "DeepSeek Reasoner", href: "/reasoner", icon: Brain },
-  { name: "Enhanced System", href: "/enhanced", icon: Zap },
-  { name: "RAG 2.0", href: "/rag", icon: Database },
-  { name: "A2A Network", href: "/a2a", icon: Network },
-  { name: "MCP Hub", href: "/mcp", icon: Settings },
-  { name: "Workflow", href: "/workflow", icon: GitBranch },
-  { name: "Saved Prompts", href: "/saved-prompts", icon: BookOpen },
-  { name: "Testing", href: "/testing", icon: TestTube },
-];
+const NavigationSidebar: React.FC = () => {
+  const location = useLocation();
 
-export const NavigationSidebar: React.FC = () => {
+  const navItems = [
+    {
+      path: "/",
+      label: "Home",
+      icon: Home,
+      description: "Project creation and prompt generation"
+    },
+    {
+      path: "/dashboard",
+      label: "Dashboard",
+      icon: BarChart3,
+      description: "System overview and metrics"
+    },
+    {
+      path: "/reasoner",
+      label: "DeepSeek Reasoner",
+      icon: Brain,
+      description: "Advanced reasoning with chain-of-thought",
+      badge: "New"
+    },
+    {
+      path: "/enhanced",
+      label: "Enhanced Features",
+      icon: Zap,
+      description: "Integrated AI capabilities",
+      badge: "Pro"
+    },
+    {
+      path: "/rag",
+      label: "RAG 2.0 Database",
+      icon: Database,
+      description: "Knowledge retrieval and search"
+    },
+    {
+      path: "/a2a",
+      label: "A2A Protocol",
+      icon: Network,
+      description: "Agent-to-agent communication"
+    },
+    {
+      path: "/mcp",
+      label: "MCP Hub",
+      icon: Wrench,
+      description: "Model context protocol tools"
+    },
+    {
+      path: "/workflow",
+      label: "Workflow Engine",
+      icon: Workflow,
+      description: "Integrated workflow automation"
+    },
+    {
+      path: "/saved-prompts",
+      label: "Saved Prompts",
+      icon: BookOpen,
+      description: "Prompt library and templates"
+    },
+    {
+      path: "/testing",
+      label: "Testing Suite",
+      icon: TestTube,
+      description: "Component and system testing"
+    }
+  ];
+
   return (
-    <div className="flex h-full w-64 flex-col bg-card border-r">
-      <div className="flex h-16 items-center px-4 border-b">
-        <h2 className="text-lg font-semibold text-gradient">IPA System</h2>
+    <div className="w-64 bg-card border-r border-border flex flex-col h-screen">
+      {/* Header */}
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Brain className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="font-bold text-lg">IPA System</h1>
+            <p className="text-xs text-muted-foreground">Intelligent Prompt Architect</p>
+          </div>
+        </div>
       </div>
-      <nav className="flex-1 space-y-1 p-4">
-        {navigation.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.href}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )
-            }
-          >
-            <item.icon className="h-4 w-4" />
-            {item.name}
-          </NavLink>
-        ))}
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+          Core Features
+        </div>
+        
+        {navItems.slice(0, 4).map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          
+          return (
+            <Link key={item.path} to={item.path}>
+              <Button
+                variant={isActive ? "default" : "ghost"}
+                className="w-full justify-start h-auto p-3 flex flex-col items-start"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <Icon className="h-4 w-4" />
+                  <span className="font-medium">{item.label}</span>
+                  {item.badge && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground text-left mt-1">
+                  {item.description}
+                </p>
+              </Button>
+            </Link>
+          );
+        })}
+
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 mt-6">
+          Integration Systems
+        </div>
+        
+        {navItems.slice(4, 8).map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          
+          return (
+            <Link key={item.path} to={item.path}>
+              <Button
+                variant={isActive ? "default" : "ghost"}
+                className="w-full justify-start h-auto p-3 flex flex-col items-start"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <Icon className="h-4 w-4" />
+                  <span className="font-medium">{item.label}</span>
+                  {item.badge && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground text-left mt-1">
+                  {item.description}
+                </p>
+              </Button>
+            </Link>
+          );
+        })}
+
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 mt-6">
+          Tools & Utilities
+        </div>
+        
+        {navItems.slice(8).map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          
+          return (
+            <Link key={item.path} to={item.path}>
+              <Button
+                variant={isActive ? "default" : "ghost"}
+                className="w-full justify-start h-auto p-3 flex flex-col items-start"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <Icon className="h-4 w-4" />
+                  <span className="font-medium">{item.label}</span>
+                  {item.badge && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground text-left mt-1">
+                  {item.description}
+                </p>
+              </Button>
+            </Link>
+          );
+        })}
       </nav>
-      <div className="p-4 border-t">
-        <div className="text-xs text-muted-foreground">
-          <div className="font-medium">Enhanced AI System</div>
-          <div>RAG 2.0 • A2A • MCP • DeepSeek</div>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-border">
+        <div className="text-xs text-muted-foreground space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span>All Systems Online</span>
+          </div>
+          <div>DeepSeek Reasoner • RAG 2.0 • A2A • MCP</div>
         </div>
       </div>
     </div>
   );
 };
+
+export default NavigationSidebar;

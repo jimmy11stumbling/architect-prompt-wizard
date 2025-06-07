@@ -1,8 +1,19 @@
+
+import { realTimeResponseService } from "../integration/realTimeResponseService";
+import { DeepSeekReasonerClient } from "./deepseekReasonerClient";
+import { DeepSeekMessage } from "@/types/ipa-types";
+import { ragService } from "../rag/ragService";
+import { a2aService } from "../a2a/a2aService";
+import { mcpService } from "../mcp/mcpService";
+
 export interface ReasonerQuery {
   prompt: string;
   context?: string;
   maxTokens: number;
   conversationHistory?: ConversationHistory[];
+  ragEnabled?: boolean;
+  a2aEnabled?: boolean;
+  mcpEnabled?: boolean;
 }
 
 export interface ReasonerResponse {
@@ -15,6 +26,11 @@ export interface ReasonerResponse {
     reasoningTokens: number;
     totalTokens: number;
   };
+  integrationData?: {
+    ragResults?: any;
+    a2aMessages?: any[];
+    mcpToolCalls?: any[];
+  };
 }
 
 export interface ConversationHistory {
@@ -25,8 +41,6 @@ export interface ConversationHistory {
   reasoning: string;
   context?: string;
 }
-
-import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export class DeepSeekReasonerService {
   private static instance: DeepSeekReasonerService;
@@ -46,20 +60,29 @@ export class DeepSeekReasonerService {
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "processing",
-      message: "Initializing DeepSeek Reasoner service"
+      message: "Initializing DeepSeek Reasoner service with integrated communication"
     });
 
-    // Initialize the service
+    // Initialize integrated services
+    await Promise.all([
+      ragService.initialize(),
+      a2aService.initialize(),
+      mcpService.initialize()
+    ]);
+
     this.isInitialized = true;
 
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "success",
-      message: "DeepSeek Reasoner service initialized successfully",
+      message: "DeepSeek Reasoner service initialized with full integration",
       data: { 
         model: "deepseek-reasoner",
-        maxTokens: 4096,
-        maxReasoningTokens: 32768
+        maxTokens: 8192,
+        maxReasoningTokens: 32768,
+        ragIntegrated: ragService.isInitialized(),
+        a2aIntegrated: a2aService.isInitialized(),
+        mcpIntegrated: mcpService.isInitialized()
       }
     });
   }
@@ -72,20 +95,179 @@ export class DeepSeekReasonerService {
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "processing",
-      message: "Processing query with DeepSeek Reasoner",
+      message: "Processing integrated reasoning query",
       data: { 
         prompt: query.prompt.substring(0, 100) + "...",
         conversationId,
         hasContext: !!query.context,
-        maxTokens: query.maxTokens
+        maxTokens: query.maxTokens,
+        integrations: {
+          rag: query.ragEnabled,
+          a2a: query.a2aEnabled,
+          mcp: query.mcpEnabled
+        }
       }
     });
 
-    // Simulate DeepSeek API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    let integrationData: any = {};
 
-    const reasoning = this.generateChainOfThought(query);
-    const answer = this.generateAnswer(query, reasoning);
+    // Step 1: RAG Integration - Retrieve relevant context
+    if (query.ragEnabled) {
+      try {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "processing",
+          message: "Retrieving context from RAG database"
+        });
+
+        const ragResults = await ragService.query({
+          query: query.prompt,
+          limit: 5,
+          threshold: 0.3
+        });
+
+        integrationData.ragResults = ragResults;
+        
+        // Enhance context with RAG results
+        const ragContext = ragResults.documents.map(doc => 
+          `[${doc.source}] ${doc.title}: ${doc.content}`
+        ).join('\n\n');
+        
+        query.context = (query.context || '') + '\n\nRelevant Documentation:\n' + ragContext;
+
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "success",
+          message: `Retrieved ${ragResults.documents.length} relevant documents from RAG database`
+        });
+      } catch (error) {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "error",
+          message: `RAG integration failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        });
+      }
+    }
+
+    // Step 2: A2A Coordination - Delegate subtasks if needed
+    if (query.a2aEnabled) {
+      try {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "processing",
+          message: "Coordinating with A2A agents"
+        });
+
+        const delegation = await a2aService.delegateTask(
+          `Reasoning support: ${query.prompt}`,
+          ["reasoning-support", "context-analysis"]
+        );
+
+        if (delegation.assignedAgent) {
+          const a2aMessage = await a2aService.sendMessage({
+            from: "deepseek-reasoner",
+            to: delegation.assignedAgent.id,
+            type: "request",
+            payload: {
+              task: "reasoning-support",
+              query: query.prompt,
+              context: query.context
+            }
+          });
+
+          integrationData.a2aMessages = [a2aMessage];
+        }
+
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "success",
+          message: "A2A coordination completed successfully"
+        });
+      } catch (error) {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "error",
+          message: `A2A coordination failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        });
+      }
+    }
+
+    // Step 3: MCP Tool Integration - Use tools if needed
+    if (query.mcpEnabled) {
+      try {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "processing",
+          message: "Accessing MCP tools and resources"
+        });
+
+        // Example: Use search tool if query needs web information
+        if (query.prompt.toLowerCase().includes('search') || query.prompt.toLowerCase().includes('find')) {
+          const searchResult = await mcpService.callTool('search_web', {
+            query: query.prompt
+          });
+          integrationData.mcpToolCalls = [{ tool: 'search_web', result: searchResult }];
+        }
+
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "success",
+          message: "MCP tool integration completed"
+        });
+      } catch (error) {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "error",
+          message: `MCP tool integration failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        });
+      }
+    }
+
+    // Step 4: Build conversation history
+    const messages: DeepSeekMessage[] = [];
+    
+    // Add conversation history (excluding reasoning_content)
+    if (query.conversationHistory) {
+      for (const hist of query.conversationHistory) {
+        messages.push({ role: "user", content: hist.userMessage });
+        messages.push({ role: "assistant", content: hist.assistantMessage });
+      }
+    }
+
+    // Add system context if available
+    if (query.context) {
+      messages.push({
+        role: "system",
+        content: `Context: ${query.context}`
+      });
+    }
+
+    // Add current user query
+    messages.push({
+      role: "user",
+      content: query.prompt
+    });
+
+    // Step 5: Call DeepSeek Reasoner API
+    let apiResponse;
+    try {
+      apiResponse = await DeepSeekReasonerClient.makeReasonerCall(messages, query.maxTokens);
+    } catch (error) {
+      if (error instanceof Error && error.message === "NO_API_KEY") {
+        realTimeResponseService.addResponse({
+          source: "deepseek-reasoner",
+          status: "warning",
+          message: "Using simulated response due to missing API key"
+        });
+        apiResponse = await DeepSeekReasonerClient.simulateReasonerCall(messages, query.maxTokens);
+      } else {
+        throw error;
+      }
+    }
+
+    const choice = apiResponse.choices[0];
+    const reasoning = choice.message.reasoning_content || "No reasoning content available";
+    const answer = choice.message.content;
 
     // Store conversation history
     const historyEntry: ConversationHistory = {
@@ -107,22 +289,28 @@ export class DeepSeekReasonerService {
       reasoning,
       conversationId,
       usage: {
-        promptTokens: this.estimateTokens(query.prompt + (query.context || "")),
-        completionTokens: this.estimateTokens(answer),
-        reasoningTokens: this.estimateTokens(reasoning),
-        totalTokens: this.estimateTokens(query.prompt + (query.context || "") + answer + reasoning)
-      }
+        promptTokens: apiResponse.usage.prompt_tokens,
+        completionTokens: apiResponse.usage.completion_tokens,
+        reasoningTokens: apiResponse.usage.reasoning_tokens || 0,
+        totalTokens: apiResponse.usage.total_tokens
+      },
+      integrationData
     };
 
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "success",
-      message: "DeepSeek Reasoner processing completed successfully",
+      message: "DeepSeek Reasoner processing completed with full integration",
       data: {
         conversationId,
         answerLength: answer.length,
         reasoningLength: reasoning.length,
-        usage: response.usage
+        usage: response.usage,
+        integrationsUsed: {
+          rag: !!integrationData.ragResults,
+          a2a: !!integrationData.a2aMessages,
+          mcp: !!integrationData.mcpToolCalls
+        }
       }
     });
 
@@ -131,96 +319,6 @@ export class DeepSeekReasonerService {
 
   private generateConversationId(): string {
     return `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private generateChainOfThought(query: ReasonerQuery): string {
-    // Simulate sophisticated chain-of-thought reasoning
-    const steps = [
-      "🤔 Analyzing the user's query and understanding the core requirements...",
-      "📊 Examining available context and identifying key information sources...",
-      "🔍 Breaking down the problem into manageable components...",
-      "💡 Generating potential approaches and evaluating their feasibility...",
-      "🔗 Connecting insights from different knowledge domains...",
-      "✅ Synthesizing findings into a coherent response strategy...",
-      "🎯 Formulating the final answer with supporting evidence..."
-    ];
-
-    return steps.join("\n\n") + `\n\nBased on the query: "${query.prompt}"\nWith context: ${query.context ? "Yes" : "No"}\n\nProceeding with detailed analysis...`;
-  }
-
-  private generateAnswer(query: ReasonerQuery, reasoning: string): string {
-    if (query.prompt.toLowerCase().includes("rag")) {
-      return `RAG 2.0 Implementation Analysis:
-
-Based on my reasoning process, here's a comprehensive response about RAG 2.0:
-
-RAG 2.0 represents a significant evolution in retrieval-augmented generation systems. The key improvements include:
-
-1. **End-to-End Optimization**: Unlike RAG 1.0 which often used separate, frozen components, RAG 2.0 integrates retriever and generator training for optimal performance.
-
-2. **Advanced Retrieval Techniques**: 
-   - Hybrid search combining dense and sparse retrieval
-   - Tensor search methods like ColBERT for fine-grained matching
-   - Query transformation and rewriting capabilities
-
-3. **Self-Correction Mechanisms**: Integration of self-reflection and validation to improve response accuracy and reduce hallucinations.
-
-4. **Context Management**: Sophisticated handling of multi-document contexts and complex reasoning chains.
-
-${query.context ? `\n\nConsidering the provided context, the implementation should focus on: ${query.context.substring(0, 200)}...` : ""}
-
-This approach ensures more reliable, accurate, and contextually relevant responses for complex queries.`;
-    }
-
-    if (query.prompt.toLowerCase().includes("a2a")) {
-      return `Agent-to-Agent Protocol Analysis:
-
-The A2A protocol enables seamless communication between autonomous agents:
-
-1. **Agent Discovery**: Dynamic discovery through Agent Cards containing capability metadata
-2. **Task Delegation**: Structured request/response patterns for efficient task distribution
-3. **Real-time Communication**: Server-Sent Events for immediate coordination and updates
-4. **Security**: OAuth 2.0/2.1 integration for secure inter-agent communication
-5. **Scalability**: Support for heterogeneous agent networks and workflow orchestration
-
-${query.context ? `\n\nWith the given context: ${query.context.substring(0, 200)}...` : ""}
-
-The protocol facilitates building complex multi-agent systems that can coordinate effectively.`;
-    }
-
-    if (query.prompt.toLowerCase().includes("mcp")) {
-      return `Model Context Protocol Implementation:
-
-MCP provides standardized tool and resource access for AI models:
-
-1. **Protocol Foundation**: JSON-RPC 2.0 based communication for reliability
-2. **Tool Framework**: Standardized discovery and execution of external tools
-3. **Resource Management**: URI-based addressing for diverse data sources
-4. **Security**: OAuth integration and permission-based access control
-5. **Extensibility**: Plugin architecture for custom tool development
-
-${query.context ? `\n\nApplying this to your context: ${query.context.substring(0, 200)}...` : ""}
-
-This enables AI models to interact with external systems in a standardized, secure manner.`;
-    }
-
-    // Generic response
-    return `Based on my chain-of-thought analysis, here's my response to your query:
-
-${query.prompt}
-
-After careful consideration of the available information and context, I can provide the following insights:
-
-The query addresses important aspects that require systematic analysis. Through the reasoning process, I've identified key components that need to be addressed comprehensively.
-
-${query.context ? `\n\nConsidering the provided context: ${query.context.substring(0, 300)}...\n\nThis additional information helps refine the analysis and provides more targeted insights.` : ""}
-
-The solution should incorporate best practices while addressing the specific requirements outlined in your query.`;
-  }
-
-  private estimateTokens(text: string): number {
-    // Rough estimation: ~4 characters per token
-    return Math.ceil(text.length / 4);
   }
 
   getConversationHistory(conversationId: string): ConversationHistory[] {
@@ -240,6 +338,35 @@ The solution should incorporate best practices while addressing the specific req
       message: `Conversation ${conversationId} cleared`,
       data: { conversationId }
     });
+  }
+
+  async healthCheck(): Promise<boolean> {
+    realTimeResponseService.addResponse({
+      source: "deepseek-reasoner",
+      status: "processing",
+      message: "Performing DeepSeek Reasoner health check"
+    });
+
+    const isHealthy = this.isInitialized && 
+                     ragService.isInitialized() && 
+                     a2aService.isInitialized() && 
+                     mcpService.isInitialized();
+
+    realTimeResponseService.addResponse({
+      source: "deepseek-reasoner",
+      status: isHealthy ? "success" : "error",
+      message: `DeepSeek Reasoner health check ${isHealthy ? "passed" : "failed"}`,
+      data: { 
+        healthy: isHealthy,
+        integrations: {
+          rag: ragService.isInitialized(),
+          a2a: a2aService.isInitialized(),
+          mcp: mcpService.isInitialized()
+        }
+      }
+    });
+
+    return isHealthy;
   }
 }
 

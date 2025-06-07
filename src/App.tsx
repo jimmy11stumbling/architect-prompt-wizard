@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -37,18 +38,18 @@ function App() {
     const initializeSystem = async () => {
       try {
         await systemIntegrationService.initialize({
-          projectDescription: "IPA System with RAG, A2A, and MCP integration",
-          frontendTechStack: ["React"],
-          backendTechStack: ["Express"],
+          projectDescription: "IPA System with comprehensive DeepSeek integration, RAG 2.0, A2A protocol, and MCP hub",
+          frontendTechStack: ["React", "TypeScript"],
+          backendTechStack: ["Express", "Node.js"],
           customFrontendTech: [],
           customBackendTech: [],
-          a2aIntegrationDetails: "Full A2A protocol integration",
-          additionalFeatures: "Enhanced AI system with DeepSeek Reasoner",
+          a2aIntegrationDetails: "Full A2A protocol integration with agent coordination and task delegation",
+          additionalFeatures: "Enhanced AI system with DeepSeek Reasoner, real-time monitoring, and integrated workflows",
           ragVectorDb: "Chroma",
           customRagVectorDb: "",
-          mcpType: "Enterprise MCP", // Fixed: use valid MCPType
+          mcpType: "Enterprise MCP",
           customMcpType: "",
-          advancedPromptDetails: "Advanced prompting with chain-of-thought"
+          advancedPromptDetails: "Advanced prompting with chain-of-thought reasoning and integrated communication"
         });
       } catch (error) {
         console.error("Failed to initialize system:", error);

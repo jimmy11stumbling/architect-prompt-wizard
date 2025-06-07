@@ -1,140 +1,208 @@
 
-import { ProjectSpec } from "@/types/ipa-types";
+import { ProjectSpec, SystemHealth } from "@/types/ipa-types";
+import { realTimeResponseService } from "./realTimeResponseService";
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
-import { realTimeResponseService } from "./realTimeResponseService";
-
-export interface SystemHealth {
-  overall: boolean;
-  services: {
-    rag: boolean;
-    a2a: boolean;
-    mcp: boolean;
-    deepseek: boolean;
-  };
-  details: any;
-  lastCheck: number;
-  overallStatus: "healthy" | "degraded" | "unhealthy";
-}
+import { deepseekReasonerService } from "../deepseek/deepseekReasonerService";
 
 export class SystemIntegrationService {
-  private initialized = false;
+  private static instance: SystemIntegrationService;
+  private isInitialized = false;
+
+  static getInstance(): SystemIntegrationService {
+    if (!SystemIntegrationService.instance) {
+      SystemIntegrationService.instance = new SystemIntegrationService();
+    }
+    return SystemIntegrationService.instance;
+  }
 
   async initialize(spec: ProjectSpec): Promise<void> {
-    if (this.initialized) return;
+    if (this.isInitialized) return;
 
     realTimeResponseService.addResponse({
       source: "system-integration",
       status: "processing",
-      message: "Initializing integrated AI system"
-    });
-
-    // Initialize all services
-    await Promise.all([
-      ragService.initialize(),
-      a2aService.initialize(),
-      mcpService.initialize()
-    ]);
-
-    realTimeResponseService.addResponse({
-      source: "system-integration",
-      status: "success",
-      message: "All system services initialized successfully",
+      message: "Initializing integrated AI system",
       data: { 
-        projectDescription: spec.projectDescription,
-        ragEnabled: true,
-        a2aEnabled: true,
-        mcpEnabled: true
+        projectDescription: spec.projectDescription.substring(0, 100),
+        ragEnabled: spec.ragVectorDb !== "None",
+        a2aEnabled: !!spec.a2aIntegrationDetails,
+        mcpEnabled: spec.mcpType !== "None"
       }
     });
 
-    this.initialized = true;
-  }
+    try {
+      // Initialize all services in parallel for better performance
+      await Promise.all([
+        ragService.initialize(),
+        a2aService.initialize(),
+        mcpService.initialize(),
+        deepseekReasonerService.initialize()
+      ]);
 
-  isInitialized(): boolean {
-    return this.initialized;
+      this.isInitialized = true;
+
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "success",
+        message: "All system services initialized successfully",
+        data: {
+          projectDescription: spec.projectDescription,
+          ragEnabled: ragService.isInitialized(),
+          a2aEnabled: a2aService.isInitialized(),
+          mcpEnabled: mcpService.isInitialized(),
+          deepseekEnabled: true
+        }
+      });
+
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "error",
+        message: `System initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+      throw error;
+    }
   }
 
   async getSystemHealth(): Promise<SystemHealth> {
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Checking system health across all services"
+    });
+
+    const healthChecks = await Promise.allSettled([
+      ragService.healthCheck(),
+      a2aService.healthCheck(),
+      mcpService.healthCheck(),
+      deepseekReasonerService.healthCheck()
+    ]);
+
     const services = {
-      rag: await ragService.healthCheck(),
-      a2a: await a2aService.healthCheck(),
-      mcp: await mcpService.healthCheck(),
-      deepseek: true // Assume DeepSeek API is available
+      rag: healthChecks[0].status === "fulfilled" && healthChecks[0].value,
+      a2a: healthChecks[1].status === "fulfilled" && healthChecks[1].value,
+      mcp: healthChecks[2].status === "fulfilled" && healthChecks[2].value,
+      deepseek: healthChecks[3].status === "fulfilled" && healthChecks[3].value
     };
 
-    const healthyCount = Object.values(services).filter(Boolean).length;
-    const totalServices = Object.keys(services).length;
+    const overall = Object.values(services).every(status => status === true);
+    const overallStatus = overall ? "healthy" : 
+                         Object.values(services).some(status => status === true) ? "degraded" : "unhealthy";
 
-    let overallStatus: "healthy" | "degraded" | "unhealthy";
-    if (healthyCount === totalServices) {
-      overallStatus = "healthy";
-    } else if (healthyCount >= totalServices / 2) {
-      overallStatus = "degraded";
-    } else {
-      overallStatus = "unhealthy";
-    }
-
-    return {
-      overall: healthyCount === totalServices,
+    const health: SystemHealth = {
+      overall,
       services,
       details: {
-        healthyServices: healthyCount,
-        totalServices,
-        initializationStatus: this.initialized
+        ragDocuments: ragService.getDocumentCount(),
+        a2aAgents: a2aService.getAllAgents().length,
+        mcpServers: mcpService.getServers().length,
+        lastHealthCheck: Date.now()
       },
       lastCheck: Date.now(),
       overallStatus
     };
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: overall ? "success" : "warning",
+      message: `System health check completed - Status: ${overallStatus}`,
+      data: {
+        overallHealth: overall,
+        serviceHealth: services,
+        details: health.details
+      }
+    });
+
+    return health;
   }
 
-  async demonstrateIntegration(): Promise<any> {
+  async executeIntegratedQuery(query: string): Promise<any> {
     realTimeResponseService.addResponse({
       source: "system-integration",
       status: "processing",
-      message: "Running integration demonstration"
+      message: "Executing integrated query across all systems",
+      data: { query: query.substring(0, 100) }
     });
 
-    // Test RAG integration
-    const ragDemo = await ragService.query({
-      query: "RAG 2.0 architecture",
-      limit: 2
-    });
+    try {
+      // Step 1: Query RAG for context
+      const ragResults = await ragService.query({
+        query,
+        limit: 5,
+        threshold: 0.3
+      });
 
-    // Test A2A integration
-    const a2aDemo = await a2aService.sendMessage({
-      id: `demo-${Date.now()}`,
-      from: "integration-test",
-      to: "agent-rag-coordinator",
-      type: "request",
-      payload: { test: "integration demo" },
-      timestamp: Date.now()
-    });
+      // Step 2: Coordinate with A2A agents
+      const a2aCoordination = await a2aService.delegateTask(
+        `Integrated query: ${query}`,
+        ["query-processing", "context-analysis"]
+      );
 
-    // Test MCP integration
-    const mcpDemo = await mcpService.callTool("process_data", {
-      data: { test: "integration" },
-      operation: "validate"
-    });
+      // Step 3: Use MCP tools if needed
+      const mcpTools = await mcpService.listTools();
+      let mcpResults = [];
+      
+      if (query.toLowerCase().includes("search")) {
+        const searchResult = await mcpService.callTool("search_web", { query });
+        mcpResults.push({ tool: "search_web", result: searchResult });
+      }
 
-    const demo = {
-      ragDemo,
-      a2aDemo,
-      mcpDemo,
-      timestamp: Date.now(),
-      status: "completed"
-    };
+      // Step 4: Process with DeepSeek Reasoner
+      const contextData = `
+RAG Results: ${ragResults.documents.map(doc => doc.title).join(", ")}
+A2A Coordination: ${a2aCoordination.assignedAgent?.name || "No agent assigned"}
+MCP Tools Used: ${mcpResults.map(r => r.tool).join(", ")}
+      `;
 
-    realTimeResponseService.addResponse({
-      source: "system-integration",
-      status: "success",
-      message: "Integration demonstration completed successfully",
-      data: demo
-    });
+      const reasoningResult = await deepseekReasonerService.processQuery({
+        prompt: query,
+        context: contextData,
+        maxTokens: 4096,
+        ragEnabled: false, // Already done
+        a2aEnabled: false, // Already done
+        mcpEnabled: false  // Already done
+      });
 
-    return demo;
+      const result = {
+        query,
+        ragResults,
+        a2aCoordination,
+        mcpResults,
+        reasoning: reasoningResult,
+        success: true
+      };
+
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "success",
+        message: "Integrated query completed successfully",
+        data: {
+          ragDocuments: ragResults.documents.length,
+          a2aAgent: a2aCoordination.assignedAgent?.name,
+          mcpTools: mcpResults.length,
+          reasoningTokens: reasoningResult.usage.totalTokens
+        }
+      });
+
+      return result;
+
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "error",
+        message: `Integrated query failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+      throw error;
+    }
+  }
+
+  isSystemInitialized(): boolean {
+    return this.isInitialized;
   }
 }
 
-export const systemIntegrationService = new SystemIntegrationService();
+export const systemIntegrationService = SystemIntegrationService.getInstance();
