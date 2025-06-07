@@ -3,271 +3,260 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Database, FileText, Zap, CheckCircle } from "lucide-react";
-import { ragService, RAGQuery, RAGResponse } from "@/services/rag/ragService";
-import { a2aService } from "@/services/a2a/a2aService";
+import { Database, Search, FileText, Clock, Target } from "lucide-react";
+import { ragService, RAGResponse } from "@/services/rag/ragService";
+import { useToast } from "@/hooks/use-toast";
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<RAGResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [realTimeLog, setRealTimeLog] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [limit, setLimit] = useState(5);
+  const [threshold, setThreshold] = useState(0.3);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (!ragService.getInitializationStatus()) {
-      ragService.initialize();
-    }
-  }, []);
-
-  const addToLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `[${timestamp}] ${message}`;
-    setRealTimeLog(prev => [...prev.slice(-9), logEntry]);
-    console.log("RAG:", logEntry);
-  };
-
-  const executeRAGQuery = async () => {
-    if (!query.trim()) return;
-
-    setLoading(true);
-    setProgress(0);
-    setResults(null);
-    
-    try {
-      addToLog("🔍 Starting RAG query execution");
-      setProgress(20);
-
-      // Step 1: A2A coordination
-      addToLog("📡 Coordinating with A2A agents");
-      const delegation = await a2aService.delegateTask(
-        `RAG query: ${query}`,
-        ["document-retrieval", "semantic-search"]
-      );
-      
-      if (delegation.assignedAgent) {
-        addToLog(`✅ Task assigned to: ${delegation.assignedAgent.name}`);
-      }
-      setProgress(40);
-
-      // Step 2: Execute RAG query
-      addToLog("🔎 Executing semantic search");
-      const ragQuery: RAGQuery = {
-        query,
-        limit: 5,
-        threshold: 0.3
-      };
-
-      const ragResults = await ragService.query(ragQuery);
-      setProgress(60);
-
-      addToLog(`📊 Found ${ragResults.documents.length} relevant documents`);
-      addToLog(`🎯 Query: "${ragResults.query}"`);
-
-      // Step 3: Process results
-      addToLog("⚡ Processing and ranking results");
-      setProgress(80);
-
-      // Send A2A message about completion
-      await a2aService.sendMessage({
-        id: `rag-complete-${Date.now()}`,
-        from: "rag-interface",
-        to: "workflow-orchestrator",
-        type: "notification",
-        payload: {
-          query,
-          resultsCount: ragResults.documents.length,
-          avgScore: ragResults.scores.reduce((a, b) => a + b, 0) / ragResults.scores.length
-        },
-        timestamp: Date.now()
+  const handleSearch = async () => {
+    if (!query.trim()) {
+      toast({
+        title: "Query Required",
+        description: "Please enter a search query",
+        variant: "destructive"
       });
+      return;
+    }
 
-      setResults(ragResults);
-      setProgress(100);
-      addToLog("✨ RAG query completed successfully");
-
+    setIsSearching(true);
+    try {
+      const response = await ragService.query({
+        query: query.trim(),
+        limit,
+        threshold
+      });
+      setResults(response);
+      
+      toast({
+        title: "Search Complete",
+        description: `Found ${response.documents.length} relevant documents`
+      });
     } catch (error) {
       console.error("RAG query failed:", error);
-      addToLog(`❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast({
+        title: "Search Failed",
+        description: "Unable to query the RAG database",
+        variant: "destructive"
+      });
     } finally {
-      setLoading(false);
+      setIsSearching(false);
     }
   };
 
-  const clearResults = () => {
-    setQuery("");
-    setResults(null);
-    setRealTimeLog([]);
-    setProgress(0);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSearch();
+    }
   };
+
+  const sampleQueries = [
+    "RAG 2.0 architecture and implementation",
+    "Agent-to-Agent protocol communication",
+    "Model Context Protocol integration",
+    "DeepSeek reasoning capabilities",
+    "Multi-agent system coordination"
+  ];
 
   return (
     <div className="space-y-6">
+      {/* Query Interface */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            RAG 2.0 Knowledge Retrieval System
+            RAG 2.0 Knowledge Query
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="query">Search Query</Label>
             <Input
-              placeholder="Enter your knowledge query..."
+              id="query"
+              placeholder="Enter your search query..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && executeRAGQuery()}
-              className="flex-1"
+              onKeyPress={handleKeyPress}
             />
-            <Button 
-              onClick={executeRAGQuery}
-              disabled={loading || !query.trim()}
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              ) : (
-                <Search className="h-4 w-4 mr-2" />
-              )}
-              Query RAG
-            </Button>
-            <Button variant="outline" onClick={clearResults}>
-              Clear
-            </Button>
           </div>
 
-          {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Processing query...</span>
-                <span>{progress}%</span>
-              </div>
-              <Progress value={progress} />
+              <Label htmlFor="limit">Result Limit</Label>
+              <Input
+                id="limit"
+                type="number"
+                min="1"
+                max="20"
+                value={limit}
+                onChange={(e) => setLimit(parseInt(e.target.value) || 5)}
+              />
             </div>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="threshold">Similarity Threshold</Label>
+              <Input
+                id="threshold"
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
+                value={threshold}
+                onChange={(e) => setThreshold(parseFloat(e.target.value) || 0.3)}
+              />
+            </div>
+          </div>
 
-          {realTimeLog.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Real-time Processing Log</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="font-mono text-xs space-y-1 max-h-32 overflow-y-auto">
-                  {realTimeLog.map((log, index) => (
-                    <div key={index} className="text-muted-foreground">
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <Button 
+            onClick={handleSearch} 
+            disabled={isSearching || !query.trim()}
+            className="w-full"
+          >
+            {isSearching ? (
+              <>
+                <Search className="h-4 w-4 mr-2 animate-spin" />
+                Searching...
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4 mr-2" />
+                Search Knowledge Base
+              </>
+            )}
+          </Button>
+
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Sample Queries:</Label>
+            <div className="flex flex-wrap gap-2">
+              {sampleQueries.map((sample, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuery(sample)}
+                  className="text-xs"
+                >
+                  {sample}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
+      {/* Results */}
       {results && (
-        <Tabs defaultValue="results" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="results">Search Results</TabsTrigger>
-            <TabsTrigger value="metadata">Query Metadata</TabsTrigger>
-            <TabsTrigger value="integration">A2A Integration</TabsTrigger>
+        <Tabs defaultValue="documents" className="w-full">
+          <TabsList>
+            <TabsTrigger value="documents">Documents ({results.documents.length})</TabsTrigger>
+            <TabsTrigger value="metrics">Search Metrics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="results">
-            <div className="space-y-4">
-              {results.documents.map((doc, index) => (
+          <TabsContent value="documents" className="space-y-4">
+            {results.documents.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-medium">No Documents Found</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Try adjusting your query or lowering the similarity threshold
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              results.documents.map((doc, index) => (
                 <Card key={doc.id}>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        {doc.title}
-                      </CardTitle>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg">{doc.title}</CardTitle>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          Score: {(results.scores[index] * 100).toFixed(1)}%
-                        </Badge>
-                        <Badge variant="secondary">
-                          {doc.source || "Unknown"}
-                        </Badge>
+                        <Badge variant="outline">{doc.source}</Badge>
+                        {results.scores && (
+                          <Badge variant="secondary">
+                            Score: {results.scores[index]?.toFixed(2) || "N/A"}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {doc.content}
+                    <p className="text-muted-foreground">
+                      {doc.content.length > 300 
+                        ? `${doc.content.substring(0, 300)}...` 
+                        : doc.content
+                      }
                     </p>
                     {doc.metadata && Object.keys(doc.metadata).length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {Object.entries(doc.metadata).map(([key, value]) => (
-                          <Badge key={key} variant="outline" className="text-xs">
-                            {key}: {String(value)}
-                          </Badge>
-                        ))}
+                      <div className="mt-3 pt-3 border-t">
+                        <Label className="text-xs text-muted-foreground">Metadata:</Label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Object.entries(doc.metadata).map(([key, value]) => (
+                            <Badge key={key} variant="outline" className="text-xs">
+                              {key}: {String(value)}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              ))
+            )}
           </TabsContent>
 
-          <TabsContent value="metadata">
+          <TabsContent value="metrics">
             <Card>
               <CardHeader>
-                <CardTitle>Query Analysis</CardTitle>
+                <CardTitle>Search Performance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{results.documents.length}</div>
-                    <div className="text-sm text-muted-foreground">Documents Found</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{results.totalResults}</div>
-                    <div className="text-sm text-muted-foreground">Total Matches</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">
-                      {((results.scores.reduce((a, b) => a + b, 0) / results.scores.length) * 100).toFixed(1)}%
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-8 w-8 text-blue-500" />
+                    <div>
+                      <div className="text-2xl font-bold">{results.searchTime || 0}ms</div>
+                      <div className="text-sm text-muted-foreground">Search Time</div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Avg Relevance</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">
-                      {Math.max(...results.scores).toFixed(3)}
+                  
+                  <div className="flex items-center gap-3">
+                    <Target className="h-8 w-8 text-green-500" />
+                    <div>
+                      <div className="text-2xl font-bold">{results.totalResults}</div>
+                      <div className="text-sm text-muted-foreground">Total Results</div>
                     </div>
-                    <div className="text-sm text-muted-foreground">Best Match</div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Database className="h-8 w-8 text-purple-500" />
+                    <div>
+                      <div className="text-2xl font-bold">
+                        {results.scores?.length ? 
+                          (results.scores.reduce((a, b) => a + b, 0) / results.scores.length).toFixed(2) 
+                          : "0"
+                        }
+                      </div>
+                      <div className="text-sm text-muted-foreground">Avg Score</div>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="integration">
-            <Card>
-              <CardHeader>
-                <CardTitle>A2A Integration Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>A2A agents coordinated successfully</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Task delegation completed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Real-time notifications sent</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Results integrated with A2A workflow</span>
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">Query Details</h4>
+                  <div className="space-y-1 text-sm">
+                    <div><strong>Query:</strong> {results.query}</div>
+                    <div><strong>Limit:</strong> {limit}</div>
+                    <div><strong>Threshold:</strong> {threshold}</div>
+                    <div><strong>Vector Database:</strong> Chroma</div>
                   </div>
                 </div>
               </CardContent>

@@ -1,455 +1,466 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Wrench, FileText, Zap, Play, Server, CheckCircle, AlertCircle } from "lucide-react";
-import { mcpService, MCPServer } from "@/services/mcp/mcpService";
-import { a2aService } from "@/services/a2a/a2aService";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Wrench, Server, PlayCircle, Settings, FileText, AlertCircle } from "lucide-react";
+import { mcpService } from "@/services/mcp/mcpService";
+import { MCPServer, MCPTool, MCPResource } from "@/types/ipa-types";
+import { useToast } from "@/hooks/use-toast";
 
 const MCPHubInterface: React.FC = () => {
   const [servers, setServers] = useState<MCPServer[]>([]);
-  const [tools, setTools] = useState<any[]>([]);
-  const [resources, setResources] = useState<any[]>([]);
-  const [selectedTool, setSelectedTool] = useState("");
-  const [toolParams, setToolParams] = useState("");
-  const [selectedResource, setSelectedResource] = useState("");
+  const [tools, setTools] = useState<MCPTool[]>([]);
+  const [resources, setResources] = useState<MCPResource[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [toolCall, setToolCall] = useState({
+    toolName: "",
+    parameters: "{}"
+  });
+  const [resourceUri, setResourceUri] = useState("");
   const [toolResult, setToolResult] = useState<any>(null);
   const [resourceContent, setResourceContent] = useState<any>(null);
-  const [realTimeLog, setRealTimeLog] = useState<string[]>([]);
-  const [validationResults, setValidationResults] = useState<any>({});
+  const { toast } = useToast();
 
-  useEffect(() => {
-    loadMCPData();
-    const interval = setInterval(validateMCPConnections, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const addToLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `[${timestamp}] ${message}`;
-    setRealTimeLog(prev => [...prev.slice(-9), logEntry]);
-    console.log("MCP:", logEntry);
-  };
-
-  const loadMCPData = async () => {
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
-      if (!mcpService.isInitialized()) {
-        await mcpService.initialize();
-        addToLog("🔧 MCP Service initialized");
-      }
-
-      setServers(mcpService.getServers());
-      const toolsList = await mcpService.listTools();
-      const resourcesList = await mcpService.listResources();
-      setTools(toolsList);
-      setResources(resourcesList);
+      const [serverList, toolList, resourceList] = await Promise.all([
+        mcpService.getServers(),
+        mcpService.listTools(),
+        mcpService.listResources()
+      ]);
       
-      addToLog(`📊 Loaded ${toolsList.length} tools and ${resourcesList.length} resources`);
+      setServers(serverList);
+      setTools(toolList);
+      setResources(resourceList);
     } catch (error) {
-      console.error("Failed to load MCP data:", error);
-      addToLog(`❌ Failed to load MCP data: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Failed to fetch MCP data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch MCP hub data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const validateMCPConnections = async () => {
-    const results: any = {};
-    
-    for (const server of servers) {
-      try {
-        // Simulate connection validation
-        const isConnected = server.status === "online";
-        results[server.id] = {
-          connected: isConnected,
-          lastCheck: new Date().toISOString(),
-          responseTime: Math.random() * 100 + 20
-        };
-        
-        if (isConnected) {
-          addToLog(`✅ ${server.name} connection validated`);
-        }
-      } catch (error) {
-        results[server.id] = {
-          connected: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-          lastCheck: new Date().toISOString()
-        };
-        addToLog(`❌ ${server.name} validation failed`);
-      }
-    }
-    
-    setValidationResults(results);
   };
 
   const callTool = async () => {
-    if (!selectedTool) return;
+    if (!toolCall.toolName) {
+      toast({
+        title: "Tool Required",
+        description: "Please select a tool to call",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      addToLog(`🔧 Executing tool: ${selectedTool}`);
-      
-      let params = {};
-      if (toolParams.trim()) {
-        params = JSON.parse(toolParams);
-        addToLog(`📝 Parameters: ${JSON.stringify(params)}`);
+      let parameters;
+      try {
+        parameters = JSON.parse(toolCall.parameters);
+      } catch {
+        parameters = {};
       }
 
-      // Coordinate with A2A for tool execution
-      await a2aService.sendMessage({
-        id: `mcp-tool-${Date.now()}`,
-        from: "mcp-hub",
-        to: "mcp-coordinator",
-        type: "request",
-        payload: { tool: selectedTool, params },
-        timestamp: Date.now()
-      });
-
-      const result = await mcpService.callTool(selectedTool, params);
+      const result = await mcpService.callTool(toolCall.toolName, parameters);
       setToolResult(result);
       
-      addToLog(`✅ Tool executed successfully`);
-      addToLog(`📤 Result: ${JSON.stringify(result).substring(0, 100)}...`);
-      
+      toast({
+        title: "Tool Called",
+        description: `Successfully called ${toolCall.toolName}`
+      });
     } catch (error) {
-      console.error("Failed to call tool:", error);
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      setToolResult({ error: errorMsg });
-      addToLog(`❌ Tool execution failed: ${errorMsg}`);
+      console.error("Tool call failed:", error);
+      toast({
+        title: "Tool Call Failed",
+        description: `Failed to call ${toolCall.toolName}`,
+        variant: "destructive"
+      });
     }
   };
 
   const readResource = async () => {
-    if (!selectedResource) return;
+    if (!resourceUri) {
+      toast({
+        title: "URI Required",
+        description: "Please enter a resource URI",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      addToLog(`📖 Reading resource: ${selectedResource}`);
-      
-      // Coordinate with A2A for resource access
-      await a2aService.sendMessage({
-        id: `mcp-resource-${Date.now()}`,
-        from: "mcp-hub",
-        to: "mcp-coordinator",
-        type: "request",
-        payload: { resource: selectedResource },
-        timestamp: Date.now()
-      });
-
-      const content = await mcpService.readResource(selectedResource);
+      const content = await mcpService.readResource(resourceUri);
       setResourceContent(content);
       
-      addToLog(`✅ Resource read successfully`);
-      addToLog(`📤 Content type: ${typeof content}`);
-      
+      toast({
+        title: "Resource Read",
+        description: "Successfully read resource content"
+      });
     } catch (error) {
-      console.error("Failed to read resource:", error);
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      setResourceContent({ error: errorMsg });
-      addToLog(`❌ Resource read failed: ${errorMsg}`);
+      console.error("Resource read failed:", error);
+      toast({
+        title: "Resource Read Failed",
+        description: "Failed to read resource",
+        variant: "destructive"
+      });
     }
   };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const getServerStatusColor = (status: string) => {
     switch (status) {
-      case "online": return "bg-green-100 text-green-800";
-      case "offline": return "bg-yellow-100 text-yellow-800";
-      case "error": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "online": return "text-green-500";
+      case "offline": return "text-red-500";
+      case "error": return "text-yellow-500";
+      default: return "text-gray-500";
     }
-  };
-
-  const getValidationIcon = (serverId: string) => {
-    const validation = validationResults[serverId];
-    if (!validation) return null;
-    
-    return validation.connected ? (
-      <CheckCircle className="h-4 w-4 text-green-500" />
-    ) : (
-      <AlertCircle className="h-4 w-4 text-red-500" />
-    );
   };
 
   return (
     <div className="space-y-6">
+      {/* MCP Hub Overview */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            MCP Hub Management Interface
+            <Wrench className="h-5 w-5" />
+            MCP Hub Status
           </CardTitle>
+          <Button onClick={fetchData} disabled={isLoading} size="sm" variant="outline">
+            <Settings className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold">{servers.length}</div>
+              <div className="text-2xl font-bold text-primary">{servers.length}</div>
               <div className="text-sm text-muted-foreground">MCP Servers</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">{tools.length}</div>
+              <div className="text-2xl font-bold text-blue-500">{tools.length}</div>
               <div className="text-sm text-muted-foreground">Available Tools</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">{resources.length}</div>
+              <div className="text-2xl font-bold text-green-500">{resources.length}</div>
               <div className="text-sm text-muted-foreground">Resources</div>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <Tabs defaultValue="servers" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="servers">Servers</TabsTrigger>
-              <TabsTrigger value="tools">Tools</TabsTrigger>
-              <TabsTrigger value="resources">Resources</TabsTrigger>
-              <TabsTrigger value="playground">Playground</TabsTrigger>
-              <TabsTrigger value="logs">Real-time Logs</TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="servers" className="w-full">
+        <TabsList>
+          <TabsTrigger value="servers">Servers</TabsTrigger>
+          <TabsTrigger value="tools">Tools</TabsTrigger>
+          <TabsTrigger value="resources">Resources</TabsTrigger>
+          <TabsTrigger value="execute">Execute</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="servers">
-              <div className="space-y-4">
-                {servers.map((server) => (
-                  <div key={server.id} className="border rounded-lg p-4 space-y-3">
+        <TabsContent value="servers" className="space-y-4">
+          {servers.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <Server className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium">No MCP Servers</h3>
+                <p className="text-sm text-muted-foreground">
+                  MCP servers will appear here once connected
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {servers.map((server) => (
+                <Card key={server.id}>
+                  <CardHeader>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{server.name}</h3>
-                        {getValidationIcon(server.id)}
-                      </div>
-                      <Badge className={getServerStatusColor(server.status)}>
+                      <CardTitle className="text-lg">{server.name}</CardTitle>
+                      <Badge variant={server.status === "online" ? "default" : "secondary"}>
                         {server.status}
                       </Badge>
                     </div>
-                    
-                    <div className="space-y-2">
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
                       <div>
-                        <Label className="text-xs">Endpoint</Label>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          {server.endpoint}
+                        <Label className="text-xs text-muted-foreground">Server ID:</Label>
+                        <div className="text-sm font-mono">{server.id}</div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Endpoint:</Label>
+                        <div className="text-sm font-mono break-all">{server.endpoint}</div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <div className="text-lg font-bold">{server.toolCount}</div>
+                          <div className="text-xs text-muted-foreground">Tools</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold">{server.resourceCount}</div>
+                          <div className="text-xs text-muted-foreground">Resources</div>
                         </div>
                       </div>
-                      
+
                       <div>
-                        <Label className="text-xs">Capabilities</Label>
+                        <Label className="text-xs text-muted-foreground">Capabilities:</Label>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {server.capabilities.map((cap) => (
-                            <Badge key={cap} variant="outline" className="text-xs">
+                          {server.capabilities.map((cap, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
                               {cap}
                             </Badge>
                           ))}
                         </div>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-                      {validationResults[server.id] && (
+        <TabsContent value="tools" className="space-y-4">
+          {tools.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <Wrench className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium">No Tools Available</h3>
+                <p className="text-sm text-muted-foreground">
+                  MCP tools will appear here once servers are connected
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {tools.map((tool) => (
+                <Card key={tool.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{tool.name}</CardTitle>
+                      {tool.category && (
+                        <Badge variant="outline">{tool.category}</Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">{tool.description}</p>
+                      
+                      {tool.server && (
                         <div>
-                          <Label className="text-xs">Validation Status</Label>
-                          <div className="text-xs text-muted-foreground">
-                            Last check: {new Date(validationResults[server.id].lastCheck).toLocaleTimeString()}
-                            {validationResults[server.id].responseTime && (
-                              <span> | Response: {validationResults[server.id].responseTime.toFixed(0)}ms</span>
-                            )}
+                          <Label className="text-xs text-muted-foreground">Server:</Label>
+                          <div className="text-sm">{tool.server}</div>
+                        </div>
+                      )}
+
+                      {tool.parameters && Object.keys(tool.parameters).length > 0 && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Parameters:</Label>
+                          <div className="mt-1 p-2 bg-muted rounded text-xs">
+                            <pre>{JSON.stringify(tool.parameters, null, 2)}</pre>
                           </div>
                         </div>
                       )}
-                    </div>
-                  </div>
-                ))}
-                
-                {servers.length === 0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No MCP servers connected.</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
 
-            <TabsContent value="tools">
-              <div className="space-y-4">
-                {tools.map((tool) => (
-                  <div key={tool.name} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium flex items-center gap-2">
-                        <Wrench className="h-4 w-4" />
-                        {tool.name}
-                      </h3>
-                      <Badge variant="outline">{tool.server}</Badge>
+                      <Button
+                        onClick={() => setToolCall(prev => ({ ...prev, toolName: tool.name }))}
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                        Select for Execution
+                      </Button>
                     </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {tool.description}
-                    </p>
-                    
-                    {tool.parameters && (
-                      <div>
-                        <Label className="text-xs">Parameters</Label>
-                        <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">
-                          {JSON.stringify(tool.parameters, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                
-                {tools.length === 0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    <Wrench className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No tools available.</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="resources">
-              <div className="space-y-4">
-                {resources.map((resource) => (
-                  <div key={resource.uri} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        {resource.name}
-                      </h3>
-                      <Badge variant="outline">{resource.type}</Badge>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {resource.description}
-                    </p>
-                    
-                    <div className="text-xs text-muted-foreground font-mono">
-                      URI: {resource.uri}
-                    </div>
-                  </div>
-                ))}
-                
-                {resources.length === 0 && (
-                  <div className="text-center text-muted-foreground py-8">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No resources available.</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="playground">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Wrench className="h-5 w-5" />
-                      Tool Testing
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Select Tool</Label>
-                      <Select value={selectedTool} onValueChange={setSelectedTool}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a tool to test" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tools.map((tool) => (
-                            <SelectItem key={tool.name} value={tool.name}>
-                              {tool.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label>Parameters (JSON)</Label>
-                      <Textarea
-                        placeholder='{"param1": "value1"}'
-                        value={toolParams}
-                        onChange={(e) => setToolParams(e.target.value)}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-
-                    <Button onClick={callTool} disabled={!selectedTool} className="w-full">
-                      <Play className="h-4 w-4 mr-2" />
-                      Execute Tool
-                    </Button>
-
-                    {toolResult && (
-                      <div>
-                        <Label>Result</Label>
-                        <pre className="text-xs bg-muted p-3 rounded mt-2 overflow-x-auto max-h-48">
-                          {JSON.stringify(toolResult, null, 2)}
-                        </pre>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-                <Card>
+        <TabsContent value="resources" className="space-y-4">
+          {resources.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium">No Resources Available</h3>
+                <p className="text-sm text-muted-foreground">
+                  MCP resources will appear here once servers are connected
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {resources.map((resource, index) => (
+                <Card key={index}>
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Resource Reading
-                    </CardTitle>
+                    <CardTitle className="text-lg">{resource.name}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Select Resource</Label>
-                      <Select value={selectedResource} onValueChange={setSelectedResource}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose a resource to read" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {resources.map((resource) => (
-                            <SelectItem key={resource.uri} value={resource.uri}>
-                              {resource.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button onClick={readResource} disabled={!selectedResource} className="w-full">
-                      <Zap className="h-4 w-4 mr-2" />
-                      Read Resource
-                    </Button>
-
-                    {resourceContent && (
+                  <CardContent>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">{resource.description}</p>
+                      
                       <div>
-                        <Label>Content</Label>
-                        <pre className="text-xs bg-muted p-3 rounded mt-2 overflow-x-auto max-h-48">
-                          {typeof resourceContent === 'string' 
-                            ? resourceContent 
-                            : JSON.stringify(resourceContent, null, 2)}
-                        </pre>
+                        <Label className="text-xs text-muted-foreground">URI:</Label>
+                        <div className="text-sm font-mono break-all">{resource.uri}</div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
 
-            <TabsContent value="logs">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Real-time Activity Log</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-mono text-xs space-y-1 max-h-64 overflow-y-auto bg-muted p-3 rounded">
-                    {realTimeLog.length > 0 ? (
-                      realTimeLog.map((log, index) => (
-                        <div key={index} className="text-muted-foreground">
-                          {log}
+                      {resource.mimeType && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">MIME Type:</Label>
+                          <div className="text-sm">{resource.mimeType}</div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center text-muted-foreground py-4">
-                        No activity logs yet. Execute tools or read resources to see real-time updates.
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                      )}
+
+                      {resource.type && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Type:</Label>
+                          <div className="text-sm">{resource.type}</div>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={() => setResourceUri(resource.uri)}
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Select for Reading
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="execute" className="space-y-6">
+          {/* Tool Execution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PlayCircle className="h-5 w-5" />
+                Execute MCP Tool
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="tool-name">Tool Name</Label>
+                <Input
+                  id="tool-name"
+                  placeholder="Enter tool name"
+                  value={toolCall.toolName}
+                  onChange={(e) => setToolCall(prev => ({ ...prev, toolName: e.target.value }))}
+                />
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {tools.map((tool) => (
+                    <Button
+                      key={tool.id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setToolCall(prev => ({ ...prev, toolName: tool.name }))}
+                      className="text-xs"
+                    >
+                      {tool.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="parameters">Parameters (JSON)</Label>
+                <Textarea
+                  id="parameters"
+                  placeholder='{"param1": "value1", "param2": "value2"}'
+                  value={toolCall.parameters}
+                  onChange={(e) => setToolCall(prev => ({ ...prev, parameters: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+
+              <Button onClick={callTool} className="w-full">
+                <PlayCircle className="h-4 w-4 mr-2" />
+                Execute Tool
+              </Button>
+
+              {toolResult && (
+                <div className="mt-4 p-4 bg-muted rounded">
+                  <Label className="text-sm font-medium">Tool Result:</Label>
+                  <pre className="mt-2 text-xs whitespace-pre-wrap">
+                    {JSON.stringify(toolResult, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Resource Reading */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Read MCP Resource
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="resource-uri">Resource URI</Label>
+                <Input
+                  id="resource-uri"
+                  placeholder="file:///path/to/resource or http://example.com/resource"
+                  value={resourceUri}
+                  onChange={(e) => setResourceUri(e.target.value)}
+                />
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {resources.map((resource, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setResourceUri(resource.uri)}
+                      className="text-xs"
+                    >
+                      {resource.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <Button onClick={readResource} className="w-full">
+                <FileText className="h-4 w-4 mr-2" />
+                Read Resource
+              </Button>
+
+              {resourceContent && (
+                <div className="mt-4 p-4 bg-muted rounded">
+                  <Label className="text-sm font-medium">Resource Content:</Label>
+                  <pre className="mt-2 text-xs whitespace-pre-wrap">
+                    {typeof resourceContent === 'string' 
+                      ? resourceContent 
+                      : JSON.stringify(resourceContent, null, 2)
+                    }
+                  </pre>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
