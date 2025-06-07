@@ -1,21 +1,22 @@
-import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
-import { invokeDeepSeekAgent, buildConversationHistory } from "../deepseekAPI";
+
+import { GenerationStatus, ProjectSpec } from "@/types/ipa-types";
 import { mockTaskId, agentList } from "../mockData";
-import { toast } from "@/hooks/use-toast";
-import { savePrompt } from "../../db/promptDatabaseService";
 import { connectionPool } from "../connectionPool";
 import { requestBatcher } from "../requestBatcher";
-import { cacheService } from "../cacheService";
 import { performanceMonitor } from "../performanceMonitor";
 import { SpecValidator } from "../validation/specValidator";
 import { StatusManager } from "../status/statusManager";
 import { MetricsService } from "../metrics/metricsService";
-import { FinalPromptGenerator } from "../finalPromptGenerator";
 import { IpaServiceInterface } from "../types/serviceTypes";
 import { realTimeResponseService } from "../../integration/realTimeResponseService";
+import { GenerationManager } from "./core/generationManager";
+import { CacheManager } from "./core/cacheManager";
+import { toast } from "@/hooks/use-toast";
 
 // Enhanced service with scalability optimizations
 const statusManager = new StatusManager();
+const generationManager = new GenerationManager(statusManager);
+const cacheManager = new CacheManager();
 let currentProjectSpec: ProjectSpec | null = null;
 
 export const scalableIpaService: IpaServiceInterface = {
@@ -35,8 +36,8 @@ export const scalableIpaService: IpaServiceInterface = {
       SpecValidator.validate(spec);
 
       // Check cache first
-      const cacheKey = `prompt_${JSON.stringify(spec).slice(0, 100)}`;
-      const cachedResult = cacheService.get<string>(cacheKey);
+      const cacheKey = cacheManager.generateCacheKey(spec);
+      const cachedResult = cacheManager.getCachedPrompt(cacheKey);
       if (cachedResult) {
         performanceMonitor.trackApiCall('generatePrompt', performance.now() - startTime, true);
         
@@ -59,7 +60,7 @@ export const scalableIpaService: IpaServiceInterface = {
         statusManager.initializeStatus(spec);
         
         // Cache the task ID
-        cacheService.set(cacheKey, mockTaskId, 600000); // 10 minute cache
+        cacheManager.setCachedPrompt(cacheKey, mockTaskId);
         
         performanceMonitor.trackApiCall('generatePrompt', performance.now() - startTime, true);
         
@@ -114,8 +115,8 @@ export const scalableIpaService: IpaServiceInterface = {
 
         // Check cache first
         const currentStatus = statusManager.getCurrentStatus();
-        const cacheKey = `status_${taskId}_${currentStatus.progress}`;
-        const cachedStatus = cacheService.get<GenerationStatus>(cacheKey);
+        const cacheKey = cacheManager.generateStatusCacheKey(taskId, currentStatus.progress);
+        const cachedStatus = cacheManager.getCachedStatus(cacheKey);
         if (cachedStatus) {
           performanceMonitor.trackApiCall('getGenerationStatus', performance.now() - startTime, true);
           resolve(cachedStatus);
@@ -133,100 +134,7 @@ export const scalableIpaService: IpaServiceInterface = {
           
           // If we're processing a new agent, invoke DeepSeek API for that agent
           if (currentStep > 0 && currentStep <= agentList.length) {
-            const currentAgent = agentList[currentStep - 1];
-            
-            try {
-              // Mark the current agent as processing first
-              statusManager.updateAgentStatus(currentStep - 1, {
-                id: `agent-${Date.now()}`,
-                name: currentAgent,
-                agent: currentAgent,
-                status: "processing",
-                progress: 0,
-                timestamp: Date.now()
-              });
-              
-              realTimeResponseService.addResponse({
-                source: "deepseek-reasoner",
-                status: "processing",
-                message: `Processing agent: ${currentAgent}`,
-                data: { agent: currentAgent, step: currentStep }
-              });
-              
-              // For multi-round conversation, build history of previous agents
-              const messageHistory = buildConversationHistory(agentList.slice(0, currentStep - 1), currentProjectSpec!);
-              
-              // Now make the actual API call to DeepSeek with the conversation history
-              console.log(`Invoking DeepSeek API for agent ${currentAgent} with ${messageHistory.length} messages in history`);
-              const agentResponse = await invokeDeepSeekAgent(currentAgent, currentProjectSpec!, messageHistory);
-              
-              // Update the agent status with the actual response
-              statusManager.updateAgentStatus(currentStep - 1, {
-                id: `agent-${Date.now()}`,
-                name: currentAgent,
-                agent: currentAgent,
-                status: "completed",
-                progress: 100,
-                output: agentResponse.content,
-                timestamp: Date.now()
-              });
-              
-              realTimeResponseService.addResponse({
-                source: "deepseek-reasoner",
-                status: "success",
-                message: `Agent ${currentAgent} completed successfully`,
-                data: { 
-                  agent: currentAgent, 
-                  responseLength: agentResponse.content.length,
-                  reasoning: agentResponse.content.substring(0, 200) + "..."
-                }
-              });
-              
-              // Add this agent's response to the conversation
-              let conversationMessages = statusManager.getConversationMessages();
-              if (conversationMessages.length === 0) {
-                conversationMessages = [...messageHistory];
-              }
-              
-              // Add the agent's system prompt
-              conversationMessages.push({
-                role: "system",
-                content: `Now responding as ${currentAgent}`
-              });
-              
-              // Add the agent's response to the conversation history
-              conversationMessages.push({
-                role: "assistant",
-                content: agentResponse.content
-              });
-              
-              // Update the messages in the status manager
-              statusManager.updateMessages(conversationMessages);
-            } catch (error) {
-              console.error(`Error invoking DeepSeek for agent ${currentAgent}:`, error);
-              statusManager.updateAgentStatus(currentStep - 1, {
-                id: `agent-${Date.now()}`,
-                name: currentAgent,
-                agent: currentAgent,
-                status: "failed",
-                progress: 0,
-                output: `Error: ${error instanceof Error ? error.message : String(error)}`,
-                timestamp: Date.now()
-              });
-              
-              realTimeResponseService.addResponse({
-                source: "deepseek-reasoner",
-                status: "error",
-                message: `Agent ${currentAgent} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-                data: { agent: currentAgent, error: error instanceof Error ? error.message : String(error) }
-              });
-              
-              toast({
-                title: "Agent Error",
-                description: `${currentAgent} failed: ${error instanceof Error ? error.message : String(error)}`,
-                variant: "destructive"
-              });
-            }
+            await generationManager.processAgent(currentStep, currentProjectSpec!);
           }
           
           // Update progress
@@ -235,83 +143,14 @@ export const scalableIpaService: IpaServiceInterface = {
           // If we've completed all agents, generate the final result
           const updatedStatus = statusManager.getCurrentStatus();
           if (currentStep > agentList.length && !updatedStatus.result) {
-            try {
-              const completedAgents = updatedStatus.agents.filter(agent => agent.status === "completed");
-              
-              if (completedAgents.length === agentList.length) {
-                realTimeResponseService.addResponse({
-                  source: "final-generator",
-                  status: "processing",
-                  message: "Generating final prompt from all agent responses",
-                  data: { completedAgents: completedAgents.length }
-                });
-
-                const finalPrompt = await FinalPromptGenerator.generate(updatedStatus.agents);
-                statusManager.setResult(finalPrompt);
-                
-                // Save the completed prompt to the database
-                try {
-                  await savePrompt({
-                    projectName: currentProjectSpec?.projectDescription.substring(0, 50) || "Cursor AI Prompt",
-                    prompt: finalPrompt,
-                    timestamp: Date.now(),
-                    tags: ["ipa-generated", "cursor-ai"]
-                  });
-                  console.log("Prompt successfully saved to database");
-                  
-                  realTimeResponseService.addResponse({
-                    source: "final-generator",
-                    status: "success",
-                    message: "Final prompt generated and saved successfully",
-                    data: { 
-                      promptLength: finalPrompt.length,
-                      savedToDatabase: true
-                    }
-                  });
-                  
-                  toast({
-                    title: "Prompt Generated Successfully",
-                    description: "Your Cursor AI prompt has been generated and saved",
-                  });
-                } catch (error) {
-                  console.error("Failed to save prompt to database:", error);
-                  toast({
-                    title: "Save Warning",
-                    description: "Prompt generated but failed to save to database",
-                    variant: "destructive"
-                  });
-                }
-              } else {
-                const errorResult = `⚠️ Warning: ${agentList.length - completedAgents.length} out of ${agentList.length} agents failed to complete. The generated prompt may be incomplete.\n\n` +
-                  completedAgents.map(agent => `## ${agent.agent} Output\n${agent.output || "No output available"}\n`).join('\n');
-                statusManager.setResult(errorResult);
-                statusManager.setError("Partial completion");
-                
-                toast({
-                  title: "Partial Generation",
-                  description: `${completedAgents.length}/${agentList.length} agents completed successfully`,
-                  variant: "destructive"
-                });
-              }
-            } catch (error) {
-              console.error("Error generating final prompt:", error);
-              const errorMessage = `Error generating final prompt: ${error instanceof Error ? error.message : String(error)}`;
-              statusManager.setResult(errorMessage);
-              statusManager.setError(errorMessage);
-              
-              toast({
-                title: "Final Generation Error",
-                description: `Failed to compile final prompt: ${error instanceof Error ? error.message : String(error)}`,
-                variant: "destructive"
-              });
-            }
+            await generationManager.generateFinalResult(currentProjectSpec!);
           }
           
           return statusManager.getCurrentStatus();
         });
 
         // Cache the result
-        cacheService.set(cacheKey, result, 30000); // 30 second cache for status
+        cacheManager.setCachedStatus(cacheKey, result);
         
         performanceMonitor.trackApiCall('getGenerationStatus', performance.now() - startTime, true);
         resolve(result);
