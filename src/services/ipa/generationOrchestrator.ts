@@ -1,3 +1,4 @@
+
 import { GenerationStatus, ProjectSpec, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
 import { agentList, initialMockStatus } from "./mockData";
 import { buildConversationHistory } from "./deepseekAPI";
@@ -87,7 +88,12 @@ export class GenerationOrchestrator {
         
         // Save the completed prompt to the database
         try {
-          await savePrompt(this.currentStatus, "Cursor AI Prompt");
+          await savePrompt({
+            projectName: this.currentProjectSpec?.projectDescription.substring(0, 50) || "Cursor AI Prompt",
+            prompt: finalPrompt,
+            timestamp: Date.now(),
+            tags: ["ipa-generated", "cursor-ai"]
+          });
           console.log("Prompt successfully saved to database");
           
           toast({

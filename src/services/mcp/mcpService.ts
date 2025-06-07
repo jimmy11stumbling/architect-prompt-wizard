@@ -2,7 +2,7 @@
 import { MCPServer, MCPTool, MCPResource } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export { MCPServer, MCPTool, MCPResource };
+export type { MCPServer, MCPTool, MCPResource };
 
 export class MCPService {
   private initialized = false;
@@ -132,6 +132,10 @@ export class MCPService {
     if (!this.initialized) {
       await this.initialize();
     }
+    return [...this.tools];
+  }
+
+  getAvailableTools(): MCPTool[] {
     return [...this.tools];
   }
 

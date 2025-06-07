@@ -39,5 +39,6 @@ class PromptDatabaseService {
 
 const promptDatabaseService = new PromptDatabaseService();
 
-export { promptDatabaseService, SavedPrompt as default };
+export { promptDatabaseService };
+export type { SavedPrompt as default };
 export const { savePrompt, getAllPrompts, deletePrompt, getPromptById } = promptDatabaseService;

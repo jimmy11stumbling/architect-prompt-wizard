@@ -2,7 +2,7 @@
 import { A2AMessage, A2AAgent } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export { A2AMessage, A2AAgent };
+export type { A2AMessage, A2AAgent };
 
 export interface TaskDelegation {
   taskId: string;
@@ -142,7 +142,7 @@ export class A2AService {
 
     realTimeResponseService.addResponse({
       source: "a2a-service",
-      status: assignedAgent ? "success" : "warning",
+      status: assignedAgent ? "success" : "error",
       message: `Task ${taskId} ${assignedAgent ? 'assigned to ' + assignedAgent.name : 'pending - no suitable agent found'}`,
       data: { taskId, requiredCapabilities, assignedAgent: assignedAgent?.name }
     });

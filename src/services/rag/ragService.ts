@@ -2,7 +2,7 @@
 import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export { RAGQuery };
+export type { RAGQuery };
 
 export interface RAGResponse {
   documents: Array<{

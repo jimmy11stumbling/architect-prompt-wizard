@@ -66,7 +66,7 @@ export class EnhancedSystemService {
     if (query.useA2A) {
       try {
         processingLog.push("🤖 Coordinating with A2A agents...");
-        const agents = await a2aService.getAvailableAgents();
+        const agents = a2aService.getAllAgents();
         sources.a2aAgents = agents.slice(0, 3); // Get top 3 agents
         processingLog.push(`✅ A2A: Connected to ${agents.length} agents`);
         
@@ -85,7 +85,7 @@ export class EnhancedSystemService {
     if (query.useMCP) {
       try {
         processingLog.push("🔧 Accessing MCP tools...");
-        const tools = await mcpService.getAvailableTools();
+        const tools = mcpService.getAvailableTools();
         sources.mcpTools = tools.slice(0, 5); // Get top 5 tools
         processingLog.push(`✅ MCP: Found ${tools.length} available tools`);
         

@@ -1,4 +1,3 @@
-
 import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
 import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
 import { mockTaskId, agentList } from "./mockData";
@@ -180,7 +179,12 @@ export const scalableIpaService: IpaServiceInterface = {
                 
                 // Save the completed prompt to the database
                 try {
-                  await savePrompt(statusManager.getCurrentStatus(), "Cursor AI Prompt");
+                  await savePrompt({
+                    projectName: currentProjectSpec?.projectDescription.substring(0, 50) || "Cursor AI Prompt",
+                    prompt: finalPrompt,
+                    timestamp: Date.now(),
+                    tags: ["ipa-generated", "cursor-ai"]
+                  });
                   console.log("Prompt successfully saved to database");
                   
                   toast({
