@@ -1,3 +1,4 @@
+
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export type { A2AAgent, A2AMessage } from "@/types/ipa-types";
@@ -79,6 +80,51 @@ export class A2AService {
       totalMessages: this.messages.length,
       lastActivity: this.messages.length > 0 ? Math.max(...this.messages.map(m => m.timestamp)) : Date.now()
     };
+  }
+
+  async delegateTask(taskDescription: string, requiredCapabilities: string[]) {
+    realTimeResponseService.addResponse({
+      source: "a2a-service",
+      status: "processing",
+      message: `Delegating task: ${taskDescription}`,
+      data: { taskDescription, requiredCapabilities }
+    });
+
+    // Find suitable agent based on capabilities
+    const suitableAgent = this.agents.find(agent => 
+      agent.status === "active" && 
+      requiredCapabilities.some(cap => agent.capabilities.includes(cap))
+    );
+
+    const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    if (suitableAgent) {
+      realTimeResponseService.addResponse({
+        source: "a2a-service",
+        status: "success",
+        message: `Task delegated to ${suitableAgent.name}`,
+        data: { taskId, assignedAgent: suitableAgent.name }
+      });
+
+      return {
+        taskId,
+        assignedAgent: suitableAgent,
+        status: "delegated"
+      };
+    } else {
+      realTimeResponseService.addResponse({
+        source: "a2a-service",
+        status: "error",
+        message: "No suitable agent found for task delegation",
+        data: { taskId, requiredCapabilities }
+      });
+
+      return {
+        taskId,
+        assignedAgent: null,
+        status: "failed"
+      };
+    }
   }
 
   async sendMessage(message: any) {

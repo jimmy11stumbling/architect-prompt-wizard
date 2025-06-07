@@ -1,6 +1,5 @@
 
 import { MCPTool } from "@/types/ipa-types";
-import { realTimeResponseService } from "../../integration/realTimeResponseService";
 
 export class MCPToolManager {
   private tools: MCPTool[] = [];
@@ -8,82 +7,135 @@ export class MCPToolManager {
   initialize(): MCPTool[] {
     this.tools = [
       {
+        id: "read_file",
         name: "read_file",
-        description: "Read contents of a file from the filesystem",
-        parameters: { path: "string", encoding: "string?" },
-        category: "filesystem"
+        description: "Read content from a file",
+        parameters: {
+          type: "object",
+          properties: {
+            path: { type: "string", description: "File path to read" }
+          },
+          required: ["path"]
+        },
+        server: "filesystem"
       },
       {
-        name: "write_file", 
-        description: "Write content to a file in the filesystem",
-        parameters: { path: "string", content: "string", mode: "string?" },
-        category: "filesystem"
+        id: "write_file", 
+        name: "write_file",
+        description: "Write content to a file",
+        parameters: {
+          type: "object",
+          properties: {
+            path: { type: "string", description: "File path to write" },
+            content: { type: "string", description: "Content to write" }
+          },
+          required: ["path", "content"]
+        },
+        server: "filesystem"
       },
       {
-        name: "execute_query",
-        description: "Execute a SQL query against the database", 
-        parameters: { query: "string", database: "string?" },
-        category: "database"
+        id: "search_web",
+        name: "search_web", 
+        description: "Search the web for information",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Search query" }
+          },
+          required: ["query"]
+        },
+        server: "web-search"
       },
       {
-        name: "make_http_request",
-        description: "Make an HTTP request to an external API",
-        parameters: { url: "string", method: "string", headers: "object?", body: "string?" },
-        category: "api"
+        id: "send_email",
+        name: "send_email",
+        description: "Send an email message",
+        parameters: {
+          type: "object",
+          properties: {
+            to: { type: "string", description: "Recipient email" },
+            subject: { type: "string", description: "Email subject" },
+            body: { type: "string", description: "Email body" }
+          },
+          required: ["to", "subject", "body"]
+        },
+        server: "email"
       },
       {
-        name: "process_data",
-        description: "Process and transform data using built-in algorithms",
-        parameters: { data: "object", operation: "string", options: "object?" },
-        category: "processing"
+        id: "execute_sql",
+        name: "execute_sql",
+        description: "Execute SQL query on database",
+        parameters: {
+          type: "object", 
+          properties: {
+            query: { type: "string", description: "SQL query to execute" }
+          },
+          required: ["query"]
+        },
+        server: "database"
       }
     ];
 
     return this.tools;
   }
 
+  getTools(): MCPTool[] {
+    return [...this.tools];
+  }
+
   async listTools(): Promise<MCPTool[]> {
-    return [...this.tools];
+    return this.getTools();
   }
 
-  getAvailableTools(): MCPTool[] {
-    return [...this.tools];
-  }
-
-  async callTool(toolName: string, parameters: Record<string, any>): Promise<{ status: string; result?: any; error?: string }> {
+  async callTool(toolName: string, parameters: any): Promise<any> {
     const tool = this.tools.find(t => t.name === toolName);
     
     if (!tool) {
-      return { status: "error", error: `Tool '${toolName}' not found` };
+      throw new Error(`Tool ${toolName} not found`);
     }
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "processing",
-      message: `Executing MCP tool: ${toolName}`,
-      data: { toolName, parameters }
-    });
 
     // Simulate tool execution
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    const mockResults: Record<string, any> = {
-      read_file: { content: "File content here...", size: 1024 },
-      write_file: { bytesWritten: 1024, success: true },
-      execute_query: { rows: [{ id: 1, name: "Sample" }], count: 1 },
-      make_http_request: { status: 200, data: { result: "API response" } },
-      process_data: { processed: true, outputSize: 256 }
-    };
-
-    const result = mockResults[toolName] || { executed: true };
-
-    realTimeResponseService.addResponse({
-      source: "mcp-service",
-      status: "success", 
-      message: `MCP tool ${toolName} executed successfully`,
-      data: { toolName, result }
-    });
-
-    return { status: "success", result };
+    // Mock responses based on tool type
+    switch (toolName) {
+      case "read_file":
+        return {
+          status: "success",
+          content: `Mock file content for ${parameters.path}`,
+          size: 1024
+        };
+      case "write_file":
+        return {
+          status: "success", 
+          message: `File written to ${parameters.path}`,
+          bytesWritten: parameters.content?.length || 0
+        };
+      case "search_web":
+        return {
+          status: "success",
+          results: [
+            { title: "Search Result 1", url: "https://example.com/1", snippet: "Mock search result" },
+            { title: "Search Result 2", url: "https://example.com/2", snippet: "Another mock result" }
+          ]
+        };
+      case "send_email":
+        return {
+          status: "success",
+          message: `Email sent to ${parameters.to}`,
+          messageId: `msg-${Date.now()}`
+        };
+      case "execute_sql":
+        return {
+          status: "success",
+          rows: [
+            { id: 1, name: "Mock Row 1" },
+            { id: 2, name: "Mock Row 2" }
+          ],
+          rowCount: 2
+        };
+      default:
+        return { status: "success", message: "Tool executed successfully" };
+    }
   }
 }

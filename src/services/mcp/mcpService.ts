@@ -54,6 +54,10 @@ export class MCPService {
     return this.serverManager.getServers();
   }
 
+  getAvailableTools() {
+    return this.toolManager.getTools();
+  }
+
   async listTools() {
     realTimeResponseService.addResponse({
       source: "mcp-service",
@@ -107,7 +111,10 @@ export class MCPService {
         source: "mcp-service",
         status: "success",
         message: `MCP tool ${toolName} executed successfully`,
-        data: { toolName, result: typeof result === 'string' ? result.substring(0, 200) : result }
+        data: { 
+          toolName, 
+          result: typeof result === 'string' ? result.substring(0, 200) : JSON.stringify(result).substring(0, 200)
+        }
       });
 
       return result;
