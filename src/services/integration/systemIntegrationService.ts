@@ -21,7 +21,7 @@ export interface SystemHealth {
 
 export class SystemIntegrationService {
   private static instance: SystemIntegrationService;
-  private isInitialized = false;
+  private initialized = false;
 
   static getInstance(): SystemIntegrationService {
     if (!SystemIntegrationService.instance) {
@@ -31,7 +31,7 @@ export class SystemIntegrationService {
   }
 
   async initialize(spec: ProjectSpec): Promise<void> {
-    if (this.isInitialized) return;
+    if (this.initialized) return;
 
     realTimeResponseService.addResponse({
       source: "system-integration",
@@ -54,7 +54,7 @@ export class SystemIntegrationService {
         deepseekReasonerService.initialize()
       ]);
 
-      this.isInitialized = true;
+      this.initialized = true;
 
       realTimeResponseService.addResponse({
         source: "system-integration",
@@ -267,13 +267,9 @@ MCP Tools Used: ${mcpResults.map(r => r.tool).join(", ")}
     }
   }
 
-  isSystemInitialized(): boolean {
-    return this.isInitialized;
-  }
-
   // Public method to check initialization status
   isInitialized(): boolean {
-    return this.isInitialized;
+    return this.initialized;
   }
 }
 
