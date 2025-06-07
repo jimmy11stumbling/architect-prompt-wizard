@@ -256,7 +256,7 @@ export class DeepSeekReasonerService {
       if (error instanceof Error && error.message === "NO_API_KEY") {
         realTimeResponseService.addResponse({
           source: "deepseek-reasoner",
-          status: "warning",
+          status: "error",
           message: "Using simulated response due to missing API key"
         });
         apiResponse = await DeepSeekReasonerClient.simulateReasonerCall(messages, query.maxTokens);

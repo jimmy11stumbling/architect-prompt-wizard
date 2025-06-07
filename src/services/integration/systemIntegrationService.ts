@@ -1,10 +1,23 @@
 
-import { ProjectSpec, SystemHealth } from "@/types/ipa-types";
+import { ProjectSpec } from "@/types/ipa-types";
 import { realTimeResponseService } from "./realTimeResponseService";
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
 import { deepseekReasonerService } from "../deepseek/deepseekReasonerService";
+
+export interface SystemHealth {
+  overall: boolean;
+  services: {
+    rag: boolean;
+    a2a: boolean;
+    mcp: boolean;
+    deepseek: boolean;
+  };
+  details: any;
+  lastCheck: number;
+  overallStatus: "healthy" | "degraded" | "unhealthy";
+}
 
 export class SystemIntegrationService {
   private static instance: SystemIntegrationService;
@@ -107,7 +120,7 @@ export class SystemIntegrationService {
 
     realTimeResponseService.addResponse({
       source: "system-integration",
-      status: overall ? "success" : "warning",
+      status: overall ? "success" : "error",
       message: `System health check completed - Status: ${overallStatus}`,
       data: {
         overallHealth: overall,
@@ -200,7 +213,66 @@ MCP Tools Used: ${mcpResults.map(r => r.tool).join(", ")}
     }
   }
 
+  async demonstrateIntegration(): Promise<any> {
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Running system integration demonstration"
+    });
+
+    try {
+      // Test RAG
+      const ragDemo = await ragService.query({
+        query: "integration test",
+        limit: 3,
+        threshold: 0.1
+      });
+
+      // Test A2A
+      const a2aDemo = await a2aService.sendMessage({
+        from: "demo-system",
+        to: "test-agent",
+        type: "notification",
+        payload: { test: "integration demo" }
+      });
+
+      // Test MCP
+      const mcpDemo = await mcpService.callTool("demo_tool", { test: true });
+
+      const result = {
+        ragDemo,
+        a2aDemo,
+        mcpDemo,
+        timestamp: Date.now(),
+        success: true
+      };
+
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "success",
+        message: "Integration demonstration completed successfully",
+        data: result
+      });
+
+      return result;
+
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "error",
+        message: `Integration demonstration failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+      throw error;
+    }
+  }
+
   isSystemInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  // Public method to check initialization status
+  isInitialized(): boolean {
     return this.isInitialized;
   }
 }
