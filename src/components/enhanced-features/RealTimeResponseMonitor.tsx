@@ -5,32 +5,68 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, CheckCircle, XCircle, AlertTriangle, Trash2, Eye, EyeOff } from "lucide-react";
+import { 
+  Activity, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle, 
+  Clock, 
+  Trash2,
+  RefreshCw,
+  Filter
+} from "lucide-react";
 import { realTimeResponseService, RealTimeResponse } from "@/services/integration/realTimeResponseService";
 
 const RealTimeResponseMonitor: React.FC = () => {
   const [responses, setResponses] = useState<RealTimeResponse[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
+  const [filteredResponses, setFilteredResponses] = useState<RealTimeResponse[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [isLive, setIsLive] = useState(true);
 
   useEffect(() => {
-    if (!isMonitoring) return;
+    // Load initial responses
+    const initialResponses = realTimeResponseService.getRecentResponses(100);
+    setResponses(initialResponses);
+    setFilteredResponses(initialResponses);
 
-    const unsubscribe = realTimeResponseService.subscribe((response) => {
-      setResponses(prev => [response, ...prev.slice(0, 99)]);
+    // Subscribe to new responses
+    const unsubscribe = realTimeResponseService.subscribe((response: RealTimeResponse) => {
+      if (isLive) {
+        setResponses(prev => [response, ...prev].slice(0, 100));
+      }
     });
 
-    // Load existing responses
-    setResponses(realTimeResponseService.getRecentResponses());
-
     return unsubscribe;
-  }, [isMonitoring]);
+  }, [isLive]);
 
-  const getStatusIcon = (status: string, validationResult?: any) => {
-    if (validationResult && !validationResult.isValid) {
-      return <XCircle className="h-4 w-4 text-red-500" />;
+  useEffect(() => {
+    // Apply filters
+    let filtered = responses;
+    
+    switch (activeFilter) {
+      case "success":
+        filtered = responses.filter(r => r.status === "success");
+        break;
+      case "error":
+        filtered = responses.filter(r => r.status === "error");
+        break;
+      case "processing":
+        filtered = responses.filter(r => r.status === "processing");
+        break;
+      case "validation":
+        filtered = responses.filter(r => r.status === "validation");
+        break;
+      case "failed-validation":
+        filtered = responses.filter(r => r.validationResult && !r.validationResult.isValid);
+        break;
+      default:
+        filtered = responses;
     }
+    
+    setFilteredResponses(filtered);
+  }, [responses, activeFilter]);
 
+  const getStatusIcon = (status: RealTimeResponse["status"]) => {
     switch (status) {
       case "success":
         return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -41,150 +77,167 @@ const RealTimeResponseMonitor: React.FC = () => {
       case "validation":
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       default:
-        return <Activity className="h-4 w-4 text-gray-500" />;
+        return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  const getStatusColor = (status: string, validationResult?: any) => {
-    if (validationResult && !validationResult.isValid) {
-      return "bg-red-100 text-red-800";
+  const getValidationBadge = (response: RealTimeResponse) => {
+    if (!response.validationResult) return null;
+    
+    const { isValid, errors, warnings } = response.validationResult;
+    
+    if (!isValid) {
+      return <Badge variant="destructive" className="text-xs">Failed ({errors.length} errors)</Badge>;
     }
-
-    switch (status) {
-      case "success": return "bg-green-100 text-green-800";
-      case "error": return "bg-red-100 text-red-800";
-      case "processing": return "bg-blue-100 text-blue-800";
-      case "validation": return "bg-yellow-100 text-yellow-800";
-      default: return "bg-gray-100 text-gray-800";
+    
+    if (warnings.length > 0) {
+      return <Badge variant="secondary" className="text-xs">Warning ({warnings.length})</Badge>;
     }
+    
+    return <Badge variant="default" className="text-xs bg-green-500">Valid</Badge>;
   };
 
   const clearResponses = () => {
     realTimeResponseService.clearResponses();
     setResponses([]);
+    setFilteredResponses([]);
   };
 
-  const toggleMonitoring = () => {
-    setIsMonitoring(!isMonitoring);
+  const refreshResponses = () => {
+    const freshResponses = realTimeResponseService.getRecentResponses(100);
+    setResponses(freshResponses);
   };
 
-  const filteredResponses = responses.filter(response => {
-    if (filter === "all") return true;
-    if (filter === "errors") return response.status === "error" || (response.validationResult && !response.validationResult.isValid);
-    if (filter === "success") return response.status === "success" && (!response.validationResult || response.validationResult.isValid);
-    if (filter === "processing") return response.status === "processing";
-    return response.source === filter;
-  });
+  const formatTimestamp = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString();
+  };
 
-  const errorCount = responses.filter(r => r.status === "error" || (r.validationResult && !r.validationResult.isValid)).length;
-  const successCount = responses.filter(r => r.status === "success" && (!r.validationResult || r.validationResult.isValid)).length;
-  const processingCount = responses.filter(r => r.status === "processing").length;
+  const getStatusCounts = () => {
+    return {
+      total: responses.length,
+      success: responses.filter(r => r.status === "success").length,
+      error: responses.filter(r => r.status === "error").length,
+      processing: responses.filter(r => r.status === "processing").length,
+      validation: responses.filter(r => r.status === "validation").length,
+      failedValidation: responses.filter(r => r.validationResult && !r.validationResult.isValid).length
+    };
+  };
+
+  const counts = getStatusCounts();
 
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <Activity className={`h-5 w-5 ${isLive ? 'text-green-500 animate-pulse' : 'text-gray-500'}`} />
             Real-Time Response Monitor
-            {isMonitoring && <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />}
           </CardTitle>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={toggleMonitoring}>
-              {isMonitoring ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {isMonitoring ? "Stop" : "Start"}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isLive ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsLive(!isLive)}
+            >
+              {isLive ? "Live" : "Paused"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={refreshResponses}>
+              <RefreshCw className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" onClick={clearResponses}>
               <Trash2 className="h-4 w-4" />
-              Clear
             </Button>
           </div>
         </div>
-        <div className="flex gap-4 text-sm">
-          <Badge variant="outline" className="bg-green-50">
-            ✓ Success: {successCount}
-          </Badge>
-          <Badge variant="outline" className="bg-red-50">
-            ✗ Errors: {errorCount}
-          </Badge>
-          <Badge variant="outline" className="bg-blue-50">
-            ⏳ Processing: {processingCount}
-          </Badge>
-          <Badge variant="outline" className="bg-gray-50">
-            📊 Total: {responses.length}
-          </Badge>
+        
+        <div className="grid grid-cols-6 gap-2 text-sm">
+          <Badge variant="outline">Total: {counts.total}</Badge>
+          <Badge variant="outline" className="text-green-600">Success: {counts.success}</Badge>
+          <Badge variant="outline" className="text-red-600">Error: {counts.error}</Badge>
+          <Badge variant="outline" className="text-blue-600">Processing: {counts.processing}</Badge>
+          <Badge variant="outline" className="text-yellow-600">Validation: {counts.validation}</Badge>
+          <Badge variant="outline" className="text-purple-600">Failed: {counts.failedValidation}</Badge>
         </div>
       </CardHeader>
+      
       <CardContent>
-        <Tabs value={filter} onValueChange={setFilter} className="w-full">
+        <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-4">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="success">Success</TabsTrigger>
-            <TabsTrigger value="errors">Errors</TabsTrigger>
+            <TabsTrigger value="error">Error</TabsTrigger>
             <TabsTrigger value="processing">Processing</TabsTrigger>
-            <TabsTrigger value="rag-service">RAG</TabsTrigger>
-            <TabsTrigger value="deepseek-reasoner">DeepSeek</TabsTrigger>
+            <TabsTrigger value="validation">Validation</TabsTrigger>
+            <TabsTrigger value="failed-validation">Failed</TabsTrigger>
           </TabsList>
-
-          <TabsContent value={filter} className="mt-4">
-            <ScrollArea className="h-96">
-              <div className="space-y-2">
-                {filteredResponses.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No responses to display
-                  </div>
-                ) : (
-                  filteredResponses.map((response) => (
-                    <div key={response.id} className="border rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(response.status, response.validationResult)}
-                          <span className="font-medium text-sm">{response.source}</span>
-                          <Badge className={getStatusColor(response.status, response.validationResult)}>
-                            {response.status}
-                          </Badge>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(response.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm">
-                        {response.message}
-                      </div>
-
-                      {response.validationResult && (
-                        <div className="text-xs space-y-1">
-                          {response.validationResult.errors.length > 0 && (
-                            <div className="text-red-600">
-                              🚨 Errors: {response.validationResult.errors.join(", ")}
-                            </div>
-                          )}
-                          {response.validationResult.warnings.length > 0 && (
-                            <div className="text-yellow-600">
-                              ⚠️ Warnings: {response.validationResult.warnings.join(", ")}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {response.data && (
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-muted-foreground">
-                            View Data
-                          </summary>
-                          <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
-                            {JSON.stringify(response.data, null, 2)}
-                          </pre>
-                        </details>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
         </Tabs>
+
+        <ScrollArea className="h-[600px]">
+          <div className="space-y-2">
+            {filteredResponses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No responses found for the selected filter
+              </div>
+            ) : (
+              filteredResponses.map((response) => (
+                <Card key={response.id} className="p-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(response.status)}
+                      <Badge variant="outline" className="text-xs">
+                        {response.source}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTimestamp(response.timestamp)}
+                      </span>
+                      {getValidationBadge(response)}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2">
+                    <p className="text-sm font-medium">{response.message}</p>
+                    
+                    {response.data && (
+                      <details className="mt-2">
+                        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                          View Data ({Object.keys(response.data).length} fields)
+                        </summary>
+                        <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-x-auto">
+                          {JSON.stringify(response.data, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    
+                    {response.validationResult && (
+                      <div className="mt-2 text-xs">
+                        {response.validationResult.errors.length > 0 && (
+                          <div className="text-red-600">
+                            <strong>Errors:</strong>
+                            <ul className="ml-4 list-disc">
+                              {response.validationResult.errors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {response.validationResult.warnings.length > 0 && (
+                          <div className="text-yellow-600">
+                            <strong>Warnings:</strong>
+                            <ul className="ml-4 list-disc">
+                              {response.validationResult.warnings.map((warning, index) => (
+                                <li key={index}>{warning}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

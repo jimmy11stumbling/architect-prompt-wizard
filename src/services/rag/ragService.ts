@@ -1,8 +1,7 @@
 
-import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export type { RAGQuery };
+export type { RAGQuery } from "@/types/ipa-types";
 
 export interface RAGResponse {
   documents: Array<{
@@ -103,10 +102,17 @@ export class RAGService {
     return "Chroma";
   }
 
-  async query(query: RAGQuery): Promise<RAGResponse> {
+  async query(query: any): Promise<RAGResponse> {
     if (!this.initialized) {
       await this.initialize();
     }
+
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "processing",
+      message: `Processing RAG query: ${query.query}`,
+      data: { query: query.query, limit: query.limit }
+    });
 
     const startTime = Date.now();
     
@@ -138,7 +144,8 @@ export class RAGService {
       data: { 
         query: query.query,
         resultCount: result.documents.length,
-        searchTime: result.searchTime
+        searchTime: result.searchTime,
+        avgScore: result.scores.length > 0 ? result.scores.reduce((a, b) => a + b, 0) / result.scores.length : 0
       }
     });
 
@@ -146,7 +153,26 @@ export class RAGService {
   }
 
   async healthCheck(): Promise<boolean> {
-    return this.initialized && this.knowledgeBase.length > 0;
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: "processing",
+      message: "Performing RAG health check"
+    });
+
+    const isHealthy = this.initialized && this.knowledgeBase.length > 0;
+    
+    realTimeResponseService.addResponse({
+      source: "rag-service",
+      status: isHealthy ? "success" : "error", 
+      message: `RAG health check ${isHealthy ? "passed" : "failed"}`,
+      data: { 
+        healthy: isHealthy,
+        documentCount: this.knowledgeBase.length,
+        vectorDb: this.getVectorDatabase()
+      }
+    });
+
+    return isHealthy;
   }
 }
 

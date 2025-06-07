@@ -1,17 +1,22 @@
 
-import { MCPServer, MCPTool, MCPResource } from "@/types/ipa-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 import { MCPServerManager } from "./core/mcpServerManager";
 import { MCPToolManager } from "./core/mcpToolManager";
 import { MCPResourceManager } from "./core/mcpResourceManager";
 
-export type { MCPServer, MCPTool, MCPResource };
+export type { MCPServer, MCPTool, MCPResource } from "@/types/ipa-types";
 
 export class MCPService {
+  private serverManager: MCPServerManager;
+  private toolManager: MCPToolManager;
+  private resourceManager: MCPResourceManager;
   private initialized = false;
-  private serverManager = new MCPServerManager();
-  private toolManager = new MCPToolManager();
-  private resourceManager = new MCPResourceManager();
+
+  constructor() {
+    this.serverManager = new MCPServerManager();
+    this.toolManager = new MCPToolManager();
+    this.resourceManager = new MCPResourceManager();
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -22,8 +27,7 @@ export class MCPService {
       message: "Initializing MCP hub service"
     });
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    // Initialize all components
     const servers = this.serverManager.initialize();
     const tools = this.toolManager.initialize();
     const resources = this.resourceManager.initialize();
@@ -46,38 +50,125 @@ export class MCPService {
     return this.initialized;
   }
 
-  getServers(): MCPServer[] {
+  getServers() {
     return this.serverManager.getServers();
   }
 
-  async listTools(): Promise<MCPTool[]> {
-    if (!this.initialized) {
-      await this.initialize();
+  async listTools() {
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: "Listing available MCP tools"
+    });
+
+    const tools = await this.toolManager.listTools();
+    
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "success",
+      message: `Retrieved ${tools.length} MCP tools`,
+      data: { toolCount: tools.length, tools: tools.map(t => t.name) }
+    });
+
+    return tools;
+  }
+
+  async listResources() {
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: "Listing available MCP resources"
+    });
+
+    const resources = await this.resourceManager.listResources();
+    
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "success",
+      message: `Retrieved ${resources.length} MCP resources`,
+      data: { resourceCount: resources.length, resources: resources.map(r => r.name) }
+    });
+
+    return resources;
+  }
+
+  async callTool(toolName: string, parameters: any) {
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: `Calling MCP tool: ${toolName}`,
+      data: { toolName, parameters }
+    });
+
+    try {
+      const result = await this.toolManager.callTool(toolName, parameters);
+      
+      realTimeResponseService.addResponse({
+        source: "mcp-service",
+        status: "success",
+        message: `MCP tool ${toolName} executed successfully`,
+        data: { toolName, result: typeof result === 'string' ? result.substring(0, 200) : result }
+      });
+
+      return result;
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "mcp-service",
+        status: "error",
+        message: `MCP tool ${toolName} failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { toolName, error: error instanceof Error ? error.message : String(error) }
+      });
+      throw error;
     }
-    return this.toolManager.listTools();
   }
 
-  getAvailableTools(): MCPTool[] {
-    return this.toolManager.getAvailableTools();
-  }
+  async readResource(uri: string) {
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: `Reading MCP resource: ${uri}`,
+      data: { uri }
+    });
 
-  async listResources(): Promise<MCPResource[]> {
-    if (!this.initialized) {
-      await this.initialize();
+    try {
+      const content = await this.resourceManager.readResource(uri);
+      
+      realTimeResponseService.addResponse({
+        source: "mcp-service",
+        status: "success",
+        message: `MCP resource ${uri} read successfully`,
+        data: { uri, contentLength: typeof content === 'string' ? content.length : JSON.stringify(content).length }
+      });
+
+      return content;
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "mcp-service",
+        status: "error",
+        message: `Failed to read MCP resource ${uri}: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { uri, error: error instanceof Error ? error.message : String(error) }
+      });
+      throw error;
     }
-    return this.resourceManager.listResources();
-  }
-
-  async callTool(toolName: string, parameters: Record<string, any>): Promise<{ status: string; result?: any; error?: string }> {
-    return this.toolManager.callTool(toolName, parameters);
-  }
-
-  async readResource(uri: string): Promise<any> {
-    return this.resourceManager.readResource(uri);
   }
 
   async healthCheck(): Promise<boolean> {
-    return this.initialized && this.serverManager.healthCheck();
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: "processing",
+      message: "Performing MCP health check"
+    });
+
+    const isHealthy = await this.serverManager.healthCheck();
+    
+    realTimeResponseService.addResponse({
+      source: "mcp-service",
+      status: isHealthy ? "success" : "error",
+      message: `MCP health check ${isHealthy ? "passed" : "failed"}`,
+      data: { healthy: isHealthy }
+    });
+
+    return isHealthy;
   }
 }
 
