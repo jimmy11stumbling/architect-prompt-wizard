@@ -1,4 +1,3 @@
-
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
@@ -213,10 +212,12 @@ export interface MCPServer {
 }
 
 export interface MCPTool {
+  id: string;
   name: string;
   description: string;
   parameters: Record<string, any>;
   category?: string;
+  server?: string;
 }
 
 export interface MCPResource {
@@ -224,6 +225,7 @@ export interface MCPResource {
   name: string;
   description: string;
   mimeType?: string;
+  type?: string;
 }
 
 // System Integration types
