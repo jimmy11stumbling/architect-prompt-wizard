@@ -1,4 +1,3 @@
-
 import { ProjectSpec } from "@/types/ipa-types";
 import { realTimeResponseService } from "./realTimeResponseService";
 import { ragService } from "../rag/ragService";
@@ -164,19 +163,20 @@ export class SystemIntegrationService {
       }
 
       // Step 4: Process with DeepSeek Reasoner
-      const contextData = `
-RAG Results: ${ragResults.documents.map(doc => doc.title).join(", ")}
-A2A Coordination: ${a2aCoordination.assignedAgent?.name || "No agent assigned"}
-MCP Tools Used: ${mcpResults.map(r => r.tool).join(", ")}
-      `;
+      // Create enhanced prompt with context instead of separate context field
+      const enhancedPrompt = `${query}
+
+Additional Context:
+- RAG Results: ${ragResults.documents.map(doc => doc.title).join(", ")}
+- A2A Coordination: ${a2aCoordination.assignedAgent?.name || "No agent assigned"}
+- MCP Tools Used: ${mcpResults.map(r => r.tool).join(", ")}`;
 
       const reasoningResult = await deepseekReasonerService.processQuery({
-        prompt: query,
-        context: contextData,
+        prompt: enhancedPrompt,
         maxTokens: 4096,
-        ragEnabled: false, // Already done
-        a2aEnabled: false, // Already done
-        mcpEnabled: false  // Already done
+        ragEnabled: true,
+        a2aEnabled: true,
+        mcpEnabled: true
       });
 
       const result = {
