@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { SavedPrompt, PromptCategory, PromptStats, getCategories, getStats, getFeaturedPrompts } from "@/services/db/promptDatabaseService";
+import { SavedPrompt, PromptCategory, PromptStats, supabasePromptService } from "@/services/db/supabasePromptService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -51,9 +51,9 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
     try {
       setIsLoading(true);
       const [categoriesData, statsData, featuredData] = await Promise.all([
-        getCategories(),
-        getStats(),
-        getFeaturedPrompts()
+        supabasePromptService.getCategories(),
+        supabasePromptService.getStats(),
+        supabasePromptService.getFeaturedPrompts()
       ]);
       
       setCategories(categoriesData);
@@ -84,8 +84,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
 
   const handleExport = async () => {
     try {
-      const { exportPrompts } = await import("@/services/db/promptDatabaseService");
-      const exportData = await exportPrompts();
+      const exportData = await supabasePromptService.exportPrompts();
       const blob = new Blob([exportData], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -115,8 +114,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
 
     try {
       const text = await file.text();
-      const { importPrompts } = await import("@/services/db/promptDatabaseService");
-      const importedCount = await importPrompts(text);
+      const importedCount = await supabasePromptService.importPrompts(text);
       
       toast({
         title: "Import Complete",
