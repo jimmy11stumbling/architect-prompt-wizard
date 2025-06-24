@@ -8,7 +8,7 @@ interface PromptActionsProps {
   prompt: SavedPrompt;
   onDelete: (id: number | undefined) => void;
   onCopy: (prompt: string) => void;
-  onDownload: (prompt: string) => void;
+  onDownload: (prompt: string, filename?: string) => void;
   onEdit?: (prompt: SavedPrompt) => void;
 }
 
