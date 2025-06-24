@@ -9,7 +9,213 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      generation_history: {
+        Row: {
+          agents_data: Json | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          progress: number | null
+          project_spec: Json
+          result: string | null
+          status: string
+          task_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          agents_data?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          progress?: number | null
+          project_spec: Json
+          result?: string | null
+          status: string
+          task_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          agents_data?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          progress?: number | null
+          project_spec?: Json
+          result?: string | null
+          status?: string
+          task_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      prompt_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      prompts: {
+        Row: {
+          author: string | null
+          category: string | null
+          complexity: string | null
+          created_at: string | null
+          description: string | null
+          estimated_time: string | null
+          id: string
+          is_public: boolean | null
+          project_name: string
+          prompt: string
+          rating: number | null
+          tags: string[] | null
+          tech_stack: string[] | null
+          updated_at: string | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          author?: string | null
+          category?: string | null
+          complexity?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_time?: string | null
+          id?: string
+          is_public?: boolean | null
+          project_name: string
+          prompt: string
+          rating?: number | null
+          tags?: string[] | null
+          tech_stack?: string[] | null
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          author?: string | null
+          category?: string | null
+          complexity?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_time?: string | null
+          id?: string
+          is_public?: boolean | null
+          project_name?: string
+          prompt?: string
+          rating?: number | null
+          tags?: string[] | null
+          tech_stack?: string[] | null
+          updated_at?: string | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_project_specs: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_template: boolean | null
+          name: string
+          spec_data: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          name: string
+          spec_data: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_template?: boolean | null
+          name?: string
+          spec_data?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_project_specs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

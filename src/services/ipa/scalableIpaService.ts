@@ -1,8 +1,9 @@
+
 import { GenerationStatus, ProjectSpec, AgentName, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
 import { invokeDeepSeekAgent, buildConversationHistory } from "./deepseekAPI";
 import { mockTaskId, agentList } from "./mockData";
 import { toast } from "@/hooks/use-toast";
-import { savePrompt } from "../db/promptDatabaseService";
+import { supabasePromptService } from "../db/supabasePromptService";
 import { connectionPool } from "./connectionPool";
 import { requestBatcher } from "./requestBatcher";
 import { cacheService } from "./cacheService";
@@ -177,25 +178,27 @@ export const scalableIpaService: IpaServiceInterface = {
                 const finalPrompt = await FinalPromptGenerator.generate(updatedStatus.agents);
                 statusManager.setResult(finalPrompt);
                 
-                // Save the completed prompt to the database
+                // Save the completed prompt to Supabase
                 try {
-                  await savePrompt({
+                  await supabasePromptService.savePrompt({
                     projectName: currentProjectSpec?.projectDescription.substring(0, 50) || "Cursor AI Prompt",
                     prompt: finalPrompt,
                     timestamp: Date.now(),
-                    tags: ["ipa-generated", "cursor-ai"]
+                    tags: ["ipa-generated", "cursor-ai"],
+                    description: `Generated prompt for ${currentProjectSpec?.projectDescription.substring(0, 100) || "project"}`,
+                    category: "ai-ml"
                   });
-                  console.log("Prompt successfully saved to database");
+                  console.log("Prompt successfully saved to Supabase");
                   
                   toast({
                     title: "Prompt Generated Successfully",
-                    description: "Your Cursor AI prompt has been generated and saved",
+                    description: "Your Cursor AI prompt has been generated and saved to your library",
                   });
                 } catch (error) {
-                  console.error("Failed to save prompt to database:", error);
+                  console.error("Failed to save prompt to Supabase:", error);
                   toast({
                     title: "Save Warning",
-                    description: "Prompt generated but failed to save to database",
+                    description: "Prompt generated but failed to save to database. Please make sure you're signed in.",
                     variant: "destructive"
                   });
                 }

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { SavedPrompt, updatePrompt, savePrompt } from "@/services/db/promptDatabaseService";
+import { SavedPrompt, supabasePromptService } from "@/services/db/supabasePromptService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,6 @@ import {
   Save, 
   X, 
   Plus, 
-  Trash2, 
-  Star,
-  Clock,
-  User,
   Globe,
   Lock
 } from "lucide-react";
@@ -79,13 +75,13 @@ const PromptEditor: React.FC<PromptEditorProps> = ({ prompt, onSave, onClose }) 
       } as SavedPrompt;
 
       if (prompt?.id) {
-        await updatePrompt(prompt.id, promptData);
+        await supabasePromptService.updatePrompt(prompt.id, promptData);
         toast({
           title: "Prompt Updated",
           description: "Your prompt has been updated successfully",
         });
       } else {
-        await savePrompt(promptData);
+        await supabasePromptService.savePrompt(promptData);
         toast({
           title: "Prompt Saved",
           description: "Your new prompt has been saved successfully",
@@ -98,7 +94,7 @@ const PromptEditor: React.FC<PromptEditorProps> = ({ prompt, onSave, onClose }) 
       console.error("Failed to save prompt:", error);
       toast({
         title: "Save Failed",
-        description: "Failed to save the prompt",
+        description: error instanceof Error ? error.message : "Failed to save the prompt",
         variant: "destructive",
       });
     } finally {

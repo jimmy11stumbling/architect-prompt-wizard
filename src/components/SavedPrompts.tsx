@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { SavedPrompt, getAllPrompts, deletePrompt } from "@/services/db/promptDatabaseService";
+import { SavedPrompt, supabasePromptService } from "@/services/db/supabasePromptService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database } from "lucide-react";
@@ -19,7 +19,7 @@ const SavedPrompts: React.FC = () => {
   const [activeTab, setActiveTab] = useState("library");
   const { toast } = useToast();
 
-  // Load prompts from the database
+  // Load prompts from Supabase
   useEffect(() => {
     loadPrompts();
   }, []);
@@ -27,14 +27,14 @@ const SavedPrompts: React.FC = () => {
   const loadPrompts = async () => {
     try {
       setIsLoading(true);
-      const allPrompts = await getAllPrompts();
+      const allPrompts = await supabasePromptService.getAllPrompts();
       setPrompts(allPrompts);
       setFilteredPrompts(allPrompts);
     } catch (error) {
       console.error("Failed to load prompts:", error);
       toast({
         title: "Error",
-        description: "Failed to load saved prompts",
+        description: "Failed to load saved prompts. Please make sure you're signed in.",
         variant: "destructive",
       });
     } finally {
@@ -60,11 +60,11 @@ const SavedPrompts: React.FC = () => {
     setFilteredPrompts(filtered);
   }, [searchTerm, prompts]);
 
-  const handleDeletePrompt = async (id: number | undefined) => {
-    if (id === undefined) return;
+  const handleDeletePrompt = async (id: string | undefined) => {
+    if (!id) return;
     
     try {
-      await deletePrompt(id);
+      await supabasePromptService.deletePrompt(id);
       setPrompts(prompts.filter(p => p.id !== id));
       toast({
         title: "Prompt Deleted",
@@ -112,15 +112,16 @@ const SavedPrompts: React.FC = () => {
 
   const handlePromptUse = async (prompt: SavedPrompt) => {
     try {
-      const { incrementUsage } = await import("@/services/db/promptDatabaseService");
       if (prompt.id) {
-        await incrementUsage(prompt.id);
+        await supabasePromptService.incrementUsage(prompt.id);
       }
       handleCopy(prompt.prompt);
       toast({
         title: "Prompt Ready",
         description: "Prompt copied to clipboard and usage tracked",
       });
+      // Reload prompts to show updated usage count
+      loadPrompts();
     } catch (error) {
       console.error("Failed to track usage:", error);
       handleCopy(prompt.prompt);
@@ -152,7 +153,7 @@ const SavedPrompts: React.FC = () => {
                   <Database className="h-5 w-5 text-ipa-primary" />
                   <CardTitle>Manage Saved Prompts</CardTitle>
                 </div>
-                <CardDescription>{filteredPrompts.length} prompts stored locally</CardDescription>
+                <CardDescription>{filteredPrompts.length} prompts stored in database</CardDescription>
               </div>
               <PromptSearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
             </CardHeader>
