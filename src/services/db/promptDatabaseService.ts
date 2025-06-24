@@ -80,6 +80,7 @@ class PromptDatabaseService {
       count: 0
     }
   ];
+  private isInitialized = false;
 
   constructor() {
     this.loadFromStorage();
@@ -90,12 +91,28 @@ class PromptDatabaseService {
       const stored = localStorage.getItem('savedPrompts');
       if (stored) {
         const data = JSON.parse(stored);
-        this.prompts = data.prompts || [];
-        this.nextId = data.nextId || 1;
-        this.updateCategoryCounts();
+        // Ensure data structure is valid
+        if (data && typeof data === 'object') {
+          this.prompts = Array.isArray(data.prompts) ? data.prompts : [];
+          this.nextId = typeof data.nextId === 'number' ? data.nextId : 1;
+        } else {
+          // Handle old format or invalid data
+          this.prompts = [];
+          this.nextId = 1;
+        }
+      } else {
+        this.prompts = [];
+        this.nextId = 1;
       }
+      this.updateCategoryCounts();
+      this.isInitialized = true;
     } catch (error) {
       console.error('Failed to load prompts from storage:', error);
+      // Reset to defaults on error
+      this.prompts = [];
+      this.nextId = 1;
+      this.updateCategoryCounts();
+      this.isInitialized = true;
     }
   }
 
@@ -114,12 +131,22 @@ class PromptDatabaseService {
   }
 
   private updateCategoryCounts(): void {
+    if (!this.categories || !Array.isArray(this.prompts)) {
+      return;
+    }
     this.categories.forEach(category => {
       category.count = this.prompts.filter(p => p.category === category.id).length;
     });
   }
 
+  private ensureInitialized(): void {
+    if (!this.isInitialized) {
+      this.loadFromStorage();
+    }
+  }
+
   async savePrompt(prompt: SavedPrompt): Promise<SavedPrompt> {
+    this.ensureInitialized();
     const savedPrompt = {
       ...prompt,
       id: this.nextId++,
@@ -135,18 +162,22 @@ class PromptDatabaseService {
   }
 
   async getAllPrompts(): Promise<SavedPrompt[]> {
+    this.ensureInitialized();
     return [...this.prompts].sort((a, b) => (b.lastModified || b.timestamp) - (a.lastModified || a.timestamp));
   }
 
   async getPromptsByCategory(categoryId: string): Promise<SavedPrompt[]> {
+    this.ensureInitialized();
     return this.prompts.filter(p => p.category === categoryId);
   }
 
   async getPublicPrompts(): Promise<SavedPrompt[]> {
+    this.ensureInitialized();
     return this.prompts.filter(p => p.isPublic).sort((a, b) => (b.rating || 0) - (a.rating || 0));
   }
 
   async getFeaturedPrompts(): Promise<SavedPrompt[]> {
+    this.ensureInitialized();
     return this.prompts
       .filter(p => p.isPublic && (p.rating || 0) >= 4)
       .sort((a, b) => (b.usage || 0) - (a.usage || 0))
@@ -154,6 +185,7 @@ class PromptDatabaseService {
   }
 
   async searchPrompts(query: string): Promise<SavedPrompt[]> {
+    this.ensureInitialized();
     const term = query.toLowerCase();
     return this.prompts.filter(prompt =>
       prompt.prompt.toLowerCase().includes(term) ||
@@ -165,6 +197,7 @@ class PromptDatabaseService {
   }
 
   async deletePrompt(id: number): Promise<void> {
+    this.ensureInitialized();
     const index = this.prompts.findIndex(p => p.id === id);
     if (index !== -1) {
       this.prompts.splice(index, 1);
@@ -173,6 +206,7 @@ class PromptDatabaseService {
   }
 
   async updatePrompt(id: number, updates: Partial<SavedPrompt>): Promise<SavedPrompt | null> {
+    this.ensureInitialized();
     const prompt = this.prompts.find(p => p.id === id);
     if (prompt) {
       Object.assign(prompt, updates, { lastModified: Date.now() });
@@ -183,6 +217,7 @@ class PromptDatabaseService {
   }
 
   async incrementUsage(id: number): Promise<void> {
+    this.ensureInitialized();
     const prompt = this.prompts.find(p => p.id === id);
     if (prompt) {
       prompt.usage = (prompt.usage || 0) + 1;
@@ -191,6 +226,7 @@ class PromptDatabaseService {
   }
 
   async ratePrompt(id: number, rating: number): Promise<void> {
+    this.ensureInitialized();
     const prompt = this.prompts.find(p => p.id === id);
     if (prompt && rating >= 1 && rating <= 5) {
       prompt.rating = rating;
@@ -199,15 +235,18 @@ class PromptDatabaseService {
   }
 
   async getPromptById(id: number): Promise<SavedPrompt | null> {
+    this.ensureInitialized();
     return this.prompts.find(p => p.id === id) || null;
   }
 
   async getCategories(): Promise<PromptCategory[]> {
+    this.ensureInitialized();
     this.updateCategoryCounts();
     return [...this.categories];
   }
 
   async getStats(): Promise<PromptStats> {
+    this.ensureInitialized();
     const totalPrompts = this.prompts.length;
     const publicPrompts = this.prompts.filter(p => p.isPublic).length;
     const totalUsage = this.prompts.reduce((sum, p) => sum + (p.usage || 0), 0);
@@ -224,6 +263,7 @@ class PromptDatabaseService {
   }
 
   async exportPrompts(): Promise<string> {
+    this.ensureInitialized();
     const exportData = {
       prompts: this.prompts,
       categories: this.categories,
@@ -234,6 +274,7 @@ class PromptDatabaseService {
   }
 
   async importPrompts(jsonData: string): Promise<number> {
+    this.ensureInitialized();
     try {
       const data = JSON.parse(jsonData);
       let importedCount = 0;
