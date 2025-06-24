@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +30,8 @@ const EnhancedQueryInterface: React.FC = () => {
     setRealTimeLog([]);
 
     const progressInterval = setInterval(() => {
-      setProgress(prev => Math.min(prev + 10, 90));
-    }, 500);
+      setProgress(prev => Math.min(prev + 15, 90));
+    }, 300);
 
     try {
       const enhancedQuery: EnhancedQuery = {
@@ -43,7 +42,10 @@ const EnhancedQueryInterface: React.FC = () => {
         conversationId: response?.conversationId
       };
 
+      console.log("Executing enhanced query:", enhancedQuery);
       const result = await enhancedSystemService.processEnhancedQuery(enhancedQuery);
+      console.log("Enhanced query result:", result);
+      
       setResponse(result);
       setRealTimeLog(result.processingLog);
       setProgress(100);
@@ -53,7 +55,7 @@ const EnhancedQueryInterface: React.FC = () => {
       setRealTimeLog(errorLog);
     } finally {
       clearInterval(progressInterval);
-      setLoading(false);
+      setTimeout(() => setLoading(false), 500);
     }
   };
 
@@ -76,7 +78,7 @@ const EnhancedQueryInterface: React.FC = () => {
         <CardContent className="space-y-4">
           <div>
             <Textarea
-              placeholder="Enter your complex query here... (RAG, A2A, and MCP will be integrated automatically)"
+              placeholder="Enter your query here... (RAG, A2A, and MCP will be integrated automatically)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="min-h-[120px]"
@@ -126,6 +128,13 @@ const EnhancedQueryInterface: React.FC = () => {
                 <span>{progress}%</span>
               </div>
               <Progress value={progress} />
+              <div className="text-xs text-muted-foreground">
+                {progress < 30 && "Initializing services..."}
+                {progress >= 30 && progress < 60 && "Querying RAG database..."}
+                {progress >= 60 && progress < 80 && "Coordinating with agents..."}
+                {progress >= 80 && progress < 95 && "Processing with DeepSeek..."}
+                {progress >= 95 && "Finalizing response..."}
+              </div>
             </div>
           )}
 
@@ -145,6 +154,30 @@ const EnhancedQueryInterface: React.FC = () => {
             <Button variant="outline" onClick={clearSession}>
               Clear
             </Button>
+          </div>
+
+          {/* Sample queries for testing */}
+          <div className="space-y-2">
+            <div className="text-sm text-muted-foreground">Sample Queries:</div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "How does RAG 2.0 improve upon traditional RAG systems?",
+                "Explain A2A agent coordination patterns",
+                "What are the benefits of MCP protocol integration?",
+                "Compare vector database solutions for RAG",
+                "How to implement hybrid search in production?"
+              ].map((sample, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuery(sample)}
+                  className="text-xs"
+                >
+                  {sample}
+                </Button>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -180,7 +213,7 @@ const EnhancedQueryInterface: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="prose max-w-none">
-                  <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded">
+                  <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded max-h-96 overflow-y-auto">
                     {response.response}
                   </pre>
                 </div>

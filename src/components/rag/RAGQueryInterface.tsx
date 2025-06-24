@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Database, Search, FileText, Clock, Zap } from "lucide-react";
 import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { useToast } from "@/hooks/use-toast";
+import { import } from "node:module";
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
@@ -36,63 +36,48 @@ const RAGQueryInterface: React.FC = () => {
 
     setIsQuerying(true);
     try {
-      // Simulate RAG query
+      console.log("Executing RAG query:", query);
+      
+      // Import and use the actual RAG service
+      const { ragService } = await import("@/services/rag/ragService");
+      
       const ragQuery: RAGQuery = {
         query: query.trim(),
         limit: settings.limit,
         threshold: settings.threshold
       };
 
-      // Mock RAG results for now
-      const mockResults: RAGResult = {
-        documents: [
-          {
-            id: "doc-1",
-            title: "RAG 2.0 Implementation Guide",
-            content: "Advanced retrieval-augmented generation techniques for modern AI applications...",
-            source: "technical-docs",
-            metadata: { category: "implementation", priority: "high" }
-          },
-          {
-            id: "doc-2", 
-            title: "MCP Protocol Specification",
-            content: "Model Context Protocol standards and implementation details...",
-            source: "specifications",
-            metadata: { category: "protocol", priority: "medium" }
-          },
-          {
-            id: "doc-3",
-            title: "A2A Communication Patterns",
-            content: "Agent-to-agent communication protocols and best practices...",
-            source: "architecture-docs",
-            metadata: { category: "architecture", priority: "high" }
-          }
-        ],
-        query: ragQuery.query,
-        totalResults: 3,
-        scores: [0.95, 0.87, 0.82],
-        searchTime: Math.random() * 500 + 100
+      // Use actual RAG service instead of mock
+      const ragResponse = await ragService.query(ragQuery);
+      
+      // Convert RAG response to RAG result format
+      const ragResult: RAGResult = {
+        documents: ragResponse.documents,
+        query: ragResponse.query,
+        totalResults: ragResponse.totalResults,
+        scores: ragResponse.scores,
+        searchTime: ragResponse.searchTime
       };
 
-      setTimeout(() => {
-        setResults(mockResults);
-        setQueryHistory(prev => [...prev, { query: query.trim(), timestamp: Date.now() }]);
-        setIsQuerying(false);
-        
-        toast({
-          title: "Query Complete",
-          description: `Found ${mockResults.documents.length} relevant documents`
-        });
-      }, 1000);
+      console.log("RAG query result:", ragResult);
+      
+      setResults(ragResult);
+      setQueryHistory(prev => [...prev, { query: query.trim(), timestamp: Date.now() }]);
+      
+      toast({
+        title: "Query Complete",
+        description: `Found ${ragResult.documents.length} relevant documents`
+      });
 
     } catch (error) {
       console.error("RAG query failed:", error);
-      setIsQuerying(false);
       toast({
         title: "Query Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive"
       });
+    } finally {
+      setIsQuerying(false);
     }
   };
 
@@ -100,7 +85,9 @@ const RAGQueryInterface: React.FC = () => {
     "How to implement RAG 2.0 with vector databases?",
     "MCP protocol integration best practices",
     "A2A agent coordination patterns",
-    "DeepSeek reasoning optimization techniques"
+    "DeepSeek reasoning optimization techniques",
+    "Hybrid search methodology implementation",
+    "Production deployment best practices"
   ];
 
   return (
