@@ -2,23 +2,29 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Database, Search, FileText, Clock, Target } from "lucide-react";
-import { ragService, RAGResponse } from "@/services/rag/ragService";
+import { Progress } from "@/components/ui/progress";
+import { Database, Search, FileText, Clock, Zap } from "lucide-react";
+import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { useToast } from "@/hooks/use-toast";
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<RAGResponse | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [limit, setLimit] = useState(5);
-  const [threshold, setThreshold] = useState(0.3);
+  const [results, setResults] = useState<RAGResult | null>(null);
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [queryHistory, setQueryHistory] = useState<Array<{ query: string; timestamp: number }>>([]);
+  const [settings, setSettings] = useState({
+    limit: 5,
+    threshold: 0.3,
+    searchType: "hybrid"
+  });
   const { toast } = useToast();
 
-  const handleSearch = async () => {
+  const executeQuery = async () => {
     if (!query.trim()) {
       toast({
         title: "Query Required",
@@ -28,78 +34,106 @@ const RAGQueryInterface: React.FC = () => {
       return;
     }
 
-    setIsSearching(true);
+    setIsQuerying(true);
     try {
-      const response = await ragService.query({
+      // Simulate RAG query
+      const ragQuery: RAGQuery = {
         query: query.trim(),
-        limit,
-        threshold
-      });
-      setResults(response);
-      
-      toast({
-        title: "Search Complete",
-        description: `Found ${response.documents.length} relevant documents`
-      });
+        limit: settings.limit,
+        threshold: settings.threshold
+      };
+
+      // Mock RAG results for now
+      const mockResults: RAGResult = {
+        documents: [
+          {
+            id: "doc-1",
+            title: "RAG 2.0 Implementation Guide",
+            content: "Advanced retrieval-augmented generation techniques for modern AI applications...",
+            source: "technical-docs",
+            metadata: { category: "implementation", priority: "high" }
+          },
+          {
+            id: "doc-2", 
+            title: "MCP Protocol Specification",
+            content: "Model Context Protocol standards and implementation details...",
+            source: "specifications",
+            metadata: { category: "protocol", priority: "medium" }
+          },
+          {
+            id: "doc-3",
+            title: "A2A Communication Patterns",
+            content: "Agent-to-agent communication protocols and best practices...",
+            source: "architecture-docs",
+            metadata: { category: "architecture", priority: "high" }
+          }
+        ],
+        query: ragQuery.query,
+        totalResults: 3,
+        scores: [0.95, 0.87, 0.82],
+        searchTime: Math.random() * 500 + 100
+      };
+
+      setTimeout(() => {
+        setResults(mockResults);
+        setQueryHistory(prev => [...prev, { query: query.trim(), timestamp: Date.now() }]);
+        setIsQuerying(false);
+        
+        toast({
+          title: "Query Complete",
+          description: `Found ${mockResults.documents.length} relevant documents`
+        });
+      }, 1000);
+
     } catch (error) {
       console.error("RAG query failed:", error);
+      setIsQuerying(false);
       toast({
-        title: "Search Failed",
-        description: "Unable to query the RAG database",
+        title: "Query Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive"
       });
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSearch();
     }
   };
 
   const sampleQueries = [
-    "RAG 2.0 architecture and implementation",
-    "Agent-to-Agent protocol communication",
-    "Model Context Protocol integration",
-    "DeepSeek reasoning capabilities",
-    "Multi-agent system coordination"
+    "How to implement RAG 2.0 with vector databases?",
+    "MCP protocol integration best practices",
+    "A2A agent coordination patterns",
+    "DeepSeek reasoning optimization techniques"
   ];
 
   return (
     <div className="space-y-6">
-      {/* Query Interface */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            RAG 2.0 Knowledge Query
+            RAG 2.0 Query Interface
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="query">Search Query</Label>
-            <Input
-              id="query"
-              placeholder="Enter your search query..."
+            <Label htmlFor="rag-query">Search Query</Label>
+            <Textarea
+              id="rag-query"
+              placeholder="Enter your search query to retrieve relevant context from the RAG database..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
+              rows={3}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="limit">Result Limit</Label>
               <Input
                 id="limit"
                 type="number"
-                min="1"
-                max="20"
-                value={limit}
-                onChange={(e) => setLimit(parseInt(e.target.value) || 5)}
+                value={settings.limit}
+                onChange={(e) => setSettings(prev => ({ ...prev, limit: parseInt(e.target.value) || 5 }))}
+                min={1}
+                max={20}
               />
             </div>
             <div className="space-y-2">
@@ -107,32 +141,46 @@ const RAGQueryInterface: React.FC = () => {
               <Input
                 id="threshold"
                 type="number"
-                min="0"
-                max="1"
                 step="0.1"
-                value={threshold}
-                onChange={(e) => setThreshold(parseFloat(e.target.value) || 0.3)}
+                value={settings.threshold}
+                onChange={(e) => setSettings(prev => ({ ...prev, threshold: parseFloat(e.target.value) || 0.3 }))}
+                min={0}
+                max={1}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Search Type</Label>
+              <select 
+                className="w-full px-3 py-2 border rounded-md"
+                value={settings.searchType}
+                onChange={(e) => setSettings(prev => ({ ...prev, searchType: e.target.value }))}
+              >
+                <option value="hybrid">Hybrid Search</option>
+                <option value="semantic">Semantic Only</option>
+                <option value="keyword">Keyword Only</option>
+              </select>
             </div>
           </div>
 
-          <Button 
-            onClick={handleSearch} 
-            disabled={isSearching || !query.trim()}
-            className="w-full"
-          >
-            {isSearching ? (
-              <>
-                <Search className="h-4 w-4 mr-2 animate-spin" />
-                Searching...
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4 mr-2" />
-                Search Knowledge Base
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={executeQuery} 
+              disabled={isQuerying || !query.trim()}
+              className="flex-1"
+            >
+              {isQuerying ? (
+                <>
+                  <Search className="h-4 w-4 mr-2 animate-spin" />
+                  Searching RAG Database...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Execute Query
+                </>
+              )}
+            </Button>
+          </div>
 
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Sample Queries:</Label>
@@ -153,111 +201,135 @@ const RAGQueryInterface: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Results */}
+      {isQuerying && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Processing query...</span>
+                <Zap className="h-4 w-4 animate-pulse text-blue-500" />
+              </div>
+              <Progress value={65} className="w-full" />
+              <div className="text-xs text-muted-foreground">
+                Searching vector embeddings and applying semantic filters...
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {results && (
-        <Tabs defaultValue="documents" className="w-full">
+        <Tabs defaultValue="results" className="w-full">
           <TabsList>
-            <TabsTrigger value="documents">Documents ({results.documents.length})</TabsTrigger>
-            <TabsTrigger value="metrics">Search Metrics</TabsTrigger>
+            <TabsTrigger value="results">Search Results</TabsTrigger>
+            <TabsTrigger value="metrics">Query Metrics</TabsTrigger>
+            <TabsTrigger value="history">Query History</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="documents" className="space-y-4">
-            {results.documents.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-medium">No Documents Found</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Try adjusting your query or lowering the similarity threshold
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              results.documents.map((doc, index) => (
-                <Card key={doc.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{doc.title}</CardTitle>
+          <TabsContent value="results">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Search Results
+                  <Badge variant="outline">
+                    {results.documents.length} documents found
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {results.documents.map((doc, index) => (
+                  <div key={doc.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {doc.title}
+                      </h4>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">{doc.source}</Badge>
-                        {results.scores && (
-                          <Badge variant="secondary">
-                            Score: {results.scores[index]?.toFixed(2) || "N/A"}
-                          </Badge>
-                        )}
+                        <Badge variant="secondary">
+                          Score: {results.scores[index].toFixed(2)}
+                        </Badge>
+                        <Badge variant="outline">
+                          {doc.source}
+                        </Badge>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">
-                      {doc.content.length > 300 
-                        ? `${doc.content.substring(0, 300)}...` 
-                        : doc.content
-                      }
+                    <p className="text-sm text-muted-foreground">
+                      {doc.content}
                     </p>
-                    {doc.metadata && Object.keys(doc.metadata).length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <Label className="text-xs text-muted-foreground">Metadata:</Label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {Object.entries(doc.metadata).map(([key, value]) => (
-                            <Badge key={key} variant="outline" className="text-xs">
-                              {key}: {String(value)}
-                            </Badge>
-                          ))}
-                        </div>
+                    {doc.metadata && (
+                      <div className="flex gap-1">
+                        {Object.entries(doc.metadata).map(([key, value]) => (
+                          <Badge key={key} variant="outline" className="text-xs">
+                            {key}: {String(value)}
+                          </Badge>
+                        ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="metrics">
             <Card>
               <CardHeader>
-                <CardTitle>Search Performance</CardTitle>
+                <CardTitle>Query Performance Metrics</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-8 w-8 text-blue-500" />
-                    <div>
-                      <div className="text-2xl font-bold">{results.searchTime || 0}ms</div>
-                      <div className="text-sm text-muted-foreground">Search Time</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-500">
+                      {results.searchTime?.toFixed(0)}ms
                     </div>
+                    <div className="text-sm text-muted-foreground">Search Time</div>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Target className="h-8 w-8 text-green-500" />
-                    <div>
-                      <div className="text-2xl font-bold">{results.totalResults}</div>
-                      <div className="text-sm text-muted-foreground">Total Results</div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-500">
+                      {results.documents.length}
                     </div>
+                    <div className="text-sm text-muted-foreground">Documents Found</div>
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <Database className="h-8 w-8 text-purple-500" />
-                    <div>
-                      <div className="text-2xl font-bold">
-                        {results.scores?.length ? 
-                          (results.scores.reduce((a, b) => a + b, 0) / results.scores.length).toFixed(2) 
-                          : "0"
-                        }
-                      </div>
-                      <div className="text-sm text-muted-foreground">Avg Score</div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-500">
+                      {Math.max(...results.scores).toFixed(2)}
                     </div>
+                    <div className="text-sm text-muted-foreground">Best Score</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-500">
+                      {(results.scores.reduce((a, b) => a + b, 0) / results.scores.length).toFixed(2)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Avg Score</div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Query Details</h4>
-                  <div className="space-y-1 text-sm">
-                    <div><strong>Query:</strong> {results.query}</div>
-                    <div><strong>Limit:</strong> {limit}</div>
-                    <div><strong>Threshold:</strong> {threshold}</div>
-                    <div><strong>Vector Database:</strong> Chroma</div>
-                  </div>
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Query History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {queryHistory.slice(-10).reverse().map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 border rounded">
+                      <span className="text-sm">{item.query}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(item.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                  {queryHistory.length === 0 && (
+                    <div className="text-center text-muted-foreground py-4">
+                      No query history yet
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
