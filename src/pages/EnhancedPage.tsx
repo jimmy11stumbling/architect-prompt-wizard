@@ -3,10 +3,12 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Database, Network, Wrench, Monitor, Workflow } from "lucide-react";
+import { Brain, Database, Network, Wrench, Monitor, Workflow, Activity } from "lucide-react";
 import DeepSeekReasonerPanel from "@/components/enhanced-features/DeepSeekReasonerPanel";
 import RealTimeResponseMonitor from "@/components/enhanced-features/RealTimeResponseMonitor";
 import IntegratedWorkflow from "@/components/enhanced-features/IntegratedWorkflow";
+import LiveAgentMonitor from "@/components/enhanced-features/LiveAgentMonitor";
+import ConsoleValidator from "@/components/enhanced-features/ConsoleValidator";
 
 const EnhancedPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("reasoner");
@@ -36,22 +38,22 @@ const EnhancedPage: React.FC = () => {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm">DeepSeek Reasoner</span>
                 <Badge variant="outline">Active</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm">RAG 2.0 Database</span>
                 <Badge variant="outline">Connected</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm">A2A Protocol</span>
                 <Badge variant="outline">Operational</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm">MCP Hub</span>
                 <Badge variant="outline">Ready</Badge>
               </div>
@@ -61,7 +63,7 @@ const EnhancedPage: React.FC = () => {
 
         {/* Main Features Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="reasoner" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               DeepSeek Reasoner
@@ -73,6 +75,10 @@ const EnhancedPage: React.FC = () => {
             <TabsTrigger value="monitor" className="flex items-center gap-2">
               <Monitor className="h-4 w-4" />
               Real-time Monitor
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Live Agents
             </TabsTrigger>
           </TabsList>
 
@@ -189,7 +195,48 @@ const EnhancedPage: React.FC = () => {
               <RealTimeResponseMonitor />
             </div>
           </TabsContent>
+
+          <TabsContent value="agents">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Live Agent Monitoring & Validation
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    Real-time monitoring and validation of all agent responses, with live console output and 
+                    comprehensive validation checks for every agent interaction.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-500">✓</div>
+                      <div className="text-sm text-muted-foreground">Response Validation</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-500">🔍</div>
+                      <div className="text-sm text-muted-foreground">Live Monitoring</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-500">📊</div>
+                      <div className="text-sm text-muted-foreground">Real-time Analytics</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-500">🖥️</div>
+                      <div className="text-sm text-muted-foreground">Console Output</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <LiveAgentMonitor />
+            </div>
+          </TabsContent>
         </Tabs>
+
+        {/* Console Validator - Always visible */}
+        <ConsoleValidator />
       </div>
     </div>
   );

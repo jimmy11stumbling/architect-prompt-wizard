@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import { Progress } from "@/components/ui/progress";
 import { Database, Search, FileText, Clock, Zap } from "lucide-react";
 import { RAGQuery, RAGResult } from "@/types/ipa-types";
 import { useToast } from "@/hooks/use-toast";
-import { import } from "node:module";
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
@@ -38,7 +38,7 @@ const RAGQueryInterface: React.FC = () => {
     try {
       console.log("Executing RAG query:", query);
       
-      // Import and use the actual RAG service
+      // Dynamic import of RAG service
       const { ragService } = await import("@/services/rag/ragService");
       
       const ragQuery: RAGQuery = {
