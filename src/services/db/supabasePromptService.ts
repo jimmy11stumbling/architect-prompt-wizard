@@ -1,5 +1,3 @@
-
-
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -200,7 +198,7 @@ class SupabasePromptService {
   async incrementUsage(id: string): Promise<void> {
     const { error } = await supabase.rpc('increment_prompt_usage', { 
       prompt_id: id 
-    });
+    } as { prompt_id: string });
     if (error) throw error;
   }
 

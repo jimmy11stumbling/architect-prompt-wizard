@@ -6,9 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PromptCard, PromptSearch, EmptyState } from "./saved-prompts";
+import { PromptSearch, EmptyState } from "./saved-prompts";
 import PromptLibrary from "./saved-prompts/PromptLibrary";
 import PromptEditor from "./saved-prompts/PromptEditor";
+import PromptCard from "./saved-prompts/PromptCard";
 
 const SavedPrompts: React.FC = () => {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { SavedPrompt } from "@/services/db/promptDatabaseService";
+import { SavedPrompt } from "@/services/db/supabasePromptService";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -9,7 +9,7 @@ import PromptActions from "./PromptActions";
 
 interface PromptCardProps {
   prompt: SavedPrompt;
-  onDelete: (id: number | undefined) => void;
+  onDelete: (id: string | undefined) => void;
   onCopy: (prompt: string) => void;
   onDownload: (prompt: string) => void;
   onEdit?: (prompt: SavedPrompt) => void;
