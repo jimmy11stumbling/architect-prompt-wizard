@@ -1,3 +1,4 @@
+
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
@@ -79,7 +80,7 @@ export type VectorDatabase =
 
 export type MCPType = 
   | "Standard MCP" 
-  | "Custom MCP" 
+  | "Enhanced MCP" 
   | "Enterprise MCP"
   | "Extended MCP"
   | "MCP with Tools"

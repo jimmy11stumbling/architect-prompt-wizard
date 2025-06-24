@@ -55,11 +55,11 @@ const AdvancedFeaturesSection: React.FC<AdvancedFeaturesSectionProps> = ({
               <SelectItem value="Pinecone">Pinecone</SelectItem>
               <SelectItem value="Weaviate">Weaviate</SelectItem>
               <SelectItem value="Qdrant">Qdrant</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
+              <SelectItem value="Custom">Custom</SelectItem>
             </SelectContent>
           </Select>
           
-          {ragVectorDb === "custom" && (
+          {ragVectorDb === "Custom" && (
             <div className="flex gap-2">
               <Input
                 placeholder="Enter custom vector database"
@@ -90,14 +90,14 @@ const AdvancedFeaturesSection: React.FC<AdvancedFeaturesSectionProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="None">None</SelectItem>
-              <SelectItem value="Standard">Standard MCP</SelectItem>
-              <SelectItem value="Enhanced">Enhanced MCP</SelectItem>
-              <SelectItem value="Enterprise">Enterprise MCP</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
+              <SelectItem value="Standard MCP">Standard MCP</SelectItem>
+              <SelectItem value="Enhanced MCP">Enhanced MCP</SelectItem>
+              <SelectItem value="Enterprise MCP">Enterprise MCP</SelectItem>
+              <SelectItem value="Custom MCP Implementation">Custom</SelectItem>
             </SelectContent>
           </Select>
           
-          {mcpType === "custom" && (
+          {mcpType === "Custom MCP Implementation" && (
             <div className="flex gap-2">
               <Input
                 placeholder="Enter custom MCP type"

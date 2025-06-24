@@ -30,7 +30,7 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
   const [newBackendTech, setNewBackendTech] = useState("");
 
   const frontendOptions: TechStack[] = ["React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt.js"];
-  const backendOptions: TechStack[] = ["Express", "FastAPI", "Django", "Spring", "Flask", "NestJS", "PostgreSQL", "MongoDB", "MySQL"];
+  const backendOptions: TechStack[] = ["Express", "FastAPI", "Django", "Spring Boot", "Flask", "NestJS", "PostgreSQL", "MongoDB", "MySQL"];
 
   const handleAddFrontend = () => {
     if (newFrontendTech.trim()) {
