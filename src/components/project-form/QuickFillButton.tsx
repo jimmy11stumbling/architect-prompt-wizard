@@ -1,143 +1,82 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Zap, ChevronDown } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Zap } from "lucide-react";
 import { ProjectSpec } from "@/types/ipa-types";
 
 interface QuickFillButtonProps {
   onQuickFill: (spec: ProjectSpec) => void;
 }
 
-const quickFillTemplates: { name: string; spec: ProjectSpec }[] = [
-  {
-    name: "E-commerce Platform",
-    spec: {
-      projectDescription: "A modern e-commerce platform with real-time inventory management, AI-powered recommendations, and multi-vendor support. Features include advanced search, payment processing, order tracking, and customer analytics.",
+const QuickFillButton: React.FC<QuickFillButtonProps> = ({ onQuickFill }) => {
+  const templates: Record<string, ProjectSpec> = {
+    "E-commerce Platform": {
+      projectDescription: "A modern e-commerce platform with AI-powered product recommendations, real-time inventory management, and seamless payment processing. Features include user authentication, product catalog, shopping cart, order management, and admin dashboard.",
       frontendTechStack: ["React", "Next.js"],
-      backendTechStack: ["NestJS", "PostgreSQL", "Redis"],
-      customFrontendTech: ["Stripe", "TailwindCSS"],
-      customBackendTech: ["Elasticsearch", "Bull Queue"],
-      a2aIntegrationDetails: "Implement agent communication for inventory updates, payment processing coordination, and recommendation engine updates between microservices.",
-      additionalFeatures: "Real-time notifications, advanced analytics dashboard, multi-language support, progressive web app capabilities",
-      ragVectorDb: "Pinecone",
-      customRagVectorDb: "",
-      mcpType: "MCP with Tools",
-      customMcpType: "",
-      advancedPromptDetails: "Use RAG for product recommendations and customer support. Implement MCP for payment gateway integration and inventory management tools.",
-      deploymentPreference: "Vercel",
-      authenticationMethod: "NextAuth.js"
-    }
-  },
-  {
-    name: "Video Editing Platform",
-    spec: {
-      projectDescription: "A web-based video editing platform with collaborative features, AI-powered editing suggestions, and cloud rendering. Supports multiple video formats, real-time collaboration, and automated subtitle generation.",
-      frontendTechStack: ["React", "Next.js"],
-      backendTechStack: ["FastAPI", "PostgreSQL", "Redis"],
-      customFrontendTech: ["FFmpeg.wasm", "WebGL"],
-      customBackendTech: ["Celery", "AWS S3", "WebRTC"],
-      a2aIntegrationDetails: "Agent communication for render job distribution, collaborative editing sessions, and AI processing pipeline coordination.",
-      additionalFeatures: "Real-time collaboration, cloud rendering, AI-powered effects, automated transcription",
-      ragVectorDb: "Weaviate",
-      customRagVectorDb: "",
-      mcpType: "MCP with Resources",
-      customMcpType: "",
-      advancedPromptDetails: "RAG for video effect suggestions and tutorial integration. MCP for accessing video processing tools and cloud storage resources.",
-      deploymentPreference: "AWS",
-      authenticationMethod: "Auth0"
-    }
-  },
-  {
-    name: "Fitness Tracking App",
-    spec: {
-      projectDescription: "A comprehensive fitness tracking application with AI personal trainer, social features, and wearable device integration. Includes workout planning, nutrition tracking, progress analytics, and community challenges.",
-      frontendTechStack: ["React", "Next.js"],
-      backendTechStack: ["NestJS", "PostgreSQL", "MongoDB"],
-      customFrontendTech: ["Chart.js", "PWA"],
-      customBackendTech: ["WebSocket", "Push Notifications"],
-      a2aIntegrationDetails: "Agent communication for workout recommendations, nutrition analysis, and social interaction coordination between users and AI trainers.",
-      additionalFeatures: "Wearable integration, social features, AI coaching, offline mode, push notifications",
-      ragVectorDb: "Qdrant",
-      customRagVectorDb: "",
-      mcpType: "Standard MCP",
-      customMcpType: "",
-      advancedPromptDetails: "RAG for exercise database and nutrition information. MCP for wearable device data integration and health metrics processing.",
-      deploymentPreference: "Google Cloud",
-      authenticationMethod: "Firebase Auth"
-    }
-  },
-  {
-    name: "Content Creation Platform",
-    spec: {
-      projectDescription: "An AI-powered content creation platform for bloggers, marketers, and creators. Features include AI writing assistance, SEO optimization, content scheduling, analytics, and team collaboration tools.",
-      frontendTechStack: ["React", "Next.js"],
-      backendTechStack: ["Express", "PostgreSQL", "Redis"],
-      customFrontendTech: ["TinyMCE", "React Query"],
-      customBackendTech: ["OpenAI API", "Scheduler"],
-      a2aIntegrationDetails: "Agent coordination for content generation, SEO analysis, social media scheduling, and performance analytics across different content types.",
-      additionalFeatures: "AI writing assistant, SEO tools, content calendar, team collaboration, analytics dashboard",
+      backendTechStack: ["Express", "PostgreSQL"],
+      customFrontendTech: [],
+      customBackendTech: [],
       ragVectorDb: "Chroma",
       customRagVectorDb: "",
-      mcpType: "MCP with Tools",
+      mcpType: "Enhanced",
       customMcpType: "",
-      advancedPromptDetails: "RAG for content research and SEO best practices. MCP tools for social media APIs, analytics platforms, and AI writing services.",
+      a2aIntegrationDetails: "Implement agent communication for inventory updates, recommendation engine, and order processing coordination.",
+      advancedPromptDetails: "Use context-aware prompting for product recommendations and customer service automation.",
+      additionalFeatures: "Payment gateway integration, email notifications, analytics dashboard, mobile responsiveness",
       deploymentPreference: "Vercel",
-      authenticationMethod: "NextAuth.js"
-    }
-  },
-  {
-    name: "Project Management Tool",
-    spec: {
-      projectDescription: "An intelligent project management platform with AI-powered task estimation, resource allocation, and predictive analytics. Features real-time collaboration, automated reporting, and integration with popular development tools.",
-      frontendTechStack: ["React", "Next.js"],
-      backendTechStack: ["NestJS", "PostgreSQL", "Redis"],
-      customFrontendTech: ["Drag-and-Drop", "Gantt Charts"],
-      customBackendTech: ["WebSocket", "Cron Jobs"],
-      a2aIntegrationDetails: "Multi-agent system for task assignment, deadline prediction, resource optimization, and automated status updates between team members and project phases.",
-      additionalFeatures: "AI task estimation, resource planning, automated reporting, time tracking, team analytics",
-      ragVectorDb: "PGVector",
+      authenticationMethod: "JWT"
+    },
+    "AI Chat Application": {
+      projectDescription: "An intelligent chat application with multi-agent conversation support, document analysis, and real-time collaboration features. Includes AI-powered responses, file sharing, and conversation management.",
+      frontendTechStack: ["React", "Vue"],
+      backendTechStack: ["FastAPI", "MongoDB"],
+      customFrontendTech: [],
+      customBackendTech: [],
+      ragVectorDb: "Pinecone",
       customRagVectorDb: "",
-      mcpType: "Extended MCP",
+      mcpType: "Enterprise",
       customMcpType: "",
-      advancedPromptDetails: "RAG for project best practices and historical data analysis. Extended MCP for integration with development tools, calendar systems, and communication platforms.",
+      a2aIntegrationDetails: "Multi-agent conversation handling, document processing agents, and real-time message routing between AI agents.",
+      advancedPromptDetails: "Context-aware conversation management, document summarization, and intelligent response generation.",
+      additionalFeatures: "File upload/sharing, real-time messaging, conversation history, user presence indicators",
+      deploymentPreference: "Vercel",
+      authenticationMethod: "OAuth"
+    },
+    "Data Analytics Dashboard": {
+      projectDescription: "A comprehensive data analytics platform with AI-driven insights, real-time visualization, and automated reporting. Features interactive charts, KPI tracking, and predictive analytics.",
+      frontendTechStack: ["React", "Angular"],
+      backendTechStack: ["Django", "PostgreSQL"],
+      customFrontendTech: [],
+      customBackendTech: [],
+      ragVectorDb: "Qdrant",
+      customRagVectorDb: "",
+      mcpType: "Standard",
+      customMcpType: "",
+      a2aIntegrationDetails: "Data processing agents, analytics computation, and report generation coordination.",
+      advancedPromptDetails: "Intelligent data interpretation, automated insights generation, and natural language query processing.",
+      additionalFeatures: "Interactive charts, data export, scheduled reports, user permissions, API integrations",
       deploymentPreference: "AWS",
-      authenticationMethod: "OAuth 2.0"
+      authenticationMethod: "SAML"
     }
-  }
-];
+  };
 
-const QuickFillButton: React.FC<QuickFillButtonProps> = ({ onQuickFill }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Zap className="h-4 w-4" />
+        <Button variant="outline" size="sm">
+          <Zap className="h-4 w-4 mr-2" />
           Quick Fill
-          <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Template Projects</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {quickFillTemplates.map((template, index) => (
-          <DropdownMenuItem
-            key={index}
-            onClick={() => onQuickFill(template.spec)}
-            className="cursor-pointer"
-          >
-            <div className="flex flex-col">
-              <span className="font-medium">{template.name}</span>
-              <span className="text-xs text-muted-foreground line-clamp-2">
-                {template.spec.projectDescription.substring(0, 80)}...
-              </span>
+        {Object.entries(templates).map(([name, spec]) => (
+          <DropdownMenuItem key={name} onClick={() => onQuickFill(spec)}>
+            <div className="space-y-1">
+              <div className="font-medium">{name}</div>
+              <div className="text-xs text-muted-foreground line-clamp-2">
+                {spec.projectDescription.substring(0, 100)}...
+              </div>
             </div>
           </DropdownMenuItem>
         ))}

@@ -1,58 +1,11 @@
 
-import React from "react";
-import { TechStackSelector } from "./";
+import React, { useState } from "react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Plus, X } from "lucide-react";
 import { TechStack } from "@/types/ipa-types";
-
-const FRONTEND_OPTIONS: TechStack[] = [
-  "React", 
-  "Next.js", 
-  "Vue", 
-  "Angular", 
-  "Svelte", 
-  "Nuxt.js", 
-  "Gatsby", 
-  "Remix"
-];
-
-const BACKEND_OPTIONS: TechStack[] = [
-  "Express", 
-  "NestJS", 
-  "FastAPI", 
-  "Django", 
-  "Flask", 
-  "Spring Boot", 
-  "Laravel", 
-  "Ruby on Rails",
-  "ASP.NET Core",
-  "Koa.js",
-  "Hapi.js"
-];
-
-const DATABASE_OPTIONS: TechStack[] = [
-  "PostgreSQL", 
-  "MongoDB", 
-  "Redis", 
-  "MySQL", 
-  "SQLite", 
-  "Supabase", 
-  "Firebase", 
-  "DynamoDB",
-  "CouchDB",
-  "Cassandra"
-];
-
-const ADDITIONAL_OPTIONS: TechStack[] = [
-  "Docker", 
-  "Kubernetes", 
-  "GraphQL", 
-  "REST API", 
-  "WebSockets", 
-  "Microservices",
-  "Serverless",
-  "AWS",
-  "Google Cloud",
-  "Azure"
-];
 
 interface TechStackSectionProps {
   frontendTechStack: TechStack[];
@@ -71,42 +24,117 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
   customBackendTech,
   onTechStackToggle,
   onAddCustomTech,
-  onRemoveCustomTech,
+  onRemoveCustomTech
 }) => {
+  const [newFrontendTech, setNewFrontendTech] = useState("");
+  const [newBackendTech, setNewBackendTech] = useState("");
+
+  const frontendOptions: TechStack[] = ["React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt.js"];
+  const backendOptions: TechStack[] = ["Express", "FastAPI", "Django", "Spring", "Flask", "NestJS", "PostgreSQL", "MongoDB", "MySQL"];
+
+  const handleAddFrontend = () => {
+    if (newFrontendTech.trim()) {
+      onAddCustomTech(newFrontendTech.trim(), "frontend");
+      setNewFrontendTech("");
+    }
+  };
+
+  const handleAddBackend = () => {
+    if (newBackendTech.trim()) {
+      onAddCustomTech(newBackendTech.trim(), "backend");
+      setNewBackendTech("");
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <TechStackSelector
-        title="Frontend Tech Stack"
-        options={FRONTEND_OPTIONS}
-        selectedTechs={frontendTechStack}
-        customTechs={customFrontendTech}
-        onToggleTech={(tech) => onTechStackToggle(tech, "frontend")}
-        onAddCustomTech={(tech) => onAddCustomTech(tech, "frontend")}
-        onRemoveCustomTech={(tech) => onRemoveCustomTech(tech, "frontend")}
-        bgColorClass="bg-ipa-primary"
-      />
+      {/* Frontend Tech Stack */}
+      <div className="space-y-3">
+        <Label>Frontend Technologies *</Label>
+        <div className="flex flex-wrap gap-2">
+          {frontendOptions.map((tech) => (
+            <Badge
+              key={tech}
+              variant={frontendTechStack.includes(tech) ? "default" : "outline"}
+              className="cursor-pointer hover:opacity-80"
+              onClick={() => onTechStackToggle(tech, "frontend")}
+            >
+              {tech}
+            </Badge>
+          ))}
+        </div>
+        
+        {/* Custom Frontend Tech */}
+        {customFrontendTech.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {customFrontendTech.map((tech) => (
+              <Badge key={tech} variant="secondary" className="flex items-center gap-1">
+                {tech}
+                <X 
+                  className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                  onClick={() => onRemoveCustomTech(tech, "frontend")}
+                />
+              </Badge>
+            ))}
+          </div>
+        )}
+        
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom frontend technology"
+            value={newFrontendTech}
+            onChange={(e) => setNewFrontendTech(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && handleAddFrontend()}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={handleAddFrontend}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
-      <TechStackSelector
-        title="Backend Tech Stack"
-        options={BACKEND_OPTIONS}
-        selectedTechs={backendTechStack}
-        customTechs={customBackendTech}
-        onToggleTech={(tech) => onTechStackToggle(tech, "backend")}
-        onAddCustomTech={(tech) => onAddCustomTech(tech, "backend")}
-        onRemoveCustomTech={(tech) => onRemoveCustomTech(tech, "backend")}
-        bgColorClass="bg-ipa-secondary"
-      />
-
-      <TechStackSelector
-        title="Database & Infrastructure"
-        options={[...DATABASE_OPTIONS, ...ADDITIONAL_OPTIONS]}
-        selectedTechs={backendTechStack}
-        customTechs={customBackendTech}
-        onToggleTech={(tech) => onTechStackToggle(tech, "backend")}
-        onAddCustomTech={(tech) => onAddCustomTech(tech, "backend")}
-        onRemoveCustomTech={(tech) => onRemoveCustomTech(tech, "backend")}
-        bgColorClass="bg-ipa-accent"
-      />
+      {/* Backend Tech Stack */}
+      <div className="space-y-3">
+        <Label>Backend Technologies *</Label>
+        <div className="flex flex-wrap gap-2">
+          {backendOptions.map((tech) => (
+            <Badge
+              key={tech}
+              variant={backendTechStack.includes(tech) ? "default" : "outline"}
+              className="cursor-pointer hover:opacity-80"
+              onClick={() => onTechStackToggle(tech, "backend")}
+            >
+              {tech}
+            </Badge>
+          ))}
+        </div>
+        
+        {/* Custom Backend Tech */}
+        {customBackendTech.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {customBackendTech.map((tech) => (
+              <Badge key={tech} variant="secondary" className="flex items-center gap-1">
+                {tech}
+                <X 
+                  className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                  onClick={() => onRemoveCustomTech(tech, "backend")}
+                />
+              </Badge>
+            ))}
+          </div>
+        )}
+        
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom backend technology"
+            value={newBackendTech}
+            onChange={(e) => setNewBackendTech(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && handleAddBackend()}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={handleAddBackend}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

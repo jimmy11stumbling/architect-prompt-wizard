@@ -1,85 +1,103 @@
 
 import React from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle } from "lucide-react";
 import { ProjectSpec } from "@/types/ipa-types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, AlertCircle, Info } from "lucide-react";
+import { SpecValidator } from "@/services/ipa/validation/specValidator";
 
 interface ProjectFormValidationProps {
   spec: ProjectSpec;
 }
 
 const ProjectFormValidation: React.FC<ProjectFormValidationProps> = ({ spec }) => {
-  const validationErrors: string[] = [];
-  const validationWarnings: string[] = [];
-
-  // Required field validation
-  if (!spec.projectDescription.trim()) {
-    validationErrors.push("Project description is required");
+  const characterCounts = SpecValidator.getCharacterCounts(spec);
+  const limits = SpecValidator.getValidationLimits();
+  
+  const validationIssues: string[] = [];
+  
+  // Check required fields
+  if (!spec.projectDescription?.trim()) {
+    validationIssues.push("Project description is required");
+  }
+  
+  if (!spec.frontendTechStack?.length) {
+    validationIssues.push("At least one frontend technology is required");
+  }
+  
+  if (!spec.backendTechStack?.length) {
+    validationIssues.push("At least one backend technology is required");
   }
 
-  if (spec.frontendTechStack.length === 0) {
-    validationErrors.push("At least one frontend technology must be selected");
-  }
+  // Check character limits
+  Object.entries(characterCounts).forEach(([field, count]) => {
+    const limit = limits[field];
+    if (count > limit) {
+      const fieldName = field.replace(/([A-Z])/g, ' $1').toLowerCase();
+      validationIssues.push(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} exceeds ${limit} character limit (${count}/${limit})`);
+    }
+  });
 
-  if (spec.backendTechStack.length === 0) {
-    validationErrors.push("At least one backend technology must be selected");
-  }
-
-  // Recommendations and warnings
-  if (spec.projectDescription.length < 50) {
-    validationWarnings.push("Consider providing a more detailed project description (minimum 50 characters recommended)");
-  }
-
-  if (spec.ragVectorDb === "None" && spec.mcpType === "None") {
-    validationWarnings.push("Consider adding RAG or MCP features for enhanced AI capabilities");
-  }
-
-  if (!spec.a2aIntegrationDetails.trim()) {
-    validationWarnings.push("A2A integration details would help generate more specific agent communication patterns");
-  }
-
-  const isValid = validationErrors.length === 0;
-
-  if (isValid && validationWarnings.length === 0) {
-    return (
-      <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
-        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <AlertDescription className="text-green-800 dark:text-green-200">
-          Your project specification is complete and ready for prompt generation!
-        </AlertDescription>
-      </Alert>
-    );
-  }
+  const isValid = validationIssues.length === 0;
 
   return (
-    <div className="space-y-2">
-      {validationErrors.length > 0 && (
+    <div className="space-y-4">
+      {/* Character Count Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {Object.entries(characterCounts).map(([field, count]) => {
+          const limit = limits[field];
+          const percentage = (count / limit) * 100;
+          const isOverLimit = count > limit;
+          const isWarning = percentage > 80;
+          
+          return (
+            <div key={field} className="text-center">
+              <Badge
+                variant={isOverLimit ? "destructive" : isWarning ? "secondary" : "outline"}
+                className="w-full"
+              >
+                {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+              </Badge>
+              <div className={`text-xs mt-1 ${isOverLimit ? 'text-destructive' : isWarning ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                {count}/{limit}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Validation Status */}
+      {isValid ? (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            All validation requirements met. Ready to generate prompt!
+          </AlertDescription>
+        </Alert>
+      ) : (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <div className="font-medium mb-1">Please fix the following errors:</div>
-            <ul className="list-disc list-inside space-y-1">
-              {validationErrors.map((error, index) => (
-                <li key={index} className="text-sm">{error}</li>
-              ))}
-            </ul>
+            <div className="space-y-1">
+              <div className="font-medium">Please fix the following issues:</div>
+              <ul className="list-disc list-inside space-y-1">
+                {validationIssues.map((issue, index) => (
+                  <li key={index} className="text-sm">{issue}</li>
+                ))}
+              </ul>
+            </div>
           </AlertDescription>
         </Alert>
       )}
 
-      {validationWarnings.length > 0 && (
-        <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-          <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-            <div className="font-medium mb-1">Recommendations:</div>
-            <ul className="list-disc list-inside space-y-1">
-              {validationWarnings.map((warning, index) => (
-                <li key={index} className="text-sm">{warning}</li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Tips */}
+      <Alert className="border-blue-200 bg-blue-50">
+        <Info className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800 text-sm">
+          <strong>Tips:</strong> Be specific but concise. The AI agents work best with clear, detailed requirements. 
+          Focus on core functionality and let the agents help with implementation details.
+        </AlertDescription>
+      </Alert>
     </div>
   );
 };

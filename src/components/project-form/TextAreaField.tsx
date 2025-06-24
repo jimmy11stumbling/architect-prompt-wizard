@@ -1,7 +1,7 @@
 
 import React from "react";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TextAreaFieldProps {
   label: string;
@@ -10,34 +10,37 @@ interface TextAreaFieldProps {
   onChange: (value: string) => void;
   required?: boolean;
   minHeight?: string;
-  icon?: React.ReactNode;
+  maxLength?: number;
 }
 
-const TextAreaField: React.FC<TextAreaFieldProps> = ({
-  label,
-  placeholder,
-  value,
-  onChange,
-  required = false,
+const TextAreaField: React.FC<TextAreaFieldProps> = ({ 
+  label, 
+  placeholder, 
+  value, 
+  onChange, 
+  required, 
   minHeight = "100px",
-  icon
+  maxLength
 }) => {
   return (
     <div className="space-y-2">
-      <Label htmlFor={label.toLowerCase().replace(/\s+/g, '-')} className="flex items-center gap-2">
-        {icon}
-        {label}
-        {required && <span className="text-red-500">*</span>}
+      <Label htmlFor={label.toLowerCase().replace(/\s+/g, '-')}>
+        {label} {required && <span className="text-destructive">*</span>}
       </Label>
       <Textarea
         id={label.toLowerCase().replace(/\s+/g, '-')}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        className="w-full resize-none"
         style={{ minHeight }}
-        className="resize-y"
-        required={required}
+        maxLength={maxLength}
       />
+      {maxLength && (
+        <div className="text-xs text-muted-foreground text-right">
+          {value.length}/{maxLength}
+        </div>
+      )}
     </div>
   );
 };

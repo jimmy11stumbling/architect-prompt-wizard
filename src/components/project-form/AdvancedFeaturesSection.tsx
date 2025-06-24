@@ -1,59 +1,14 @@
+
 import React from "react";
-import { Database, Brain, Network, Code, Zap, Shield } from "lucide-react";
-import { CustomOptionSelector, TextAreaField } from "./";
-import { VectorDatabase, MCPType } from "@/types/ipa-types";
-
-const VECTOR_DB_OPTIONS: VectorDatabase[] = [
-  "Pinecone", 
-  "Weaviate", 
-  "Milvus", 
-  "Qdrant", 
-  "Chroma", 
-  "PGVector", 
-  "FAISS",
-  "Elasticsearch",
-  "OpenSearch",
-  "None"
-];
-
-const MCP_OPTIONS: MCPType[] = [
-  "Standard MCP", 
-  "Extended MCP", 
-  "MCP with Tools", 
-  "MCP with Resources", 
-  "MCP with Prompts",
-  "MCP with Sampling",
-  "Custom MCP Implementation",
-  "None"
-];
-
-const DEPLOYMENT_OPTIONS = [
-  "Vercel",
-  "Netlify", 
-  "AWS",
-  "Google Cloud",
-  "Azure",
-  "Digital Ocean",
-  "Heroku",
-  "Railway",
-  "Render",
-  "Self-hosted"
-];
-
-const AUTHENTICATION_OPTIONS = [
-  "JWT",
-  "OAuth 2.0",
-  "Auth0",
-  "Firebase Auth",
-  "Supabase Auth",
-  "NextAuth.js",
-  "Passport.js",
-  "Custom Auth",
-  "None"
-];
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { VectorDatabaseType, MCPType } from "@/types/ipa-types";
+import { TextAreaField } from "./";
 
 interface AdvancedFeaturesSectionProps {
-  ragVectorDb: VectorDatabase;
+  ragVectorDb: VectorDatabaseType;
   customRagVectorDb: string;
   mcpType: MCPType;
   customMcpType: string;
@@ -62,8 +17,8 @@ interface AdvancedFeaturesSectionProps {
   additionalFeatures: string;
   onVectorDbChange: (value: string) => void;
   onMcpTypeChange: (value: string) => void;
-  onSaveCustomVectorDb: (customValue: string) => void;
-  onSaveCustomMcp: (customValue: string) => void;
+  onSaveCustomVectorDb: (value: string) => void;
+  onSaveCustomMcp: (value: string) => void;
   onFieldChange: (field: string, value: string) => void;
 }
 
@@ -79,83 +34,114 @@ const AdvancedFeaturesSection: React.FC<AdvancedFeaturesSectionProps> = ({
   onMcpTypeChange,
   onSaveCustomVectorDb,
   onSaveCustomMcp,
-  onFieldChange,
+  onFieldChange
 }) => {
-  const [deploymentPreference, setDeploymentPreference] = React.useState("Vercel");
-  const [authPreference, setAuthPreference] = React.useState("JWT");
+  const [customVectorInput, setCustomVectorInput] = React.useState("");
+  const [customMcpInput, setCustomMcpInput] = React.useState("");
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <CustomOptionSelector
-          icon={<Database className="h-4 w-4" />}
-          title="RAG 2.0 Vector Database"
-          description="Select a vector database for RAG 2.0 implementation. This enables advanced semantic search and document retrieval in your AI system with hybrid search capabilities."
-          options={VECTOR_DB_OPTIONS}
-          value={ragVectorDb}
-          onChange={onVectorDbChange}
-          customValue={customRagVectorDb}
-          onSaveCustom={onSaveCustomVectorDb}
-        />
+        {/* RAG Vector Database */}
+        <div className="space-y-2">
+          <Label>RAG Vector Database</Label>
+          <Select value={ragVectorDb} onValueChange={onVectorDbChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select vector database" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="None">None</SelectItem>
+              <SelectItem value="Chroma">Chroma</SelectItem>
+              <SelectItem value="Pinecone">Pinecone</SelectItem>
+              <SelectItem value="Weaviate">Weaviate</SelectItem>
+              <SelectItem value="Qdrant">Qdrant</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {ragVectorDb === "custom" && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter custom vector database"
+                value={customVectorInput}
+                onChange={(e) => setCustomVectorInput(e.target.value)}
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  onSaveCustomVectorDb(customVectorInput);
+                  setCustomVectorInput("");
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          )}
+        </div>
 
-        <CustomOptionSelector
-          icon={<Brain className="h-4 w-4" />}
-          title="Model Context Protocol"
-          description="Select a Model Context Protocol (MCP) type for connecting AI models with external tools and data sources. MCP enables standardized communication between AI agents and external systems."
-          options={MCP_OPTIONS}
-          value={mcpType}
-          onChange={onMcpTypeChange}
-          customValue={customMcpType}
-          onSaveCustom={onSaveCustomMcp}
-        />
-
-        <CustomOptionSelector
-          icon={<Zap className="h-4 w-4" />}
-          title="Deployment Platform"
-          description="Choose your preferred deployment platform for hosting your application with optimal performance and scalability."
-          options={DEPLOYMENT_OPTIONS}
-          value={deploymentPreference}
-          onChange={setDeploymentPreference}
-          customValue=""
-          onSaveCustom={() => {}}
-        />
-
-        <CustomOptionSelector
-          icon={<Shield className="h-4 w-4" />}
-          title="Authentication Method"
-          description="Select the authentication and authorization method for secure user management and access control."
-          options={AUTHENTICATION_OPTIONS}
-          value={authPreference}
-          onChange={setAuthPreference}
-          customValue=""
-          onSaveCustom={() => {}}
-        />
+        {/* MCP Type */}
+        <div className="space-y-2">
+          <Label>MCP Integration</Label>
+          <Select value={mcpType} onValueChange={onMcpTypeChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select MCP type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="None">None</SelectItem>
+              <SelectItem value="Standard">Standard MCP</SelectItem>
+              <SelectItem value="Enhanced">Enhanced MCP</SelectItem>
+              <SelectItem value="Enterprise">Enterprise MCP</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {mcpType === "custom" && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter custom MCP type"
+                value={customMcpInput}
+                onChange={(e) => setCustomMcpInput(e.target.value)}
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  onSaveCustomMcp(customMcpInput);
+                  setCustomMcpInput("");
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <TextAreaField
         label="A2A Integration Details"
-        icon={<Network className="h-4 w-4" />}
-        placeholder="Describe how Agent-to-Agent communication should be implemented. Include details about message passing, coordination protocols, task delegation, and inter-agent workflows..."
+        placeholder="Describe agent-to-agent communication requirements, protocols, and integration patterns..."
         value={a2aIntegrationDetails}
         onChange={(value) => onFieldChange("a2aIntegrationDetails", value)}
-        minHeight="120px"
+        maxLength={2000}
       />
 
       <TextAreaField
-        label="Advanced Prompt Engineering Details"
-        icon={<Code className="h-4 w-4" />}
-        placeholder="Specify advanced prompt engineering techniques, RAG strategies, MCP patterns, context optimization, and AI model fine-tuning requirements..."
+        label="Advanced Prompt Details"
+        placeholder="Specify advanced prompting strategies, context management, and AI behavior customizations..."
         value={advancedPromptDetails}
         onChange={(value) => onFieldChange("advancedPromptDetails", value)}
-        minHeight="120px"
+        maxLength={2000}
       />
 
       <TextAreaField
-        label="Additional Features & Requirements"
-        placeholder="Specify any additional features, integrations, performance requirements, security considerations, or special functionality needed for your application..."
+        label="Additional Features"
+        placeholder="List any additional features, integrations, or specific requirements not covered above..."
         value={additionalFeatures}
         onChange={(value) => onFieldChange("additionalFeatures", value)}
-        minHeight="120px"
+        maxLength={3000}
       />
     </div>
   );
