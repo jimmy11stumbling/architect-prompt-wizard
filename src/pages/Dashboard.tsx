@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LayoutDashboard, Database, Network, Settings, Activity, AlertTriangle } from "lucide-react";
 import SystemHealthDashboard from "@/components/system-integration/SystemHealthDashboard";
@@ -17,6 +16,7 @@ const Dashboard: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isInitializing, setIsInitializing] = useState(false);
 
   useEffect(() => {
     initializeSystem();
@@ -24,31 +24,37 @@ const Dashboard: React.FC = () => {
 
   const initializeSystem = async () => {
     try {
+      setIsInitializing(true);
+      setInitializationError(null);
+      
       if (systemIntegrationService.isInitialized()) {
         setIsInitialized(true);
+        setIsInitializing(false);
         return;
       }
 
       const demoSpec: ProjectSpec = {
-        projectDescription: "IPA System Dashboard",
-        frontendTechStack: ["React"],
-        backendTechStack: ["Express"],
+        projectDescription: "IPA System Dashboard with comprehensive integration",
+        frontendTechStack: ["React", "TypeScript"],
+        backendTechStack: ["Express", "Node.js"],
         customFrontendTech: [],
         customBackendTech: [],
-        a2aIntegrationDetails: "Multi-agent communication system",
-        additionalFeatures: "RAG 2.0 integration with MCP protocol",
+        a2aIntegrationDetails: "Multi-agent communication system with protocol coordination",
+        additionalFeatures: "RAG 2.0 integration with MCP protocol and DeepSeek reasoning",
         ragVectorDb: "Chroma",
         customRagVectorDb: "",
-        mcpType: "Standard MCP",
+        mcpType: "Enterprise MCP",
         customMcpType: "",
-        advancedPromptDetails: "DeepSeek Reasoner integration"
+        advancedPromptDetails: "DeepSeek Reasoner integration with chain-of-thought processing"
       };
 
       await systemIntegrationService.initialize(demoSpec);
       setIsInitialized(true);
     } catch (error) {
       console.error("System initialization failed:", error);
-      setInitializationError(error instanceof Error ? error.message : "Unknown error");
+      setInitializationError(error instanceof Error ? error.message : "Unknown initialization error");
+    } finally {
+      setIsInitializing(false);
     }
   };
 
@@ -64,8 +70,9 @@ const Dashboard: React.FC = () => {
               size="sm" 
               className="mt-2 w-full"
               onClick={initializeSystem}
+              disabled={isInitializing}
             >
-              Retry Initialization
+              {isInitializing ? "Retrying..." : "Retry Initialization"}
             </Button>
           </AlertDescription>
         </Alert>
@@ -73,19 +80,19 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (!isInitialized) {
+  if (!isInitialized || isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 animate-spin" />
-              Initializing System
+              {isInitializing ? "Initializing System" : "Loading Dashboard"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Setting up RAG 2.0, A2A, and MCP services...
+              Setting up RAG 2.0, A2A, MCP services, and DeepSeek integration...
             </p>
           </CardContent>
         </Card>
@@ -101,7 +108,7 @@ const Dashboard: React.FC = () => {
             <span className="text-gradient">System Dashboard</span>
           </h1>
           <p className="text-muted-foreground">
-            Monitor and control your integrated AI system with RAG 2.0, A2A, and MCP
+            Monitor and control your integrated AI system with RAG 2.0, A2A, MCP, and DeepSeek
           </p>
         </div>
 
