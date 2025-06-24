@@ -5,37 +5,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PromptCard, PromptSearch, EmptyState } from "./saved-prompts";
+import PromptLibrary from "./saved-prompts/PromptLibrary";
+import PromptEditor from "./saved-prompts/PromptEditor";
 
 const SavedPrompts: React.FC = () => {
   const [prompts, setPrompts] = useState<SavedPrompt[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredPrompts, setFilteredPrompts] = useState<SavedPrompt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedPrompt, setSelectedPrompt] = useState<SavedPrompt | null>(null);
+  const [activeTab, setActiveTab] = useState("library");
   const { toast } = useToast();
 
   // Load prompts from the database
   useEffect(() => {
-    const loadPrompts = async () => {
-      try {
-        setIsLoading(true);
-        const allPrompts = await getAllPrompts();
-        setPrompts(allPrompts);
-        setFilteredPrompts(allPrompts);
-      } catch (error) {
-        console.error("Failed to load prompts:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load saved prompts",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadPrompts();
-  }, [toast]);
+  }, []);
+
+  const loadPrompts = async () => {
+    try {
+      setIsLoading(true);
+      const allPrompts = await getAllPrompts();
+      setPrompts(allPrompts);
+      setFilteredPrompts(allPrompts);
+    } catch (error) {
+      console.error("Failed to load prompts:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load saved prompts",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter prompts based on search term
   useEffect(() => {
@@ -49,7 +54,8 @@ const SavedPrompts: React.FC = () => {
       prompt =>
         prompt.prompt.toLowerCase().includes(term) ||
         prompt.projectName.toLowerCase().includes(term) ||
-        (prompt.tags || []).some(tag => tag.toLowerCase().includes(term))
+        (prompt.tags || []).some(tag => tag.toLowerCase().includes(term)) ||
+        prompt.description?.toLowerCase().includes(term)
     );
     setFilteredPrompts(filtered);
   }, [searchTerm, prompts]);
@@ -99,42 +105,96 @@ const SavedPrompts: React.FC = () => {
     });
   };
 
+  const handlePromptSelect = (prompt: SavedPrompt) => {
+    setSelectedPrompt(prompt);
+    setActiveTab("editor");
+  };
+
+  const handlePromptUse = async (prompt: SavedPrompt) => {
+    try {
+      const { incrementUsage } = await import("@/services/db/promptDatabaseService");
+      if (prompt.id) {
+        await incrementUsage(prompt.id);
+      }
+      handleCopy(prompt.prompt);
+      toast({
+        title: "Prompt Ready",
+        description: "Prompt copied to clipboard and usage tracked",
+      });
+    } catch (error) {
+      console.error("Failed to track usage:", error);
+      handleCopy(prompt.prompt);
+    }
+  };
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-ipa-primary" />
-            <CardTitle>Saved Prompts</CardTitle>
-          </div>
-          <CardDescription>{filteredPrompts.length} prompts stored locally</CardDescription>
-        </div>
-        <PromptSearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center p-8">
-            <div className="text-ipa-muted">Loading saved prompts...</div>
-          </div>
-        ) : filteredPrompts.length === 0 ? (
-          <EmptyState hasPrompts={prompts.length > 0} isFiltered={searchTerm.trim() !== ""} />
-        ) : (
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-4">
-              {filteredPrompts.map((prompt) => (
-                <PromptCard
-                  key={prompt.id}
-                  prompt={prompt}
-                  onDelete={handleDeletePrompt}
-                  onCopy={handleCopy}
-                  onDownload={handleDownload}
-                />
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
+    <div className="w-full space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="library">Prompt Library</TabsTrigger>
+          <TabsTrigger value="manage">Manage Prompts</TabsTrigger>
+          <TabsTrigger value="editor">Prompt Editor</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="library" className="space-y-6">
+          <PromptLibrary 
+            prompts={prompts}
+            onPromptSelect={handlePromptSelect}
+            onPromptUse={handlePromptUse}
+          />
+        </TabsContent>
+
+        <TabsContent value="manage" className="space-y-6">
+          <Card className="w-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-ipa-primary" />
+                  <CardTitle>Manage Saved Prompts</CardTitle>
+                </div>
+                <CardDescription>{filteredPrompts.length} prompts stored locally</CardDescription>
+              </div>
+              <PromptSearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-ipa-muted">Loading saved prompts...</div>
+                </div>
+              ) : filteredPrompts.length === 0 ? (
+                <EmptyState hasPrompts={prompts.length > 0} isFiltered={searchTerm.trim() !== ""} />
+              ) : (
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="space-y-4">
+                    {filteredPrompts.map((prompt) => (
+                      <PromptCard
+                        key={prompt.id}
+                        prompt={prompt}
+                        onDelete={handleDeletePrompt}
+                        onCopy={handleCopy}
+                        onDownload={handleDownload}
+                        onEdit={() => handlePromptSelect(prompt)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="editor" className="space-y-6">
+          <PromptEditor 
+            prompt={selectedPrompt}
+            onSave={loadPrompts}
+            onClose={() => {
+              setSelectedPrompt(null);
+              setActiveTab("library");
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
