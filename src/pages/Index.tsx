@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import Header from "@/components/Header";
 import ProjectSpecForm, { ProjectSpecFormHandle } from "@/components/ProjectSpecForm";
@@ -28,11 +27,14 @@ const Index: React.FC = () => {
       realTimeResponseService.addResponse({
         source: "form-submission",
         status: "processing",
-        message: "Processing project specification submission",
+        message: "Processing comprehensive project specification submission",
         data: { 
           projectDescription: spec.projectDescription.substring(0, 100),
           frontendTech: spec.frontendTechStack,
-          backendTech: spec.backendTechStack
+          backendTech: spec.backendTechStack,
+          ragEnabled: spec.ragVectorDb !== "None",
+          mcpEnabled: spec.mcpType !== "None",
+          a2aEnabled: spec.a2aIntegrationDetails.length > 0
         }
       });
 
@@ -53,13 +55,13 @@ const Index: React.FC = () => {
       setGenerationStatus(null);
       
       const taskId = await ipaService.generatePrompt(completeSpec);
-      console.log("Starting generation with task ID:", taskId);
+      console.log("Starting comprehensive generation with task ID:", taskId);
       
       realTimeResponseService.addResponse({
         source: "form-submission",
         status: "success",
-        message: "Prompt generation started successfully",
-        data: { taskId, specValidated: true }
+        message: "Advanced prompt generation started successfully with all template data",
+        data: { taskId, specValidated: true, templateApplied: true }
       });
       
       startPolling(taskId);
@@ -113,7 +115,7 @@ const Index: React.FC = () => {
           realTimeResponseService.addResponse({
             source: "polling-service",
             status: "success",
-            message: "Prompt generation completed successfully",
+            message: "Comprehensive prompt generation completed successfully",
             data: { 
               taskId, 
               finalStatus: status.status,
@@ -123,7 +125,7 @@ const Index: React.FC = () => {
           
           toast({
             title: "Generation Complete",
-            description: "Your Cursor AI prompt has been successfully generated!",
+            description: "Your comprehensive Cursor AI prompt has been successfully generated!",
           });
         }
       }
@@ -147,6 +149,7 @@ const Index: React.FC = () => {
   };
 
   const handleSelectTemplate = (spec: ProjectSpec) => {
+    console.log("Index: Applying template from header", spec);
     if (projectFormRef.current) {
       projectFormRef.current.setSpec(spec);
     }
@@ -155,13 +158,19 @@ const Index: React.FC = () => {
     realTimeResponseService.addResponse({
       source: "template-selection",
       status: "success",
-      message: "Project template applied successfully",
-      data: { templateProject: spec.projectDescription.substring(0, 50) }
+      message: "Comprehensive project template applied successfully",
+      data: { 
+        templateProject: spec.projectDescription.substring(0, 50),
+        techStack: [...spec.frontendTechStack, ...spec.backendTechStack],
+        hasRAG: spec.ragVectorDb !== "None",
+        hasMCP: spec.mcpType !== "None",
+        hasA2A: spec.a2aIntegrationDetails.length > 0
+      }
     });
     
     toast({
-      title: "Template Applied",
-      description: "Project template has been loaded into the form",
+      title: "Template Applied Successfully",
+      description: "Comprehensive project template has been loaded into the form with all features",
     });
   };
 
