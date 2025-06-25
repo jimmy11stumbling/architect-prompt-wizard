@@ -9,6 +9,117 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agent_conversations: {
+        Row: {
+          agent_id: string
+          conversation_id: string
+          id: string
+          joined_at: string | null
+          last_active: string | null
+          left_at: string | null
+          message_count: number | null
+        }
+        Insert: {
+          agent_id: string
+          conversation_id: string
+          id?: string
+          joined_at?: string | null
+          last_active?: string | null
+          left_at?: string | null
+          message_count?: number | null
+        }
+        Update: {
+          agent_id?: string
+          conversation_id?: string
+          id?: string
+          joined_at?: string | null
+          last_active?: string | null
+          left_at?: string | null
+          message_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_conversations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_conversations_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          capabilities: string[] | null
+          config: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["agent_status"] | null
+          type: Database["public"]["Enums"]["agent_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          capabilities?: string[] | null
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["agent_status"] | null
+          type: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          capabilities?: string[] | null
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["agent_status"] | null
+          type?: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          status: Database["public"]["Enums"]["conversation_status"] | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: Database["public"]["Enums"]["conversation_status"] | null
+          title?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: Database["public"]["Enums"]["conversation_status"] | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_instructions: {
         Row: {
           applies_to: string[] | null
@@ -53,6 +164,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      documents: {
+        Row: {
+          analysis_results: Json | null
+          conversation_id: string | null
+          created_at: string | null
+          extracted_text: string | null
+          file_size: number | null
+          filename: string
+          id: string
+          mime_type: string | null
+          processing_progress: number | null
+          status: Database["public"]["Enums"]["document_status"] | null
+          storage_path: string | null
+          updated_at: string | null
+          user_id: string
+          vector_id: string | null
+        }
+        Insert: {
+          analysis_results?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          extracted_text?: string | null
+          file_size?: number | null
+          filename: string
+          id?: string
+          mime_type?: string | null
+          processing_progress?: number | null
+          status?: Database["public"]["Enums"]["document_status"] | null
+          storage_path?: string | null
+          updated_at?: string | null
+          user_id: string
+          vector_id?: string | null
+        }
+        Update: {
+          analysis_results?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          extracted_text?: string | null
+          file_size?: number | null
+          filename?: string
+          id?: string
+          mime_type?: string | null
+          processing_progress?: number | null
+          status?: Database["public"]["Enums"]["document_status"] | null
+          storage_path?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vector_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generation_history: {
         Row: {
@@ -238,6 +408,94 @@ export type Database = {
           },
         ]
       }
+      knowledge_embeddings: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          created_at: string | null
+          document_id: string | null
+          embedding_model: string | null
+          id: string
+          metadata: Json | null
+          vector_id: string | null
+        }
+        Insert: {
+          chunk_index: number
+          chunk_text: string
+          created_at?: string | null
+          document_id?: string | null
+          embedding_model?: string | null
+          id?: string
+          metadata?: Json | null
+          vector_id?: string | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string | null
+          document_id?: string | null
+          embedding_model?: string | null
+          id?: string
+          metadata?: Json | null
+          vector_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_embeddings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          agent_type: Database["public"]["Enums"]["agent_type"] | null
+          attachments: string[] | null
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          processing: boolean | null
+          sender_id: string
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+        }
+        Insert: {
+          agent_type?: Database["public"]["Enums"]["agent_type"] | null
+          attachments?: string[] | null
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          processing?: boolean | null
+          sender_id: string
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+        }
+        Update: {
+          agent_type?: Database["public"]["Enums"]["agent_type"] | null
+          attachments?: string[] | null
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          processing?: boolean | null
+          sender_id?: string
+          sender_type?: Database["public"]["Enums"]["message_sender_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -395,6 +653,50 @@ export type Database = {
           },
         ]
       }
+      user_sessions: {
+        Row: {
+          conversation_id: string | null
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          is_active: boolean | null
+          last_seen: string | null
+          session_token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_seen?: string | null
+          session_token: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_seen?: string | null
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_definitions: {
         Row: {
           created_at: string
@@ -489,7 +791,11 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      agent_status: "active" | "idle" | "processing" | "offline"
+      agent_type: "conversation" | "document" | "rag" | "router"
+      conversation_status: "active" | "archived" | "paused"
+      document_status: "uploading" | "processing" | "completed" | "failed"
+      message_sender_type: "user" | "agent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -604,6 +910,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      agent_status: ["active", "idle", "processing", "offline"],
+      agent_type: ["conversation", "document", "rag", "router"],
+      conversation_status: ["active", "archived", "paused"],
+      document_status: ["uploading", "processing", "completed", "failed"],
+      message_sender_type: ["user", "agent"],
+    },
   },
 } as const

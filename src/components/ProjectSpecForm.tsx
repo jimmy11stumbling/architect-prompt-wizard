@@ -1,17 +1,17 @@
 
 import React, { forwardRef, useImperativeHandle } from "react";
+import { ProjectFormContainer } from "@/components/project-form";
 import { ProjectSpec } from "@/types/ipa-types";
-import { ProjectFormContainer } from "./project-form";
 
 interface ProjectSpecFormProps {
   onSubmit: (spec: ProjectSpec) => void;
 }
 
-export interface ProjectSpecFormRef {
+export interface ProjectSpecFormHandle {
   setSpec: (spec: ProjectSpec) => void;
 }
 
-const ProjectSpecForm = forwardRef<ProjectSpecFormRef, ProjectSpecFormProps>(
+const ProjectSpecForm = forwardRef<ProjectSpecFormHandle, ProjectSpecFormProps>(
   ({ onSubmit }, ref) => {
     const [spec, setSpec] = React.useState<ProjectSpec>({
       projectDescription: "",
@@ -21,11 +21,13 @@ const ProjectSpecForm = forwardRef<ProjectSpecFormRef, ProjectSpecFormProps>(
       customBackendTech: [],
       a2aIntegrationDetails: "",
       additionalFeatures: "",
-      ragVectorDb: "Chroma", // Fixed: use valid VectorDatabase
+      ragVectorDb: "None",
       customRagVectorDb: "",
-      mcpType: "Standard MCP", // Fixed: use valid MCPType
+      mcpType: "None",
       customMcpType: "",
-      advancedPromptDetails: ""
+      advancedPromptDetails: "",
+      deploymentPreference: "Vercel",
+      authenticationMethod: "JWT"
     });
 
     useImperativeHandle(ref, () => ({
@@ -35,10 +37,10 @@ const ProjectSpecForm = forwardRef<ProjectSpecFormRef, ProjectSpecFormProps>(
     }));
 
     return (
-      <ProjectFormContainer 
-        onSubmit={onSubmit} 
-        spec={spec} 
-        onSpecChange={setSpec} 
+      <ProjectFormContainer
+        onSubmit={onSubmit}
+        spec={spec}
+        onSpecChange={setSpec}
       />
     );
   }

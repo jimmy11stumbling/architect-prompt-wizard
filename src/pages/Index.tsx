@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from "react";
 import Header from "@/components/Header";
-import ProjectSpecForm from "@/components/ProjectSpecForm";
+import ProjectSpecForm, { ProjectSpecFormHandle } from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
 import PromptOutput from "@/components/PromptOutput";
 import SavedPrompts from "@/components/SavedPrompts";
@@ -19,7 +19,7 @@ const Index: React.FC = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("create");
-  const projectFormRef = useRef<{ setSpec: (spec: ProjectSpec) => void }>(null);
+  const projectFormRef = useRef<ProjectSpecFormHandle>(null);
   const { toast } = useToast();
 
   const handleSubmit = async (spec: ProjectSpec) => {
