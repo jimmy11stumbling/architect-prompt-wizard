@@ -1,17 +1,10 @@
-
 import React from "react";
-
 const ProjectHeader: React.FC = () => {
-  return (
-    <div className="text-center mb-8">
+  return <div className="text-center mb-8">
       <div className="flex items-center justify-center gap-4 mb-4">
-        <img 
-          src="/lovable-uploads/0b601e77-6a17-4bff-ab47-fcf8bdb6e879.png" 
-          alt="NoCodeLos Logo" 
-          className="h-16 w-16 object-contain"
-        />
+        <img src="/lovable-uploads/0b601e77-6a17-4bff-ab47-fcf8bdb6e879.png" alt="NoCodeLos Logo" className="h-64 w-64 object-contain" />
         <h1 className="text-4xl font-bold">
-          <span className="text-gradient">NoCodeLos</span>
+          
         </h1>
       </div>
       <h2 className="text-2xl font-semibold mb-4 text-blue-300">
@@ -31,8 +24,6 @@ const ProjectHeader: React.FC = () => {
           AI Agent Ready
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default ProjectHeader;
