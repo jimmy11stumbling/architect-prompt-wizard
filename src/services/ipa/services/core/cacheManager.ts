@@ -1,30 +1,39 @@
 
-import { performanceMonitor } from "../../performanceMonitor";
-import { cacheService } from "../../cacheService";
-import { GenerationStatus } from "@/types/ipa-types";
+import { ProjectSpec, GenerationStatus } from "@/types/ipa-types";
 
 export class CacheManager {
-  getCachedPrompt(cacheKey: string): string | null {
-    return cacheService.get<string>(cacheKey);
-  }
+  private promptCache = new Map<string, string>();
+  private statusCache = new Map<string, GenerationStatus>();
+  private readonly CACHE_TTL = 600000; // 10 minutes
 
-  setCachedPrompt(cacheKey: string, taskId: string): void {
-    cacheService.set(cacheKey, taskId, 600000); // 10 minute cache
-  }
-
-  getCachedStatus(cacheKey: string): GenerationStatus | null {
-    return cacheService.get<GenerationStatus>(cacheKey);
-  }
-
-  setCachedStatus(cacheKey: string, result: GenerationStatus): void {
-    cacheService.set(cacheKey, result, 30000); // 30 second cache for status
-  }
-
-  generateCacheKey(data: any): string {
-    return `prompt_${JSON.stringify(data).slice(0, 100)}`;
+  generateCacheKey(spec: ProjectSpec): string {
+    return `prompt_${JSON.stringify(spec).slice(0, 100)}`;
   }
 
   generateStatusCacheKey(taskId: string, progress: number): string {
     return `status_${taskId}_${progress}`;
+  }
+
+  getCachedPrompt(key: string): string | null {
+    return this.promptCache.get(key) || null;
+  }
+
+  setCachedPrompt(key: string, value: string): void {
+    this.promptCache.set(key, value);
+    setTimeout(() => this.promptCache.delete(key), this.CACHE_TTL);
+  }
+
+  getCachedStatus(key: string): GenerationStatus | null {
+    return this.statusCache.get(key) || null;
+  }
+
+  setCachedStatus(key: string, value: GenerationStatus): void {
+    this.statusCache.set(key, value);
+    setTimeout(() => this.statusCache.delete(key), 30000); // 30 second cache for status
+  }
+
+  clearCache(): void {
+    this.promptCache.clear();
+    this.statusCache.clear();
   }
 }
