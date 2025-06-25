@@ -122,7 +122,7 @@ export class WorkflowMonitoringService {
     }
   }
 
-  getSystemMetrics(): SystemMetrics {
+  async getSystemMetrics(): Promise<SystemMetrics> {
     const executions = Array.from(this.metrics.values());
     const today = new Date();
     today.setHours(0, 0, 0, 0);

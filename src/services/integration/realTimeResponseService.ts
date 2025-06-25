@@ -1,16 +1,17 @@
 export interface RealTimeResponse {
   id: string;
   source: string;
-  status: "processing" | "success" | "error" | "validation";
+  status: "processing" | "success" | "error" | "warning";
   message: string;
-  timestamp: number;
   data?: any;
+  timestamp: number;
 }
 
 export class RealTimeResponseService {
   private static instance: RealTimeResponseService;
   private responses: RealTimeResponse[] = [];
-  private maxResponses = 1000; // Keep last 1000 responses
+  private listeners: Set<(response: RealTimeResponse) => void> = new Set();
+  private maxResponses = 100;
 
   static getInstance(): RealTimeResponseService {
     if (!RealTimeResponseService.instance) {
@@ -20,45 +21,92 @@ export class RealTimeResponseService {
   }
 
   addResponse(response: Omit<RealTimeResponse, "id" | "timestamp">): void {
-    const newResponse: RealTimeResponse = {
-      ...response,
-      id: `resp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: Date.now()
+    const fullResponse: RealTimeResponse = {
+      id: `resp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: Date.now(),
+      ...response
     };
 
-    this.responses.push(newResponse);
-
+    this.responses.unshift(fullResponse);
+    
     // Keep only the most recent responses
     if (this.responses.length > this.maxResponses) {
-      this.responses = this.responses.slice(-this.maxResponses);
+      this.responses = this.responses.slice(0, this.maxResponses);
     }
 
-    // Log to console for development
-    const emoji = response.status === "success" ? "✅" : 
-                  response.status === "error" ? "❌" : 
-                  response.status === "processing" ? "🔄" : "ℹ️";
-    
-    console.log(`${emoji} [${response.source}] ${response.message}`, response.data || "");
+    // Notify all listeners
+    this.listeners.forEach(listener => {
+      try {
+        listener(fullResponse);
+      } catch (error) {
+        console.error("Error in real-time response listener:", error);
+      }
+    });
+
+    // Also log to console for debugging
+    console.log(`🔄 [${response.source}] ${response.message}`, response.data || '');
   }
 
-  getResponses(): RealTimeResponse[] {
-    return [...this.responses];
+  getResponses(limit: number = 50): RealTimeResponse[] {
+    return this.responses.slice(0, limit);
   }
 
-  getResponsesBySource(source: string): RealTimeResponse[] {
-    return this.responses.filter(r => r.source === source);
-  }
-
-  getResponsesByStatus(status: RealTimeResponse["status"]): RealTimeResponse[] {
-    return this.responses.filter(r => r.status === status);
+  getResponsesBySource(source: string, limit: number = 20): RealTimeResponse[] {
+    return this.responses
+      .filter(response => response.source === source)
+      .slice(0, limit);
   }
 
   clearResponses(): void {
     this.responses = [];
+    this.addResponse({
+      source: "system",
+      status: "success",
+      message: "Response history cleared"
+    });
   }
 
-  getResponseCount(): number {
-    return this.responses.length;
+  subscribe(listener: (response: RealTimeResponse) => void): () => void {
+    this.listeners.add(listener);
+    
+    // Return unsubscribe function
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  getStats(): {
+    totalResponses: number;
+    responsesByStatus: Record<string, number>;
+    responsesBySource: Record<string, number>;
+    recentActivity: number;
+  } {
+    const now = Date.now();
+    const recentThreshold = now - (5 * 60 * 1000); // Last 5 minutes
+
+    const responsesByStatus: Record<string, number> = {};
+    const responsesBySource: Record<string, number> = {};
+    let recentActivity = 0;
+
+    this.responses.forEach(response => {
+      // Count by status
+      responsesByStatus[response.status] = (responsesByStatus[response.status] || 0) + 1;
+      
+      // Count by source
+      responsesBySource[response.source] = (responsesBySource[response.source] || 0) + 1;
+      
+      // Count recent activity
+      if (response.timestamp > recentThreshold) {
+        recentActivity++;
+      }
+    });
+
+    return {
+      totalResponses: this.responses.length,
+      responsesByStatus,
+      responsesBySource,
+      recentActivity
+    };
   }
 }
 

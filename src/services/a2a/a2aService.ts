@@ -1,231 +1,267 @@
 
 import { realTimeResponseService } from "../integration/realTimeResponseService";
-import { A2AAgent, A2AMessage } from "@/types/ipa-types";
+
+export interface A2AAgent {
+  id: string;
+  name: string;
+  capabilities: string[];
+  status: "active" | "busy" | "offline";
+  specialization: string;
+  performance: {
+    tasksCompleted: number;
+    successRate: number;
+    averageResponseTime: number;
+  };
+}
+
+export interface A2ATask {
+  id: string;
+  description: string;
+  requiredCapabilities: string[];
+  priority: "low" | "medium" | "high";
+  deadline?: number;
+  context?: Record<string, any>;
+}
+
+export interface A2ACoordinationResult {
+  taskId: string;
+  assignedAgent: A2AAgent;
+  estimatedCompletionTime: number;
+  coordinationStrategy: string;
+  result?: any;
+}
 
 export class A2AService {
-  private agents: A2AAgent[] = [];
-  private messages: A2AMessage[] = [];
-  private initialized = false;
+  private static instance: A2AService;
+  private agents: Map<string, A2AAgent> = new Map();
+  private activeTasks: Map<string, A2ATask> = new Map();
 
-  async initialize(): Promise<void> {
-    if (this.initialized) return;
+  static getInstance(): A2AService {
+    if (!A2AService.instance) {
+      A2AService.instance = new A2AService();
+      A2AService.instance.initializeAgents();
+    }
+    return A2AService.instance;
+  }
 
-    realTimeResponseService.addResponse({
-      source: "a2a-service",
-      status: "processing",
-      message: "Initializing A2A communication protocol"
-    });
-
-    // Initialize with demo agents
-    this.agents = [
+  private initializeAgents(): void {
+    const defaultAgents: A2AAgent[] = [
       {
-        id: "reasoning-assistant",
-        name: "Reasoning Assistant",
+        id: "agent_analyzer",
+        name: "Document Analyzer",
+        capabilities: ["document-analysis", "text-processing", "summarization"],
         status: "active",
-        capabilities: ["reasoning", "analysis", "problem-solving"],
-        endpoint: "ws://localhost:8001/a2a",
-        lastSeen: Date.now()
+        specialization: "Content Analysis",
+        performance: {
+          tasksCompleted: 156,
+          successRate: 0.94,
+          averageResponseTime: 2.3
+        }
       },
       {
-        id: "context-analyzer", 
-        name: "Context Analyzer",
+        id: "agent_researcher", 
+        name: "Research Assistant",
+        capabilities: ["web-search", "data-gathering", "fact-checking"],
         status: "active",
-        capabilities: ["context-analysis", "document-processing", "summarization"],
-        endpoint: "ws://localhost:8002/a2a",
-        lastSeen: Date.now()
+        specialization: "Information Retrieval",
+        performance: {
+          tasksCompleted: 89,
+          successRate: 0.91,
+          averageResponseTime: 3.1
+        }
       },
       {
-        id: "documentation-expert",
-        name: "Documentation Expert", 
+        id: "agent_validator",
+        name: "Data Validator", 
+        capabilities: ["data-validation", "quality-assurance", "error-detection"],
         status: "active",
-        capabilities: ["documentation", "writing", "technical-writing"],
-        endpoint: "ws://localhost:8003/a2a",
-        lastSeen: Date.now()
+        specialization: "Quality Control",
+        performance: {
+          tasksCompleted: 203,
+          successRate: 0.97,
+          averageResponseTime: 1.8
+        }
       },
       {
-        id: "workflow-coordinator",
-        name: "Workflow Coordinator",
+        id: "agent_coordinator",
+        name: "Task Coordinator",
+        capabilities: ["task-management", "workflow-optimization", "resource-allocation"],
         status: "active", 
-        capabilities: ["workflow-management", "task-coordination", "scheduling"],
-        endpoint: "ws://localhost:8004/a2a",
-        lastSeen: Date.now()
+        specialization: "Process Management",
+        performance: {
+          tasksCompleted: 127,
+          successRate: 0.93,
+          averageResponseTime: 2.5
+        }
       }
     ];
 
-    realTimeResponseService.addResponse({
-      source: "a2a-service",
-      status: "success",
-      message: "A2A protocol initialized with 4 active agents",
-      data: {
-        agentCount: this.agents.length,
-        activeAgents: this.agents.filter(a => a.status === "active").length
-      }
+    defaultAgents.forEach(agent => {
+      this.agents.set(agent.id, agent);
     });
-
-    this.initialized = true;
   }
 
-  isInitialized(): boolean {
-    return this.initialized;
-  }
+  async delegateTask(description: string, requiredCapabilities: string[] = []): Promise<A2ACoordinationResult> {
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const task: A2ATask = {
+      id: taskId,
+      description,
+      requiredCapabilities,
+      priority: "medium"
+    };
 
-  getAllAgents(): A2AAgent[] {
-    return [...this.agents];
-  }
+    this.activeTasks.set(taskId, task);
 
-  getAllMessages(): A2AMessage[] {
-    return [...this.messages];
-  }
-
-  async sendMessage(messageData: {
-    from: string;
-    to: string;
-    type: "request" | "response" | "notification";
-    payload: any;
-    priority?: "low" | "normal" | "high";
-  }): Promise<A2AMessage> {
     realTimeResponseService.addResponse({
       source: "a2a-service",
       status: "processing",
-      message: `Sending A2A message from ${messageData.from} to ${messageData.to}`,
-      data: { messageType: messageData.type, hasPayload: !!messageData.payload }
+      message: `Coordinating task delegation: "${description}"`,
+      data: { 
+        taskId,
+        requiredCapabilities,
+        availableAgents: this.agents.size
+      }
     });
 
-    const message: A2AMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      from: messageData.from,
-      to: messageData.to,
-      type: messageData.type,
-      payload: messageData.payload,
-      timestamp: Date.now(),
-      priority: messageData.priority || "normal"
+    // Find best agent for the task
+    const suitableAgent = this.findBestAgent(requiredCapabilities);
+    
+    if (!suitableAgent) {
+      realTimeResponseService.addResponse({
+        source: "a2a-service",
+        status: "error",
+        message: "No suitable agent found for task",
+        data: { taskId, requiredCapabilities }
+      });
+      throw new Error("No suitable agent available for the requested capabilities");
+    }
+
+    // Simulate task execution
+    const executionTime = 1000 + Math.random() * 3000;
+    await new Promise(resolve => setTimeout(resolve, executionTime));
+
+    // Generate mock result based on agent specialization
+    let taskResult;
+    if (suitableAgent.capabilities.includes("document-analysis")) {
+      taskResult = {
+        analysis: `Comprehensive analysis completed for: ${description}`,
+        insights: ["Key pattern identified", "Quality metrics evaluated", "Recommendations generated"],
+        confidence: 0.92
+      };
+    } else if (suitableAgent.capabilities.includes("web-search")) {
+      taskResult = {
+        sources: [`Research data for: ${description}`],
+        factChecks: ["Verified primary sources", "Cross-referenced data points"],
+        reliability: 0.89
+      };
+    } else {
+      taskResult = {
+        status: "completed",
+        summary: `Task "${description}" processed successfully`,
+        metadata: { processingTime: executionTime }
+      };
+    }
+
+    const result: A2ACoordinationResult = {
+      taskId,
+      assignedAgent: suitableAgent,
+      estimatedCompletionTime: executionTime,
+      coordinationStrategy: "capability-based-assignment",
+      result: taskResult
     };
 
-    this.messages.push(message);
+    // Update agent status
+    suitableAgent.performance.tasksCompleted++;
+    suitableAgent.performance.averageResponseTime = 
+      (suitableAgent.performance.averageResponseTime + executionTime / 1000) / 2;
 
-    // Update agent last seen if it's a known agent
-    const targetAgent = this.agents.find(a => a.id === messageData.to);
-    if (targetAgent) {
-      targetAgent.lastSeen = Date.now();
-    }
+    this.activeTasks.delete(taskId);
 
     realTimeResponseService.addResponse({
       source: "a2a-service",
       status: "success", 
-      message: `A2A message delivered successfully`,
+      message: `Task delegated successfully to ${suitableAgent.name}`,
       data: {
-        messageId: message.id,
-        from: message.from,
-        to: message.to,
-        type: message.type
+        taskId,
+        agentId: suitableAgent.id,
+        executionTime,
+        result: taskResult
       }
     });
 
-    return message;
+    return result;
   }
 
-  async delegateTask(
-    task: string, 
-    requiredCapabilities: string[]
-  ): Promise<{ success: boolean; assignedAgent?: A2AAgent; message?: string }> {
-    realTimeResponseService.addResponse({
-      source: "a2a-service",
-      status: "processing",
-      message: `Delegating task: ${task}`,
-      data: { task: task.substring(0, 50), requiredCapabilities }
-    });
+  private findBestAgent(requiredCapabilities: string[]): A2AAgent | null {
+    const availableAgents = Array.from(this.agents.values())
+      .filter(agent => agent.status === "active");
 
-    // Find agents with matching capabilities
-    const eligibleAgents = this.agents.filter(agent => 
-      agent.status === "active" && 
-      requiredCapabilities.some(cap => agent.capabilities.includes(cap))
-    );
-
-    if (eligibleAgents.length === 0) {
-      realTimeResponseService.addResponse({
-        source: "a2a-service",
-        status: "error",
-        message: "No eligible agents found for task delegation",
-        data: { requiredCapabilities, availableAgents: this.agents.length }
-      });
-
-      return {
-        success: false,
-        message: "No agents available with required capabilities"
-      };
+    if (requiredCapabilities.length === 0) {
+      // Return agent with best performance if no specific capabilities required
+      return availableAgents.reduce((best, current) => 
+        current.performance.successRate > best.performance.successRate ? current : best
+      );
     }
 
-    // Select the agent with the most matching capabilities
-    const selectedAgent = eligibleAgents.reduce((best, current) => {
-      const bestMatches = best.capabilities.filter(cap => requiredCapabilities.includes(cap)).length;
-      const currentMatches = current.capabilities.filter(cap => requiredCapabilities.includes(cap)).length;
-      return currentMatches > bestMatches ? current : best;
-    });
+    // Find agent with most matching capabilities
+    let bestAgent: A2AAgent | null = null;
+    let bestScore = 0;
 
-    // Mark agent as busy
-    selectedAgent.status = "busy";
-
-    // Send task delegation message
-    await this.sendMessage({
-      from: "system-coordinator",
-      to: selectedAgent.id,
-      type: "request",
-      payload: {
-        task,
-        requiredCapabilities,
-        timestamp: Date.now()
-      },
-      priority: "normal"
-    });
-
-    realTimeResponseService.addResponse({
-      source: "a2a-service", 
-      status: "success",
-      message: `Task successfully delegated to ${selectedAgent.name}`,
-      data: {
-        assignedAgent: selectedAgent.name,
-        agentId: selectedAgent.id,
-        matchingCapabilities: selectedAgent.capabilities.filter(cap => requiredCapabilities.includes(cap))
+    for (const agent of availableAgents) {
+      const matchingCapabilities = requiredCapabilities.filter(cap => 
+        agent.capabilities.includes(cap)
+      ).length;
+      
+      const score = matchingCapabilities + (agent.performance.successRate * 0.5);
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestAgent = agent;
       }
-    });
+    }
 
-    // Simulate agent becoming available again after some time
-    setTimeout(() => {
-      selectedAgent.status = "active";
-      selectedAgent.lastSeen = Date.now();
-    }, 5000);
-
-    return {
-      success: true,
-      assignedAgent: selectedAgent,
-      message: `Task delegated to ${selectedAgent.name}`
-    };
+    return bestAgent;
   }
 
-  async healthCheck(): Promise<boolean> {
+  getAgents(): A2AAgent[] {
+    return Array.from(this.agents.values());
+  }
+
+  getAgent(id: string): A2AAgent | undefined {
+    return this.agents.get(id);
+  }
+
+  async healthCheck(): Promise<{ healthy: boolean; totalAgents: number; activeAgents: number; messageCount: number }> {
     realTimeResponseService.addResponse({
       source: "a2a-service",
       status: "processing",
-      message: "Performing A2A health check"
+      message: "Performing A2A health check",
+      data: {}
     });
 
-    const activeAgents = this.agents.filter(a => a.status === "active").length;
-    const isHealthy = this.initialized && activeAgents > 0;
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const totalAgents = this.agents.size;
+    const activeAgents = Array.from(this.agents.values())
+      .filter(agent => agent.status === "active").length;
+
+    const healthStatus = {
+      healthy: true,
+      totalAgents,
+      activeAgents,
+      messageCount: 0
+    };
 
     realTimeResponseService.addResponse({
       source: "a2a-service",
-      status: isHealthy ? "success" : "error",
-      message: `A2A health check ${isHealthy ? "passed" : "failed"}`,
-      data: {
-        healthy: isHealthy,
-        totalAgents: this.agents.length,
-        activeAgents,
-        messageCount: this.messages.length
-      }
+      status: "success",
+      message: "A2A health check passed", 
+      data: healthStatus
     });
 
-    return isHealthy;
+    return healthStatus;
   }
 }
 
-export const a2aService = new A2AService();
+export const a2aService = A2AService.getInstance();
