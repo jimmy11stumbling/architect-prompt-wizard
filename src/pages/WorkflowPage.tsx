@@ -1,10 +1,20 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Workflow, Brain, Database, Network, Wrench, Zap } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Workflow, Brain, Database, Network, Wrench, Zap, Settings, BarChart } from "lucide-react";
 import IntegratedWorkflow from "@/components/enhanced-features/IntegratedWorkflow";
+import WorkflowBuilder from "@/components/workflow/WorkflowBuilder";
+import WorkflowDashboard from "@/components/workflow/WorkflowDashboard";
+import { WorkflowDefinition } from "@/types/workflow-types";
 
 const WorkflowPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  const handleWorkflowCreated = (workflow: WorkflowDefinition) => {
+    setActiveTab("dashboard");
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -73,55 +83,51 @@ const WorkflowPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Workflow Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Seamless Integration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                All systems communicate through standardized protocols, ensuring reliable 
-                data flow and consistent results across the entire workflow.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Real-time Monitoring</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Monitor each step of the workflow execution with detailed logging, 
-                performance metrics, and status updates in real-time.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Intelligent Orchestration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Workflows adapt based on query complexity, available resources, 
-                and system capabilities to optimize performance and accuracy.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Main Workflow Interface */}
-        <IntegratedWorkflow />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="builder" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Builder
+            </TabsTrigger>
+            <TabsTrigger value="execute" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Execute
+            </TabsTrigger>
+            <TabsTrigger value="monitor" className="flex items-center gap-2">
+              <BarChart className="h-4 w-4" />
+              Monitor
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
+            <WorkflowDashboard />
+          </TabsContent>
+
+          <TabsContent value="builder" className="space-y-6">
+            <WorkflowBuilder onWorkflowCreated={handleWorkflowCreated} />
+          </TabsContent>
+
+          <TabsContent value="execute" className="space-y-6">
+            <IntegratedWorkflow />
+          </TabsContent>
+
+          <TabsContent value="monitor" className="space-y-6">
+            <WorkflowDashboard />
+          </TabsContent>
+        </Tabs>
 
         {/* Technical Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Workflow Architecture</CardTitle>
+            <CardTitle>Enhanced Workflow Architecture</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <h4 className="font-semibold mb-2">Communication Protocols</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
@@ -138,6 +144,15 @@ const WorkflowPage: React.FC = () => {
                   <li>• Intelligent caching and optimization</li>
                   <li>• Error handling and recovery mechanisms</li>
                   <li>• Comprehensive execution metrics</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Production Ready</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  <li>• Workflow persistence and recovery</li>
+                  <li>• Real-time monitoring and alerting</li>
+                  <li>• Resource usage tracking</li>
+                  <li>• Visual workflow builder</li>
                 </ul>
               </div>
             </div>
