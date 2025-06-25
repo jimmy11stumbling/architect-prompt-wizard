@@ -1,33 +1,6 @@
 import { RAGResult, RAGQuery, RAGResponse, RAGDocument } from "@/types/rag-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
-export interface RAGQuery {
-  query: string;
-  limit?: number;
-  threshold?: number;
-  category?: string;
-}
-
-export interface RAGResponse {
-  results: RAGResult[];
-  query: string;
-  totalResults: number;
-  processingTime: number;
-  scores: number[];
-  searchTime: number;
-}
-
-export interface RAGDocument {
-  id: string;
-  title: string;
-  content: string;
-  category: string;
-  tags: string[];
-  metadata: Record<string, any>;
-  embedding?: number[];
-  lastUpdated: number;
-}
-
 export class RAGService {
   private documents: RAGDocument[] = [];
   private initialized = false;

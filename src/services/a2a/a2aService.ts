@@ -1,11 +1,10 @@
-
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface A2AAgent {
   id: string;
   name: string;
   capabilities: string[];
-  status: "active" | "busy" | "offline";
+  status: "active" | "busy" | "inactive";
   specialization: string;
   performance: {
     tasksCompleted: number;
@@ -35,13 +34,25 @@ export class A2AService {
   private static instance: A2AService;
   private agents: Map<string, A2AAgent> = new Map();
   private activeTasks: Map<string, A2ATask> = new Map();
+  private initialized = false;
 
   static getInstance(): A2AService {
     if (!A2AService.instance) {
       A2AService.instance = new A2AService();
-      A2AService.instance.initializeAgents();
     }
     return A2AService.instance;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      this.initializeAgents();
+      this.initialized = true;
+    } catch (error) {
+      console.error("Failed to initialize A2A service:", error);
+      throw error;
+    }
   }
 
   private initializeAgents(): void {

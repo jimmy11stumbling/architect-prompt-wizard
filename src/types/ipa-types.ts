@@ -1,3 +1,4 @@
+
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
@@ -169,6 +170,17 @@ export interface A2AAgent {
   capabilities: string[];
   endpoint?: string;
   lastSeen: number;
+}
+
+// A2A Message type for network communication
+export interface A2AMessage {
+  id: string;
+  from: string;
+  to: string;
+  type: "request" | "response" | "notification";
+  payload: Record<string, any>;
+  timestamp: number;
+  priority?: "low" | "normal" | "high";
 }
 
 // MCP types

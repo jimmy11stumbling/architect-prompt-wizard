@@ -1,4 +1,3 @@
-
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface ReasonerQuery {
@@ -54,12 +53,26 @@ export class DeepSeekReasonerService {
   private static instance: DeepSeekReasonerService;
   private conversations: Map<string, ConversationHistory[]> = new Map();
   private apiKey: string | null = null;
+  private initialized = false;
 
   static getInstance(): DeepSeekReasonerService {
     if (!DeepSeekReasonerService.instance) {
       DeepSeekReasonerService.instance = new DeepSeekReasonerService();
     }
     return DeepSeekReasonerService.instance;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      // Initialize API key from environment
+      this.apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || null;
+      this.initialized = true;
+    } catch (error) {
+      console.error("Failed to initialize DeepSeek service:", error);
+      throw error;
+    }
   }
 
   private async makeDeepSeekCall(messages: Array<{role: string, content: string}>): Promise<any> {

@@ -37,20 +37,7 @@ function App() {
     // Initialize the system when the app starts
     const initializeSystem = async () => {
       try {
-        await systemIntegrationService.initialize({
-          projectDescription: "IPA System with comprehensive DeepSeek integration, RAG 2.0, A2A protocol, and MCP hub",
-          frontendTechStack: ["React", "TypeScript"],
-          backendTechStack: ["Express", "Node.js"],
-          customFrontendTech: [],
-          customBackendTech: [],
-          a2aIntegrationDetails: "Full A2A protocol integration with agent coordination and task delegation",
-          additionalFeatures: "Enhanced AI system with DeepSeek Reasoner, real-time monitoring, and integrated workflows",
-          ragVectorDb: "Chroma",
-          customRagVectorDb: "",
-          mcpType: "Enterprise MCP",
-          customMcpType: "",
-          advancedPromptDetails: "Advanced prompting with chain-of-thought reasoning and integrated communication"
-        });
+        await systemIntegrationService.initialize();
       } catch (error) {
         console.error("Failed to initialize system:", error);
       }
