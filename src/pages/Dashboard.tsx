@@ -1,153 +1,140 @@
-
-import React, { useEffect, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LayoutDashboard, Database, Network, Settings, Activity, AlertTriangle } from "lucide-react";
-import SystemHealthDashboard from "@/components/system-integration/SystemHealthDashboard";
-import RAGQueryInterface from "@/components/rag/RAGQueryInterface";
-import A2ANetworkViewer from "@/components/a2a/A2ANetworkViewer";
-import MCPHubInterface from "@/components/mcp/MCPHubInterface";
+import { 
+  Activity, 
+  Brain, 
+  Database, 
+  Network, 
+  Settings, 
+  CheckCircle, 
+  AlertTriangle,
+  RefreshCw
+} from "lucide-react";
 import { systemIntegrationService } from "@/services/integration/systemIntegrationService";
-import { ProjectSpec } from "@/types/ipa-types";
+import { ragService } from "@/services/rag/ragService";
+import { a2aService } from "@/services/a2a/a2aService";
+import { mcpService } from "@/services/mcp/mcpService";
+import { deepseekReasonerService } from "@/services/deepseek/deepseekReasonerService";
 
 const Dashboard: React.FC = () => {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [initializationError, setInitializationError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   useEffect(() => {
-    initializeSystem();
+    loadSystemHealth();
   }, []);
 
-  const initializeSystem = async () => {
+  const loadSystemHealth = async () => {
+    setLoading(true);
     try {
-      setIsInitializing(true);
-      setInitializationError(null);
-      
-      if (systemIntegrationService.isInitialized()) {
-        setIsInitialized(true);
-        setIsInitializing(false);
-        return;
+      // Check if system is initialized - using property access without parentheses
+      if (!systemIntegrationService.isInitialized) {
+        await systemIntegrationService.initialize();
       }
 
-      const demoSpec: ProjectSpec = {
-        projectDescription: "IPA System Dashboard with comprehensive integration",
-        frontendTechStack: ["React", "TypeScript"],
-        backendTechStack: ["Express", "Node.js"],
-        customFrontendTech: [],
-        customBackendTech: [],
-        a2aIntegrationDetails: "Multi-agent communication system with protocol coordination",
-        additionalFeatures: "RAG 2.0 integration with MCP protocol and DeepSeek reasoning",
-        ragVectorDb: "Chroma",
-        customRagVectorDb: "",
-        mcpType: "Enterprise MCP",
-        customMcpType: "",
-        advancedPromptDetails: "DeepSeek Reasoner integration with chain-of-thought processing"
-      };
-
-      await systemIntegrationService.initialize(demoSpec);
-      setIsInitialized(true);
+      const health = await systemIntegrationService.getSystemHealth();
+      setSystemHealth(health);
+      setLastUpdated(new Date());
     } catch (error) {
-      console.error("System initialization failed:", error);
-      setInitializationError(error instanceof Error ? error.message : "Unknown initialization error");
+      console.error("Failed to load system health:", error);
     } finally {
-      setIsInitializing(false);
+      setLoading(false);
     }
   };
 
-  if (initializationError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Alert className="max-w-md">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            System initialization failed: {initializationError}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-2 w-full"
-              onClick={initializeSystem}
-              disabled={isInitializing}
-            >
-              {isInitializing ? "Retrying..." : "Retry Initialization"}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const refreshHealth = () => {
+    loadSystemHealth();
+  };
 
-  if (!isInitialized || isInitializing) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 animate-spin" />
-              {isInitializing ? "Initializing System" : "Loading Dashboard"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Setting up RAG 2.0, A2A, MCP services, and DeepSeek integration...
-            </p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">System Dashboard</h1>
+              <p className="text-muted-foreground">
+                Monitor all AI services and system integrations
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+              <Button onClick={refreshHealth} disabled={loading} size="sm">
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          <Card>
+            <CardContent className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2">Loading system health...</span>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            <span className="text-gradient">System Dashboard</span>
-          </h1>
-          <p className="text-muted-foreground">
-            Monitor and control your integrated AI system with RAG 2.0, A2A, MCP, and DeepSeek
-          </p>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">System Dashboard</h1>
+            <p className="text-muted-foreground">
+              Monitor all AI services and system integrations
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+            <Button onClick={refreshHealth} disabled={loading} size="sm">
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="rag" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              RAG Query
-            </TabsTrigger>
-            <TabsTrigger value="a2a" className="flex items-center gap-2">
-              <Network className="h-4 w-4" />
-              A2A Network
-            </TabsTrigger>
-            <TabsTrigger value="mcp" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              MCP Hub
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <SystemHealthDashboard />
-          </TabsContent>
-
-          <TabsContent value="rag" className="space-y-6">
-            <RAGQueryInterface />
-          </TabsContent>
-
-          <TabsContent value="a2a" className="space-y-6">
-            <A2ANetworkViewer />
-          </TabsContent>
-
-          <TabsContent value="mcp" className="space-y-6">
-            <MCPHubInterface />
-          </TabsContent>
-        </Tabs>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {systemHealth && Object.entries(systemHealth).map(([service, health]: [string, any]) => (
+            <Card key={service}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  {service === 'rag' && <Database className="h-4 w-4" />}
+                  {service === 'a2a' && <Network className="h-4 w-4" />}
+                  {service === 'mcp' && <Settings className="h-4 w-4" />}
+                  {service === 'deepseek' && <Brain className="h-4 w-4" />}
+                  {service.toUpperCase()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    {health.healthy ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                    )}
+                    <Badge variant={health.healthy ? "default" : "destructive"}>
+                      {health.healthy ? "Healthy" : "Error"}
+                    </Badge>
+                  </div>
+                  {health.error && (
+                    <p className="text-xs text-red-500">{health.error}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

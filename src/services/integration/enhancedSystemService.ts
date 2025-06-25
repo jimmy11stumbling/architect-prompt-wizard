@@ -1,4 +1,3 @@
-
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
@@ -80,15 +79,19 @@ export class EnhancedSystemService {
     if (query.useA2A) {
       try {
         processingLog.push("🤖 Coordinating with A2A agents...");
-        const agents = a2aService.getAgents(); // Fixed method name
-        sources.a2aAgents = agents.slice(0, 3); // Get top 3 agents
-        processingLog.push(`✅ A2A: Connected to ${agents.length} agents`);
+        const rawAgents = a2aService.getAgents();
+        // Map to match expected A2AAgent interface
+        sources.a2aAgents = rawAgents.slice(0, 3).map(agent => ({
+          ...agent,
+          lastSeen: Date.now() // Add required lastSeen property
+        }));
+        processingLog.push(`✅ A2A: Connected to ${rawAgents.length} agents`);
         
         realTimeResponseService.addResponse({
           source: "enhanced-system-a2a",
           status: "success",
-          message: `A2A coordination completed - ${agents.length} agents available`,
-          data: { agentCount: agents.length, activeAgents: agents.filter(a => a.status === "active").length }
+          message: `A2A coordination completed - ${rawAgents.length} agents available`,
+          data: { agentCount: rawAgents.length, activeAgents: rawAgents.filter(a => a.status === "active").length }
         });
       } catch (error) {
         processingLog.push(`❌ A2A: Error - ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -99,23 +102,24 @@ export class EnhancedSystemService {
     if (query.useMCP) {
       try {
         processingLog.push("🔧 Accessing MCP tools...");
-        const tools = mcpService.getAvailableTools();
-        // Map MCP tools to include required id field
-        sources.mcpTools = tools.slice(0, 5).map(tool => ({
+        const rawTools = mcpService.getAvailableTools();
+        // Map MCP tools to include all required fields
+        sources.mcpTools = rawTools.slice(0, 5).map(tool => ({
           id: `${tool.name}-${Date.now()}`,
           name: tool.name,
           description: tool.description,
           category: "general",
           version: "1.0",
-          status: "active"
+          status: "active",
+          parameters: [] // Add required parameters property
         }));
-        processingLog.push(`✅ MCP: Found ${tools.length} available tools`);
+        processingLog.push(`✅ MCP: Found ${rawTools.length} available tools`);
         
         realTimeResponseService.addResponse({
           source: "enhanced-system-mcp",
           status: "success",
-          message: `MCP tool access completed - ${tools.length} tools available`,
-          data: { toolCount: tools.length, tools: tools.map(t => t.name) }
+          message: `MCP tool access completed - ${rawTools.length} tools available`,
+          data: { toolCount: rawTools.length, tools: rawTools.map(t => t.name) }
         });
       } catch (error) {
         processingLog.push(`❌ MCP: Error - ${error instanceof Error ? error.message : "Unknown error"}`);
