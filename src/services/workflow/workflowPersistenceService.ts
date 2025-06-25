@@ -56,7 +56,7 @@ export class WorkflowPersistenceService {
     // Cast the returned data to our expected type
     return {
       ...data,
-      definition: data.definition as WorkflowDefinition
+      definition: data.definition as unknown as WorkflowDefinition
     } as WorkflowRecord;
   }
 
@@ -76,7 +76,7 @@ export class WorkflowPersistenceService {
     // Cast the returned data to our expected type
     return (data || []).map(item => ({
       ...item,
-      definition: item.definition as WorkflowDefinition
+      definition: item.definition as unknown as WorkflowDefinition
     })) as WorkflowRecord[];
   }
 
