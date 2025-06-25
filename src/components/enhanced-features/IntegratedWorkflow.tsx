@@ -19,7 +19,11 @@ import {
   CheckCircle,
   AlertTriangle
 } from "lucide-react";
-import { systemIntegrationService, IntegratedQueryRequest, IntegratedQueryResponse } from "@/services/integration/systemIntegrationService";
+import { 
+  systemIntegrationService, 
+  IntegratedQueryRequest, 
+  IntegratedQueryResponse 
+} from "@/services/integration/systemIntegrationService";
 import { useToast } from "@/hooks/use-toast";
 
 const IntegratedWorkflow: React.FC = () => {

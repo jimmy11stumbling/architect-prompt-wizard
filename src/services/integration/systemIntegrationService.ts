@@ -1,4 +1,3 @@
-
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
@@ -10,6 +9,9 @@ import {
   SystemHealthStatus,
   SystemInitializationConfig 
 } from "./types";
+
+// Export the types for external use
+export type { IntegratedQueryRequest, IntegratedQueryResponse, SystemHealthStatus };
 
 export class SystemIntegrationService {
   private initialized = false;

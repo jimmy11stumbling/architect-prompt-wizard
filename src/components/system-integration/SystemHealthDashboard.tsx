@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,12 +18,12 @@ import {
   TrendingUp,
   Server
 } from "lucide-react";
-import { SystemHealth } from "@/types/ipa-types";
+import { SystemHealthStatus } from "@/services/integration/types";
 import { systemIntegrationService } from "@/services/integration/systemIntegrationService";
 import { useToast } from "@/hooks/use-toast";
 
 const SystemHealthDashboard: React.FC = () => {
-  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [systemHealth, setSystemHealth] = useState<SystemHealthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -37,7 +36,7 @@ const SystemHealthDashboard: React.FC = () => {
       setSystemHealth(health);
       setLastUpdate(new Date());
       
-      if (health.overallStatus === "unhealthy") {
+      if (!health.overallHealth) {
         toast({
           title: "System Health Warning",
           description: "Some services are experiencing issues",
@@ -77,39 +76,34 @@ const SystemHealthDashboard: React.FC = () => {
     );
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "healthy": return "text-green-500";
-      case "degraded": return "text-yellow-500";
-      case "unhealthy": return "text-red-500";
-      default: return "text-gray-500";
-    }
+  const getStatusColor = (isHealthy: boolean) => {
+    return isHealthy ? "text-green-500" : "text-red-500";
   };
 
   const serviceDetails = [
     {
-      key: "rag",
+      key: "rag" as keyof typeof systemHealth.serviceHealth,
       name: "RAG 2.0 Database",
       icon: Database,
       description: "Vector database and document retrieval",
       metrics: systemHealth?.details?.ragDocuments || 0
     },
     {
-      key: "a2a",
+      key: "a2a" as keyof typeof systemHealth.serviceHealth,
       name: "A2A Network",
       icon: Network,
       description: "Agent-to-agent communication",
       metrics: systemHealth?.details?.a2aAgents || 0
     },
     {
-      key: "mcp",
+      key: "mcp" as keyof typeof systemHealth.serviceHealth,
       name: "MCP Hub",
       icon: Settings,
       description: "Model Context Protocol services",
       metrics: systemHealth?.details?.mcpServers || 0
     },
     {
-      key: "deepseek",
+      key: "deepseek" as keyof typeof systemHealth.serviceHealth,
       name: "DeepSeek Reasoner",
       icon: Brain,
       description: "AI reasoning and processing",
@@ -153,24 +147,24 @@ const SystemHealthDashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {systemHealth.overall ? (
+                  {systemHealth.overallHealth ? (
                     <CheckCircle className="h-6 w-6 text-green-500" />
                   ) : (
                     <AlertTriangle className="h-6 w-6 text-red-500" />
                   )}
                   <span className="text-lg font-medium">
                     System Status: 
-                    <span className={`ml-2 ${getStatusColor(systemHealth.overallStatus)}`}>
-                      {systemHealth.overallStatus.toUpperCase()}
+                    <span className={`ml-2 ${getStatusColor(systemHealth.overallHealth)}`}>
+                      {systemHealth.overallHealth ? "HEALTHY" : "UNHEALTHY"}
                     </span>
                   </span>
                 </div>
-                <Badge variant={systemHealth.overall ? "default" : "destructive"}>
+                <Badge variant={systemHealth.overallHealth ? "default" : "destructive"}>
                   Last updated: {lastUpdate.toLocaleTimeString()}
                 </Badge>
               </div>
               
-              {!systemHealth.overall && (
+              {!systemHealth.overallHealth && (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
@@ -199,9 +193,9 @@ const SystemHealthDashboard: React.FC = () => {
 
         <TabsContent value="services" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {serviceDetails.map((service) => {
+            {systemHealth && serviceDetails.map((service) => {
               const ServiceIcon = service.icon;
-              const isHealthy = systemHealth?.services[service.key as keyof typeof systemHealth.services];
+              const isHealthy = systemHealth.serviceHealth[service.key];
               
               return (
                 <Card key={service.key}>
