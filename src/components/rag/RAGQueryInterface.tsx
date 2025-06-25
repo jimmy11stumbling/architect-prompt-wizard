@@ -74,9 +74,9 @@ const RAGQueryInterface: React.FC = () => {
           metadata: result.metadata
         })),
         query: ragQuery.query,
-        totalResults: ragResponse.totalFound,
+        totalResults: ragResponse.totalResults,
         scores: ragResponse.results.map(result => result.relevanceScore),
-        searchTime: ragResponse.queryProcessingTime
+        searchTime: ragResponse.processingTime
       };
 
       console.log("RAG query result:", ragResult);

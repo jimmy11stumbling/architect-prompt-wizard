@@ -1,5 +1,4 @@
-
-import { RAGResult } from "@/types/ipa-types";
+import { RAGResult, RAGQuery, RAGResponse, RAGDocument } from "@/types/rag-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface RAGQuery {
@@ -87,6 +86,19 @@ export class RAGService {
       }
     ];
     this.initialized = true;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      // Initialize vector database connection, load embeddings, etc.
+      await this.initializeWithSampleData();
+      this.initialized = true;
+    } catch (error) {
+      console.error("Failed to initialize RAG service:", error);
+      throw error;
+    }
   }
 
   async query(ragQuery: RAGQuery): Promise<RAGResponse> {

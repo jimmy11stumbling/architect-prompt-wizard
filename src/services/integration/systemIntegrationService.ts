@@ -44,60 +44,43 @@ export interface SystemInitializationConfig {
 }
 
 export class SystemIntegrationService {
-  private static instance: SystemIntegrationService;
-  private _isInitialized = false;
-
-  static getInstance(): SystemIntegrationService {
-    if (!SystemIntegrationService.instance) {
-      SystemIntegrationService.instance = new SystemIntegrationService();
-    }
-    return SystemIntegrationService.instance;
-  }
-
+  private initialized = false;
+  
   get isInitialized(): boolean {
-    return this._isInitialized;
+    return this.initialized;
   }
 
-  async initialize(config: SystemInitializationConfig): Promise<void> {
-    if (this._isInitialized) return;
+  async initialize(): Promise<void> {
+    if (this.initialized) {
+      console.log("🔄 [system-integration] System already initialized");
+      return;
+    }
 
-    realTimeResponseService.addResponse({
-      source: "system-integration",
-      status: "processing",
-      message: "Initializing integrated AI system...",
-      data: { 
-        project: config.projectDescription,
-        techStack: [...config.frontendTechStack, ...config.backendTechStack]
-      }
+    console.log("🔄 [system-integration] Initializing integrated AI system...", {
+      project: "IPA System with comprehensive DeepSeek integration, RAG 2.0, A2A protocol, and MCP hub",
+      techStack: ["React", "TypeScript", "Express", "Node.js"]
     });
 
     try {
-      // Initialize all services
-      await Promise.all([
-        ragService.initialize(),
-        // Other services are already initialized on import
-      ]);
+      // Initialize RAG service
+      await ragService.initialize();
+      console.log("✅ [system-integration] RAG service initialized");
 
-      this._isInitialized = true;
+      // Initialize other services
+      await a2aService.initialize();
+      console.log("✅ [system-integration] A2A service initialized");
 
-      realTimeResponseService.addResponse({
-        source: "system-integration",
-        status: "success",
-        message: "System initialization completed successfully",
-        data: {
-          services: ["rag", "a2a", "mcp", "deepseek"],
-          ragVectorDb: config.ragVectorDb,
-          mcpType: config.mcpType
-        }
-      });
+      await mcpService.initialize();
+      console.log("✅ [system-integration] MCP service initialized");
+
+      await deepseekReasonerService.initialize();
+      console.log("✅ [system-integration] DeepSeek service initialized");
+
+      this.initialized = true;
+      console.log("✅ [system-integration] System initialization completed successfully");
 
     } catch (error) {
-      realTimeResponseService.addResponse({
-        source: "system-integration",
-        status: "error",
-        message: `System initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        data: { error }
-      });
+      console.error("🔄 [system-integration] System initialization failed:", { error });
       throw error;
     }
   }
@@ -445,4 +428,4 @@ export class SystemIntegrationService {
   }
 }
 
-export const systemIntegrationService = SystemIntegrationService.getInstance();
+export const systemIntegrationService = new SystemIntegrationService();

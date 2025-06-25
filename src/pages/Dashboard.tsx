@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
   const loadSystemHealth = async () => {
     setLoading(true);
     try {
-      // Check if system is initialized - using property access without parentheses
+      // Check if system is initialized
       if (!systemIntegrationService.isInitialized) {
         await systemIntegrationService.initialize();
       }

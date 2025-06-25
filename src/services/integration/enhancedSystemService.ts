@@ -1,3 +1,4 @@
+
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
@@ -80,9 +81,10 @@ export class EnhancedSystemService {
       try {
         processingLog.push("🤖 Coordinating with A2A agents...");
         const rawAgents = a2aService.getAgents();
-        // Map to match expected A2AAgent interface
+        // Map to match expected A2AAgent interface, fixing status mapping
         sources.a2aAgents = rawAgents.slice(0, 3).map(agent => ({
           ...agent,
+          status: agent.status === "offline" ? "inactive" : agent.status as "active" | "inactive" | "busy",
           lastSeen: Date.now() // Add required lastSeen property
         }));
         processingLog.push(`✅ A2A: Connected to ${rawAgents.length} agents`);

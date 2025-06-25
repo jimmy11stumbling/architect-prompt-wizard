@@ -1,4 +1,3 @@
-
 export interface ProjectSpec {
   projectDescription: string;
   frontendTechStack: TechStack[];
@@ -159,29 +158,10 @@ export interface DeepSeekCompletionResponse {
   };
 }
 
-// RAG types
-export interface RAGQuery {
-  query: string;
-  limit?: number;
-  threshold?: number;
-  filters?: Record<string, any>;
-}
+// Import RAG types
+export * from './rag-types';
 
-export interface RAGResult {
-  documents: Array<{
-    id: string;
-    title: string;
-    content: string;
-    source: string;
-    metadata?: Record<string, any>;
-  }>;
-  query: string;
-  totalResults: number;
-  scores: number[];
-  searchTime?: number;
-}
-
-// A2A types
+// A2A types - fix status to match service implementation
 export interface A2AAgent {
   id: string;
   name: string;
@@ -189,16 +169,6 @@ export interface A2AAgent {
   capabilities: string[];
   endpoint?: string;
   lastSeen: number;
-}
-
-export interface A2AMessage {
-  id: string;
-  from: string;
-  to: string;
-  type: "request" | "response" | "notification";
-  payload: any;
-  timestamp: number;
-  priority?: "low" | "normal" | "high";
 }
 
 // MCP types
