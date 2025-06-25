@@ -134,10 +134,11 @@ const AgentOrchestrationDashboard: React.FC = () => {
         const updatedAgents = prev.agents.map(agent => {
           if (agent.status === "processing") {
             const newProgress = Math.min(agent.progress + Math.random() * 5, 100);
+            const newStatus: AgentNode['status'] = newProgress >= 100 ? "completed" : "processing";
             return {
               ...agent,
               progress: newProgress,
-              status: newProgress >= 100 ? "completed" : "processing",
+              status: newStatus,
               lastUpdate: Date.now()
             };
           }
