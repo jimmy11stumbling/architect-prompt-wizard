@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -16,69 +16,30 @@ import {
   Play,
   RotateCcw
 } from "lucide-react";
-import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
+import { useLiveMonitoring } from "./hooks/useLiveMonitoring";
 import AgentResponseValidator from "./AgentResponseValidator";
-import { AgentName } from "@/types/ipa-types";
 
 const LiveAgentMonitor: React.FC = () => {
-  const [isLive, setIsLive] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
-  const [responses, setResponses] = useState<any[]>([]);
+  const {
+    isLive,
+    selectedAgent,
+    setSelectedAgent,
+    responses,
+    agents,
+    systemServices,
+    toggleLive,
+    clearLogs
+  } = useLiveMonitoring();
 
-  const agents: AgentName[] = [
-    "RequirementDecompositionAgent",
-    "RAGContextIntegrationAgent",
-    "A2AProtocolExpertAgent",
-    "TechStackImplementationAgent_Frontend",
-    "TechStackImplementationAgent_Backend",
-    "CursorOptimizationAgent",
-    "QualityAssuranceAgent"
-  ];
-
-  const systemServices = [
-    { name: "RAG 2.0", icon: Database, status: "active", color: "text-green-500" },
-    { name: "A2A Protocol", icon: Network, status: "active", color: "text-blue-500" },
-    { name: "MCP Hub", icon: Settings, status: "active", color: "text-purple-500" },
-    { name: "DeepSeek Reasoner", icon: Brain, status: "active", color: "text-orange-500" }
-  ];
-
-  const fetchLiveData = () => {
-    const allResponses = realTimeResponseService.getResponses();
-    setResponses(allResponses.slice(-50).reverse());
-  };
-
-  const clearLogs = () => {
-    realTimeResponseService.clearResponses();
-    setResponses([]);
-  };
-
-  const toggleLive = () => {
-    setIsLive(!isLive);
-  };
-
-  useEffect(() => {
-    if (isLive) {
-      fetchLiveData();
-      const interval = setInterval(fetchLiveData, 500); // Very frequent updates
-      return () => clearInterval(interval);
+  const getServiceIcon = (iconName: string) => {
+    switch (iconName) {
+      case "Database": return Database;
+      case "Network": return Network;
+      case "Settings": return Settings;
+      case "Brain": return Brain;
+      default: return Activity;
     }
-  }, [isLive]);
-
-  // Add real-time console logging for validation
-  useEffect(() => {
-    const logInterval = setInterval(() => {
-      if (responses.length > 0) {
-        const latestResponse = responses[0];
-        console.log(`🔍 LIVE VALIDATION: [${latestResponse.source}] ${latestResponse.status.toUpperCase()} - ${latestResponse.message}`);
-        
-        if (latestResponse.data) {
-          console.log(`📊 VALIDATION DATA:`, latestResponse.data);
-        }
-      }
-    }, 2000);
-
-    return () => clearInterval(logInterval);
-  }, [responses]);
+  };
 
   return (
     <div className="space-y-6">
@@ -109,13 +70,16 @@ const LiveAgentMonitor: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {systemServices.map((service) => (
-              <div key={service.name} className="flex items-center gap-2 p-2 border rounded">
-                <service.icon className={`h-4 w-4 ${service.color}`} />
-                <span className="text-sm font-medium">{service.name}</span>
-                <div className={`w-2 h-2 rounded-full ${service.status === 'active' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
-              </div>
-            ))}
+            {systemServices.map((service) => {
+              const ServiceIcon = getServiceIcon(service.icon);
+              return (
+                <div key={service.name} className="flex items-center gap-2 p-2 border rounded">
+                  <ServiceIcon className={`h-4 w-4 ${service.color}`} />
+                  <span className="text-sm font-medium">{service.name}</span>
+                  <div className={`w-2 h-2 rounded-full ${service.status === 'active' ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

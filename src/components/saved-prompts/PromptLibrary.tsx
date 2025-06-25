@@ -1,27 +1,14 @@
 
-import React, { useState, useEffect } from "react";
-import { SavedPrompt, PromptCategory, PromptStats, supabasePromptService } from "@/services/db/supabasePromptService";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React from "react";
+import { SavedPrompt } from "@/services/db/supabasePromptService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Database, 
-  Search, 
-  Star, 
-  TrendingUp, 
-  Users, 
-  Calendar,
-  Download,
-  Upload,
-  Filter,
-  Grid,
-  List
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Database, Search, Star, Users, Globe } from "lucide-react";
+import { usePromptLibrary } from "./hooks/usePromptLibrary";
+import LibraryStats from "./components/LibraryStats";
+import LibraryControls from "./components/LibraryControls";
 
 interface PromptLibraryProps {
   prompts: SavedPrompt[];
@@ -34,102 +21,21 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
   onPromptSelect, 
   onPromptUse 
 }) => {
-  const [categories, setCategories] = useState<PromptCategory[]>([]);
-  const [stats, setStats] = useState<PromptStats | null>(null);
-  const [featuredPrompts, setFeaturedPrompts] = useState<SavedPrompt[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    loadLibraryData();
-  }, []);
-
-  const loadLibraryData = async () => {
-    try {
-      setIsLoading(true);
-      const [categoriesData, statsData, featuredData] = await Promise.all([
-        supabasePromptService.getCategories(),
-        supabasePromptService.getStats(),
-        supabasePromptService.getFeaturedPrompts()
-      ]);
-      
-      setCategories(categoriesData);
-      setStats(statsData);
-      setFeaturedPrompts(featuredData);
-    } catch (error) {
-      console.error("Failed to load library data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load prompt library data",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filteredPrompts = prompts.filter(prompt => {
-    const matchesSearch = !searchTerm || 
-      prompt.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      prompt.prompt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (prompt.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesCategory = !selectedCategory || prompt.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleExport = async () => {
-    try {
-      const exportData = await supabasePromptService.exportPrompts();
-      const blob = new Blob([exportData], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `prompt-library-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Export Complete",
-        description: "Your prompt library has been exported successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "Failed to export prompt library",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const importedCount = await supabasePromptService.importPrompts(text);
-      
-      toast({
-        title: "Import Complete",
-        description: `Successfully imported ${importedCount} prompts`,
-      });
-      
-      await loadLibraryData();
-    } catch (error) {
-      toast({
-        title: "Import Failed",
-        description: "Failed to import prompt library",
-        variant: "destructive",
-      });
-    }
-  };
+  const {
+    categories,
+    stats,
+    featuredPrompts,
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    viewMode,
+    setViewMode,
+    isLoading,
+    filteredPrompts,
+    handleExport,
+    handleImport
+  } = usePromptLibrary(prompts);
 
   if (isLoading) {
     return (
@@ -145,98 +51,17 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
   return (
     <div className="space-y-6">
       {/* Library Stats */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Database className="h-4 w-4 text-blue-500" />
-                <div>
-                  <p className="text-sm font-medium">Total Prompts</p>
-                  <p className="text-2xl font-bold">{stats.totalPrompts}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium">Public Prompts</p>
-                  <p className="text-2xl font-bold">{stats.publicPrompts}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
-                <div>
-                  <p className="text-sm font-medium">Total Usage</p>
-                  <p className="text-2xl font-bold">{stats.totalUsage}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Star className="h-4 w-4 text-yellow-500" />
-                <div>
-                  <p className="text-sm font-medium">Avg Rating</p>
-                  <p className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {stats && <LibraryStats stats={stats} />}
 
       {/* Search and Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search prompts by name, content, or tags..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-          >
-            {viewMode === 'grid' ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
-          </Button>
-          
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-          
-          <Button variant="outline" size="sm" asChild>
-            <label>
-              <Upload className="h-4 w-4 mr-1" />
-              Import
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-          </Button>
-        </div>
-      </div>
+      <LibraryControls
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onExport={handleExport}
+        onImport={handleImport}
+      />
 
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -429,7 +254,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg">{prompt.projectName}</CardTitle>
                     <Badge variant="secondary">
-                      <Users className="h-3 w-3 mr-1" />
+                      <Globe className="h-3 w-3 mr-1" />
                       Public
                     </Badge>
                   </div>
