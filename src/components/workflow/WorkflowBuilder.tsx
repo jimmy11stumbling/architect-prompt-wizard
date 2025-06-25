@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -95,7 +94,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onWorkflowCreated }) 
         triggers: workflow.triggers || [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        status: "active"
+        status: "draft"
       };
 
       // Save to persistence layer

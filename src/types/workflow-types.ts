@@ -82,6 +82,7 @@ export interface WorkflowExecution {
   steps: WorkflowStepExecution[];
   variables: Record<string, any>;
   error?: string;
+  result?: any;
   metrics: WorkflowMetrics;
 }
 
