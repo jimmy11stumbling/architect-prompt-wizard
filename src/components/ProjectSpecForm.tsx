@@ -32,15 +32,21 @@ const ProjectSpecForm = forwardRef<ProjectSpecFormHandle, ProjectSpecFormProps>(
 
     useImperativeHandle(ref, () => ({
       setSpec: (newSpec: ProjectSpec) => {
+        console.log("ProjectSpecForm: Setting spec via ref", newSpec);
         setSpec(newSpec);
       }
     }));
+
+    const handleSpecChange = (newSpec: ProjectSpec) => {
+      console.log("ProjectSpecForm: Spec changed", newSpec);
+      setSpec(newSpec);
+    };
 
     return (
       <ProjectFormContainer
         onSubmit={onSubmit}
         spec={spec}
-        onSpecChange={setSpec}
+        onSpecChange={handleSpecChange}
       />
     );
   }

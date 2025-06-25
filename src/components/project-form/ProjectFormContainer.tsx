@@ -16,7 +16,8 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
   spec: externalSpec,
   onSpecChange 
 }) => {
-  const [internalSpec, setInternalSpec] = React.useState<ProjectSpec>({
+  // Use external spec if provided, otherwise use internal spec
+  const spec = externalSpec || {
     projectDescription: "",
     frontendTechStack: ["React"],
     backendTechStack: ["Express"],
@@ -31,18 +32,9 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
     advancedPromptDetails: "",
     deploymentPreference: "Vercel",
     authenticationMethod: "JWT"
-  });
+  };
 
-  // Use external spec if provided, otherwise use internal spec
-  const spec = externalSpec || internalSpec;
-  const setSpec = onSpecChange || setInternalSpec;
-
-  // Update internal spec when external spec changes
-  useEffect(() => {
-    if (externalSpec) {
-      setInternalSpec(externalSpec);
-    }
-  }, [externalSpec]);
+  const setSpec = onSpecChange || (() => {});
   
   const handleTechStackToggle = (tech: TechStack, type: "frontend" | "backend") => {
     if (type === "frontend") {
@@ -144,10 +136,12 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
       return; // Don't submit if validation fails
     }
     
+    console.log("ProjectFormContainer: Submitting spec", spec);
     onSubmit(spec);
   };
 
   const handleQuickFill = (quickFillSpec: ProjectSpec) => {
+    console.log("ProjectFormContainer: Quick fill received", quickFillSpec);
     setSpec(quickFillSpec);
   };
 
