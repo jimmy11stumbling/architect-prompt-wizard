@@ -1,5 +1,9 @@
+
 import { RAGResult, RAGQuery, RAGResponse, RAGDocument } from "@/types/rag-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
+
+// Re-export types for components to use
+export { RAGQuery, RAGResponse, RAGDocument, RAGResult } from "@/types/rag-types";
 
 export class RAGService {
   private documents: RAGDocument[] = [];
