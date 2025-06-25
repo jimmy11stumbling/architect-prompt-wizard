@@ -9,12 +9,26 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Database, Search, FileText, Clock, Zap } from "lucide-react";
-import { RAGQuery, RAGResult } from "@/types/ipa-types";
+import { RAGQuery, RAGResponse } from "@/services/rag/ragService";
 import { useToast } from "@/hooks/use-toast";
+
+interface RAGResultDisplay {
+  documents: Array<{
+    id: string;
+    title: string;
+    content: string;
+    source: string;
+    metadata?: Record<string, any>;
+  }>;
+  query: string;
+  totalResults: number;
+  scores: number[];
+  searchTime: number;
+}
 
 const RAGQueryInterface: React.FC = () => {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<RAGResult | null>(null);
+  const [results, setResults] = useState<RAGResultDisplay | null>(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [queryHistory, setQueryHistory] = useState<Array<{ query: string; timestamp: number }>>([]);
   const [settings, setSettings] = useState({
@@ -47,16 +61,22 @@ const RAGQueryInterface: React.FC = () => {
         threshold: settings.threshold
       };
 
-      // Use actual RAG service instead of mock
-      const ragResponse = await ragService.query(ragQuery);
+      // Use actual RAG service
+      const ragResponse: RAGResponse = await ragService.query(ragQuery);
       
-      // Convert RAG response to RAG result format
-      const ragResult: RAGResult = {
-        documents: ragResponse.documents,
-        query: ragResponse.query,
-        totalResults: ragResponse.totalResults,
-        scores: ragResponse.scores,
-        searchTime: ragResponse.searchTime
+      // Convert RAG response to display format
+      const ragResult: RAGResultDisplay = {
+        documents: ragResponse.results.map((result, index) => ({
+          id: result.id,
+          title: result.title,
+          content: result.content,
+          source: result.category,
+          metadata: result.metadata
+        })),
+        query: ragQuery.query,
+        totalResults: ragResponse.totalFound,
+        scores: ragResponse.results.map(result => result.relevanceScore),
+        searchTime: ragResponse.queryProcessingTime
       };
 
       console.log("RAG query result:", ragResult);

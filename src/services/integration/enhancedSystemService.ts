@@ -17,7 +17,14 @@ export interface EnhancedResponse {
   response: string;
   reasoning?: string;
   sources: {
-    ragDocuments?: RAGResult["documents"];
+    ragDocuments?: Array<{
+      id: string;
+      title: string;
+      content: string;
+      category: string;
+      relevanceScore: number;
+      metadata: Record<string, any>;
+    }>;
     a2aAgents?: A2AAgent[];
     mcpTools?: MCPTool[];
   };
@@ -48,14 +55,21 @@ export class EnhancedSystemService {
           query: query.query,
           limit: 5
         });
-        sources.ragDocuments = ragResult.documents;
-        processingLog.push(`✅ RAG: Found ${ragResult.documents.length} relevant documents`);
+        sources.ragDocuments = ragResult.results.map(result => ({
+          id: result.id,
+          title: result.title,
+          content: result.content,
+          category: result.category,
+          relevanceScore: result.relevanceScore,
+          metadata: result.metadata
+        }));
+        processingLog.push(`✅ RAG: Found ${ragResult.results.length} relevant documents`);
         
         realTimeResponseService.addResponse({
           source: "enhanced-system-rag",
           status: "success",
-          message: `RAG processing completed - found ${ragResult.documents.length} documents`,
-          data: { documents: ragResult.documents.length, query: query.query }
+          message: `RAG processing completed - found ${ragResult.results.length} documents`,
+          data: { documents: ragResult.results.length, query: query.query }
         });
       } catch (error) {
         processingLog.push(`❌ RAG: Error - ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -66,7 +80,7 @@ export class EnhancedSystemService {
     if (query.useA2A) {
       try {
         processingLog.push("🤖 Coordinating with A2A agents...");
-        const agents = a2aService.getAllAgents();
+        const agents = a2aService.getAgents(); // Fixed method name
         sources.a2aAgents = agents.slice(0, 3); // Get top 3 agents
         processingLog.push(`✅ A2A: Connected to ${agents.length} agents`);
         
@@ -86,7 +100,15 @@ export class EnhancedSystemService {
       try {
         processingLog.push("🔧 Accessing MCP tools...");
         const tools = mcpService.getAvailableTools();
-        sources.mcpTools = tools.slice(0, 5); // Get top 5 tools
+        // Map MCP tools to include required id field
+        sources.mcpTools = tools.slice(0, 5).map(tool => ({
+          id: `${tool.name}-${Date.now()}`,
+          name: tool.name,
+          description: tool.description,
+          category: "general",
+          version: "1.0",
+          status: "active"
+        }));
         processingLog.push(`✅ MCP: Found ${tools.length} available tools`);
         
         realTimeResponseService.addResponse({

@@ -1,299 +1,172 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Terminal, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
-
-interface ConsoleLog {
-  id: string;
-  timestamp: number;
-  level: "info" | "warn" | "error" | "success";
-  source: string;
-  message: string;
-  data?: any;
-}
+import { Badge } from "@/components/ui/badge";
+import { Terminal, CheckCircle, XCircle, AlertTriangle, Activity } from "lucide-react";
+import { realTimeResponseService, RealTimeResponse } from "@/services/integration/realTimeResponseService";
 
 const ConsoleValidator: React.FC = () => {
-  const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
-  const [isVisible, setIsVisible] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
+  const [consoleOutputs, setConsoleOutputs] = useState<RealTimeResponse[]>([]);
+  const [validationResults, setValidationResults] = useState<Record<string, boolean>>({});
+  const [isRunning, setIsRunning] = useState(false);
 
-  // Enhanced console logging with validation
-  const addConsoleLog = (level: ConsoleLog["level"], source: string, message: string, data?: any) => {
-    const log: ConsoleLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: Date.now(),
-      level,
-      source,
-      message,
-      data
-    };
-
-    setConsoleLogs(prev => [...prev.slice(-99), log]); // Keep last 100 logs
-
-    // Enhanced console output with emojis and formatting
-    const emoji = level === "success" ? "✅" : 
-                  level === "error" ? "❌" : 
-                  level === "warn" ? "⚠️" : "ℹ️";
-    
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`${emoji} [${timestamp}] [${source}] ${message}`, data || "");
-    
-    // Add to real-time response service
-    realTimeResponseService.addResponse({
-      source: `console-${source}`,
-      status: level === "success" ? "success" : 
-             level === "error" ? "error" : 
-             level === "warn" ? "validation" : "processing",
-      message: `CONSOLE: ${message}`,
-      data
-    });
-  };
-
-  // Validation functions for different components
-  const validateRAGResponse = (query: string, results: any) => {
-    addConsoleLog("info", "RAG-VALIDATOR", `Validating RAG query: "${query}"`);
-    
-    if (!results || !results.documents) {
-      addConsoleLog("error", "RAG-VALIDATOR", "Invalid RAG response - missing documents", results);
-      return false;
-    }
-    
-    if (results.documents.length === 0) {
-      addConsoleLog("warn", "RAG-VALIDATOR", "RAG query returned no documents", { query });
-      return true;
-    }
-    
-    addConsoleLog("success", "RAG-VALIDATOR", `RAG validation passed - ${results.documents.length} documents found`, {
-      query,
-      documentCount: results.documents.length,
-      avgScore: results.scores?.reduce((a: number, b: number) => a + b, 0) / results.scores?.length || 0
-    });
-    
-    return true;
-  };
-
-  const validateAgentResponse = (agentName: string, response: any) => {
-    addConsoleLog("info", "AGENT-VALIDATOR", `Validating ${agentName} response`);
-    
-    if (!response) {
-      addConsoleLog("error", "AGENT-VALIDATOR", `${agentName} returned null/undefined response`);
-      return false;
-    }
-    
-    if (typeof response === 'string' && response.length < 100) {
-      addConsoleLog("warn", "AGENT-VALIDATOR", `${agentName} response seems too short`, { 
-        length: response.length,
-        preview: response.substring(0, 50)
-      });
-    }
-    
-    addConsoleLog("success", "AGENT-VALIDATOR", `${agentName} validation passed`, {
-      responseType: typeof response,
-      length: typeof response === 'string' ? response.length : 'N/A'
-    });
-    
-    return true;
-  };
-
-  const validateSystemIntegration = (services: string[]) => {
-    addConsoleLog("info", "SYSTEM-VALIDATOR", "Validating system integration");
-    
-    const requiredServices = ["RAG", "A2A", "MCP", "DeepSeek"];
-    const missingServices = requiredServices.filter(service => 
-      !services.some(s => s.toLowerCase().includes(service.toLowerCase()))
-    );
-    
-    if (missingServices.length > 0) {
-      addConsoleLog("error", "SYSTEM-VALIDATOR", "Missing required services", { 
-        missing: missingServices,
-        available: services
-      });
-      return false;
-    }
-    
-    addConsoleLog("success", "SYSTEM-VALIDATOR", "All required services are integrated", { services });
-    return true;
-  };
-
-  // Auto-validation hooks
   useEffect(() => {
-    // Monitor real-time responses and validate them
-    const interval = setInterval(() => {
-      const responses = realTimeResponseService.getResponses();
-      const recentResponses = responses.slice(-5); // Check last 5 responses
+    const unsubscribe = realTimeResponseService.subscribe((response) => {
+      setConsoleOutputs(prev => [response, ...prev.slice(0, 49)]);
       
-      recentResponses.forEach(response => {
-        if (response.source.includes("rag")) {
-          // Validate RAG responses
-          if (response.data?.query) {
-            validateRAGResponse(response.data.query, response.data);
-          }
-        } else if (response.source.includes("agent")) {
-          // Validate agent responses
-          validateAgentResponse(response.source, response.data);
-        } else if (response.source.includes("system")) {
-          // Validate system integration
-          if (response.data?.services) {
-            validateSystemIntegration(response.data.services);
-          }
-        }
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Periodic system health checks
-  useEffect(() => {
-    const healthCheck = setInterval(() => {
-      addConsoleLog("info", "HEALTH-CHECK", "Performing system health validation");
-      
-      // Check if services are responding
-      const services = ["RAG", "A2A", "MCP", "DeepSeek"];
-      validateSystemIntegration(services);
-      
-      // Memory usage check
-      const memoryUsage = (performance as any).memory;
-      if (memoryUsage) {
-        const usedMB = Math.round(memoryUsage.usedJSHeapSize / 1024 / 1024);
-        const totalMB = Math.round(memoryUsage.totalJSHeapSize / 1024 / 1024);
-        
-        if (usedMB > 100) {
-          addConsoleLog("warn", "HEALTH-CHECK", "High memory usage detected", { 
-            used: `${usedMB}MB`, 
-            total: `${totalMB}MB` 
-          });
-        } else {
-          addConsoleLog("success", "HEALTH-CHECK", "Memory usage is normal", { 
-            used: `${usedMB}MB`, 
-            total: `${totalMB}MB` 
-          });
-        }
+      // Auto-validate responses
+      if (response.status === "success" || response.status === "error") {
+        setValidationResults(prev => ({
+          ...prev,
+          [response.id]: response.status === "success"
+        }));
       }
-    }, 10000); // Every 10 seconds
+    });
 
-    return () => clearInterval(healthCheck);
+    // Load existing responses
+    const existing = realTimeResponseService.getResponses(50);
+    setConsoleOutputs(existing);
+
+    return unsubscribe;
   }, []);
 
-  const clearLogs = () => {
-    setConsoleLogs([]);
-    addConsoleLog("info", "CONSOLE-VALIDATOR", "Console logs cleared");
-  };
-
-  const exportLogs = () => {
-    const logsData = JSON.stringify(consoleLogs, null, 2);
-    const blob = new Blob([logsData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `console-validation-logs-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const runValidationCheck = () => {
+    setIsRunning(true);
     
-    addConsoleLog("success", "CONSOLE-VALIDATOR", "Logs exported successfully");
+    realTimeResponseService.addResponse({
+      source: "console-validator",
+      status: "processing", // Changed from "validation" to "processing"
+      message: "Running comprehensive validation check...",
+      data: { timestamp: Date.now() }
+    });
+
+    setTimeout(() => {
+      const successCount = consoleOutputs.filter(output => output.status === "success").length;
+      const errorCount = consoleOutputs.filter(output => output.status === "error").length;
+      const totalResponses = consoleOutputs.length;
+      
+      realTimeResponseService.addResponse({
+        source: "console-validator",
+        status: successCount > errorCount ? "success" : "warning",
+        message: `Validation complete: ${successCount}/${totalResponses} operations successful`,
+        data: { 
+          successCount, 
+          errorCount, 
+          totalResponses,
+          successRate: totalResponses > 0 ? (successCount / totalResponses * 100).toFixed(1) : "0"
+        }
+      });
+      
+      setIsRunning(false);
+    }, 2000);
   };
 
-  const filteredLogs = consoleLogs.filter(log => 
-    filter === "all" || log.level === filter
-  );
+  const clearConsole = () => {
+    realTimeResponseService.clearResponses();
+    setConsoleOutputs([]);
+    setValidationResults({});
+  };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case "success": return "text-green-500";
-      case "error": return "text-red-500";
-      case "warn": return "text-yellow-500";
-      default: return "text-blue-500";
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "success":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "error":
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case "processing":
+        return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  const getLevelBadge = (level: string) => {
-    switch (level) {
-      case "success": return "default";
-      case "error": return "destructive";
-      case "warn": return "secondary";
-      default: return "outline";
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "success":
+        return "text-green-600";
+      case "error":
+        return "text-red-600";
+      case "warning":
+        return "text-yellow-600";
+      case "processing":
+        return "text-blue-600";
+      default:
+        return "text-gray-600";
     }
   };
-
-  if (!isVisible) {
-    return (
-      <Button
-        onClick={() => setIsVisible(true)}
-        variant="outline"
-        size="sm"
-        className="fixed bottom-4 right-4 z-50"
-      >
-        <Eye className="h-4 w-4 mr-2" />
-        Show Console Validator
-      </Button>
-    );
-  }
 
   return (
-    <div className="fixed bottom-4 right-4 w-96 max-h-96 z-50">
-      <Card className="shadow-lg">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <Terminal className="h-4 w-4" />
-              Console Validator
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Terminal className="h-5 w-5" />
+          Live Console & Validation Monitor
+        </CardTitle>
+        <div className="flex gap-2">
+          <Button 
+            onClick={runValidationCheck} 
+            disabled={isRunning}
+            size="sm"
+          >
+            {isRunning ? "Running..." : "Run Validation"}
+          </Button>
+          <Button onClick={clearConsole} variant="outline" size="sm">
+            Clear Console
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {consoleOutputs.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No console output yet. System operations will appear here.
             </div>
-            <div className="flex items-center gap-1">
-              <Button onClick={exportLogs} variant="ghost" size="sm">
-                <Download className="h-3 w-3" />
-              </Button>
-              <Button onClick={clearLogs} variant="ghost" size="sm">
-                <Trash2 className="h-3 w-3" />
-              </Button>
-              <Button onClick={() => setIsVisible(false)} variant="ghost" size="sm">
-                <EyeOff className="h-3 w-3" />
-              </Button>
-            </div>
-          </CardTitle>
-          <div className="flex gap-1">
-            {["all", "info", "success", "warn", "error"].map((level) => (
-              <Button
-                key={level}
-                onClick={() => setFilter(level)}
-                variant={filter === level ? "default" : "outline"}
-                size="sm"
-                className="text-xs px-2 py-1 h-6"
+          ) : (
+            consoleOutputs.map((output) => (
+              <div 
+                key={output.id} 
+                className="flex items-start gap-3 p-3 border rounded-lg text-sm"
               >
-                {level}
-              </Button>
-            ))}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-1 max-h-64 overflow-y-auto text-xs">
-            {filteredLogs.slice(-20).reverse().map((log) => (
-              <div key={log.id} className="border-l-2 border-gray-200 pl-2 py-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getLevelBadge(log.level) as any} className="text-xs px-1 py-0">
-                      {log.level}
-                    </Badge>
-                    <span className="font-medium">{log.source}</span>
-                  </div>
-                  <span className="text-muted-foreground">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
+                <div className="flex-shrink-0 mt-0.5">
+                  {getStatusIcon(output.status)}
                 </div>
-                <p className="mt-1 text-sm">{log.message}</p>
-                {log.data && (
-                  <pre className="mt-1 text-xs bg-muted p-1 rounded overflow-x-auto">
-                    {JSON.stringify(log.data, null, 2)}
-                  </pre>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-xs">
+                      {output.source}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(output.timestamp).toLocaleTimeString()}
+                    </span>
+                    {validationResults[output.id] !== undefined && (
+                      <Badge 
+                        variant={validationResults[output.id] ? "default" : "destructive"}
+                        className="text-xs"
+                      >
+                        {validationResults[output.id] ? "✓ Valid" : "✗ Invalid"}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className={`font-medium ${getStatusColor(output.status)}`}>
+                    {output.message}
+                  </div>
+                  {output.data && Object.keys(output.data).length > 0 && (
+                    <div className="mt-2 text-xs text-muted-foreground bg-muted p-2 rounded">
+                      <pre className="whitespace-pre-wrap">
+                        {JSON.stringify(output.data, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

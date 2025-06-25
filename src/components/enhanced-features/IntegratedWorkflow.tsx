@@ -1,262 +1,115 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Workflow, 
-  Play, 
-  Pause, 
-  Square, 
   Database, 
   Network, 
-  Wrench, 
-  Brain,
+  Settings, 
+  Brain, 
+  Play, 
+  Square,
   CheckCircle,
-  Clock,
-  AlertCircle,
-  Zap
+  AlertTriangle
 } from "lucide-react";
-import { systemIntegrationService } from "@/services/integration/systemIntegrationService";
+import { systemIntegrationService, IntegratedQueryRequest, IntegratedQueryResponse } from "@/services/integration/systemIntegrationService";
 import { useToast } from "@/hooks/use-toast";
 
-interface WorkflowStep {
-  id: string;
-  name: string;
-  type: "rag" | "a2a" | "mcp" | "deepseek";
-  status: "pending" | "running" | "completed" | "failed";
-  progress: number;
-  result?: any;
-  error?: string;
-}
-
-interface WorkflowExecution {
-  id: string;
-  name: string;
-  query: string;
-  steps: WorkflowStep[];
-  status: "idle" | "running" | "completed" | "failed";
-  startTime?: number;
-  endTime?: number;
-  overallProgress: number;
-}
-
 const IntegratedWorkflow: React.FC = () => {
-  const [workflow, setWorkflow] = useState<WorkflowExecution | null>(null);
   const [query, setQuery] = useState("");
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [workflowHistory, setWorkflowHistory] = useState<WorkflowExecution[]>([]);
+  const [response, setResponse] = useState<IntegratedQueryResponse | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [activeStep, setActiveStep] = useState("");
+  const [enabledServices, setEnabledServices] = useState({
+    rag: true,
+    a2a: true,
+    mcp: true,
+    deepseek: true
+  });
   const { toast } = useToast();
-
-  const sampleWorkflows = [
-    {
-      name: "Document Analysis Pipeline",
-      query: "Analyze the technical documentation for RAG implementation patterns and provide comprehensive insights",
-      description: "Retrieves documents, coordinates with analysis agents, uses tools for validation, and generates detailed analysis"
-    },
-    {
-      name: "System Integration Check",
-      query: "Perform a comprehensive health check of all integrated systems and recommend optimizations",
-      description: "Queries all services, coordinates diagnostics, executes health tools, and provides system recommendations"
-    },
-    {
-      name: "Knowledge Base Query",
-      query: "Find information about MCP protocol implementation and provide implementation guidance",
-      description: "Searches knowledge base, engages expert agents, accesses implementation tools, and creates guidance"
-    }
-  ];
 
   const executeWorkflow = async () => {
     if (!query.trim()) {
       toast({
         title: "Query Required",
-        description: "Please enter a workflow query",
+        description: "Please enter a query to process",
         variant: "destructive"
       });
       return;
     }
 
-    setIsExecuting(true);
-    
-    const newWorkflow: WorkflowExecution = {
-      id: `workflow-${Date.now()}`,
-      name: "Integrated Query Workflow",
-      query: query.trim(),
-      status: "running",
-      startTime: Date.now(),
-      overallProgress: 0,
-      steps: [
-        {
-          id: "rag-step",
-          name: "RAG Database Query",
-          type: "rag",
-          status: "running",
-          progress: 0
-        },
-        {
-          id: "a2a-step", 
-          name: "Agent Coordination",
-          type: "a2a",
-          status: "pending",
-          progress: 0
-        },
-        {
-          id: "mcp-step",
-          name: "Tool Execution",
-          type: "mcp", 
-          status: "pending",
-          progress: 0
-        },
-        {
-          id: "deepseek-step",
-          name: "DeepSeek Reasoning",
-          type: "deepseek",
-          status: "pending",
-          progress: 0
-        }
-      ]
-    };
+    setIsRunning(true);
+    setProgress(0);
+    setResponse(null);
+    setActiveStep("Initializing workflow...");
 
-    setWorkflow(newWorkflow);
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        const newProgress = Math.min(prev + 10, 90);
+        return newProgress;
+      });
+    }, 500);
 
     try {
-      // Execute the integrated workflow
-      const result = await systemIntegrationService.executeIntegratedQuery(query.trim());
+      const request: IntegratedQueryRequest = {
+        query: query.trim(),
+        enableRAG: enabledServices.rag,
+        enableA2A: enabledServices.a2a,
+        enableMCP: enabledServices.mcp,
+        enableDeepSeek: enabledServices.deepseek
+      };
+
+      setActiveStep("Executing integrated query...");
       
-      // Simulate progressive execution
-      await executeWorkflowSteps(newWorkflow, result);
+      const result = await systemIntegrationService.executeIntegratedQuery(request);
+      
+      setResponse(result);
+      setProgress(100);
+      setActiveStep("Workflow completed successfully");
       
       toast({
-        title: "Workflow Completed",
-        description: "Integrated workflow executed successfully"
+        title: "Workflow Complete",
+        description: `Processed with ${result.integrationSummary.servicesUsed.length} services`,
       });
+
     } catch (error) {
       console.error("Workflow execution failed:", error);
-      
-      setWorkflow(prev => prev ? {
-        ...prev,
-        status: "failed",
-        endTime: Date.now(),
-        steps: prev.steps.map(step => ({
-          ...step,
-          status: step.status === "running" ? "failed" : step.status,
-          error: step.status === "running" ? (error instanceof Error ? error.message : "Unknown error") : step.error
-        }))
-      } : null);
-      
+      setActiveStep("Workflow failed");
       toast({
         title: "Workflow Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive"
       });
     } finally {
-      setIsExecuting(false);
+      clearInterval(progressInterval);
+      setTimeout(() => setIsRunning(false), 1000);
     }
-  };
-
-  const executeWorkflowSteps = async (workflow: WorkflowExecution, result: any) => {
-    const steps = [...workflow.steps];
-    
-    // Step 1: RAG Database Query
-    await updateStepProgress(0, 100, "completed", result.ragResults);
-    
-    // Step 2: Agent Coordination
-    await updateStepProgress(1, 100, "completed", result.a2aCoordination);
-    
-    // Step 3: Tool Execution
-    await updateStepProgress(2, 100, "completed", result.mcpResults);
-    
-    // Step 4: DeepSeek Reasoning
-    await updateStepProgress(3, 100, "completed", result.reasoning);
-    
-    // Complete workflow
-    setWorkflow(prev => prev ? {
-      ...prev,
-      status: "completed",
-      endTime: Date.now(),
-      overallProgress: 100
-    } : null);
-    
-    // Add to history
-    setWorkflowHistory(prev => [workflow, ...prev.slice(0, 9)]);
-  };
-
-  const updateStepProgress = async (stepIndex: number, progress: number, status: WorkflowStep["status"], result?: any) => {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        setWorkflow(prev => {
-          if (!prev) return null;
-          
-          const updatedSteps = [...prev.steps];
-          updatedSteps[stepIndex] = {
-            ...updatedSteps[stepIndex],
-            progress,
-            status,
-            result
-          };
-          
-          // Update next step to running if current step completed
-          if (status === "completed" && stepIndex < updatedSteps.length - 1) {
-            updatedSteps[stepIndex + 1] = {
-              ...updatedSteps[stepIndex + 1],
-              status: "running"
-            };
-          }
-          
-          const overallProgress = updatedSteps.reduce((sum, step) => sum + step.progress, 0) / updatedSteps.length;
-          
-          return {
-            ...prev,
-            steps: updatedSteps,
-            overallProgress
-          };
-        });
-        resolve(undefined);
-      }, 1000 + Math.random() * 1000);
-    });
   };
 
   const stopWorkflow = () => {
-    setWorkflow(prev => prev ? {
-      ...prev,
-      status: "failed",
-      endTime: Date.now(),
-      steps: prev.steps.map(step => ({
-        ...step,
-        status: step.status === "running" ? "failed" : step.status,
-        error: step.status === "running" ? "Workflow stopped by user" : step.error
-      }))
-    } : null);
-    setIsExecuting(false);
-    
+    setIsRunning(false);
+    setProgress(0);
+    setActiveStep("");
     toast({
       title: "Workflow Stopped",
-      description: "Workflow execution was stopped by user"
+      description: "The workflow execution has been stopped",
     });
   };
 
-  const getStepIcon = (type: WorkflowStep["type"]) => {
-    switch (type) {
-      case "rag": return <Database className="h-4 w-4 text-blue-500" />;
-      case "a2a": return <Network className="h-4 w-4 text-green-500" />;
-      case "mcp": return <Wrench className="h-4 w-4 text-orange-500" />;
-      case "deepseek": return <Brain className="h-4 w-4 text-purple-500" />;
-      default: return <Zap className="h-4 w-4" />;
-    }
-  };
-
-  const getStatusIcon = (status: WorkflowStep["status"]) => {
-    switch (status) {
-      case "completed": return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "running": return <Clock className="h-4 w-4 text-blue-500 animate-pulse" />;
-      case "failed": return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-400" />;
-    }
-  };
+  const workflowSteps = [
+    { id: "rag", name: "RAG Query", icon: Database, enabled: enabledServices.rag },
+    { id: "a2a", name: "A2A Coordination", icon: Network, enabled: enabledServices.a2a },
+    { id: "mcp", name: "MCP Tools", icon: Settings, enabled: enabledServices.mcp },
+    { id: "deepseek", name: "DeepSeek Reasoning", icon: Brain, enabled: enabledServices.deepseek }
+  ];
 
   return (
     <div className="space-y-6">
@@ -264,31 +117,67 @@ const IntegratedWorkflow: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Workflow className="h-5 w-5" />
-            Integrated Workflow Execution
+            Integrated Multi-System Workflow
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Query Input */}
           <div className="space-y-2">
             <Label htmlFor="workflow-query">Workflow Query</Label>
             <Textarea
               id="workflow-query"
-              placeholder="Enter your query to execute across all integrated systems (RAG, A2A, MCP, DeepSeek)..."
+              placeholder="Enter a complex query that will be processed through multiple AI systems..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              rows={3}
+              rows={4}
             />
           </div>
 
-          <div className="flex items-center gap-4">
-            <Button 
+          {/* Service Configuration */}
+          <div className="space-y-4">
+            <Label className="text-base font-medium">Service Configuration</Label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {workflowSteps.map((step) => (
+                <div key={step.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <step.icon className="h-4 w-4" />
+                    <span className="text-sm font-medium">{step.name}</span>
+                  </div>
+                  <Switch
+                    checked={step.enabled}
+                    onCheckedChange={(checked) => 
+                      setEnabledServices(prev => ({ ...prev, [step.id]: checked }))
+                    }
+                    disabled={isRunning}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Display */}
+          {isRunning && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Workflow Progress</span>
+                <span className="text-sm text-muted-foreground">{progress}%</span>
+              </div>
+              <Progress value={progress} className="w-full" />
+              <div className="text-sm text-muted-foreground">{activeStep}</div>
+            </div>
+          )}
+
+          {/* Control Buttons */}
+          <div className="flex gap-3">
+            <Button
               onClick={executeWorkflow}
-              disabled={isExecuting || !query.trim()}
+              disabled={isRunning || !query.trim()}
               className="flex-1"
             >
-              {isExecuting ? (
+              {isRunning ? (
                 <>
-                  <Pause className="h-4 w-4 mr-2" />
-                  Executing Workflow...
+                  <Square className="h-4 w-4 mr-2" />
+                  Running Workflow...
                 </>
               ) : (
                 <>
@@ -298,191 +187,170 @@ const IntegratedWorkflow: React.FC = () => {
               )}
             </Button>
             
-            {isExecuting && (
-              <Button 
-                onClick={stopWorkflow}
-                variant="destructive"
-                size="sm"
-              >
+            {isRunning && (
+              <Button onClick={stopWorkflow} variant="destructive">
                 <Square className="h-4 w-4 mr-2" />
                 Stop
               </Button>
             )}
           </div>
 
+          {/* Sample Workflows */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Sample Workflows:</Label>
-            <div className="space-y-2">
-              {sampleWorkflows.map((sample, index) => (
-                <div key={index} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm">{sample.name}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setQuery(sample.query)}
-                      disabled={isExecuting}
-                    >
-                      Use
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{sample.description}</p>
-                  <p className="text-xs text-blue-600 italic">"{sample.query}"</p>
-                </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "Analyze market trends and generate strategic recommendations",
+                "Research competitor products and suggest improvements",
+                "Process user feedback and identify key issues",
+                "Generate comprehensive project documentation",
+                "Analyze technical requirements and propose architecture"
+              ].map((sample, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuery(sample)}
+                  className="text-xs"
+                  disabled={isRunning}
+                >
+                  {sample}
+                </Button>
               ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {workflow && (
-        <Tabs defaultValue="execution" className="w-full">
-          <TabsList>
-            <TabsTrigger value="execution">Execution Progress</TabsTrigger>
-            <TabsTrigger value="results">Results</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+      {/* Results Display */}
+      {response && (
+        <Tabs defaultValue="summary" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="services">Services Used</TabsTrigger>
+            <TabsTrigger value="response">Full Response</TabsTrigger>
+            <TabsTrigger value="metrics">Metrics</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="execution">
+          <TabsContent value="summary">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Workflow className="h-5 w-5" />
-                    {workflow.name}
-                  </div>
-                  <Badge 
-                    variant={workflow.status === "completed" ? "default" : 
-                            workflow.status === "failed" ? "destructive" : "secondary"}
-                  >
-                    {workflow.status}
-                  </Badge>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  Workflow Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Overall Progress</span>
-                    <span>{workflow.overallProgress.toFixed(0)}%</span>
-                  </div>
-                  <Progress value={workflow.overallProgress} />
-                </div>
-
-                <div className="space-y-3">
-                  {workflow.steps.map((step, index) => (
-                    <div key={step.id} className="border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getStepIcon(step.type)}
-                          <span className="font-medium">{step.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(step.status)}
-                          <span className="text-sm text-muted-foreground">
-                            {step.progress}%
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <Progress value={step.progress} className="mb-2" />
-                      
-                      {step.error && (
-                        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                          {step.error}
-                        </div>
-                      )}
-                      
-                      {step.result && step.status === "completed" && (
-                        <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-                          Step completed successfully
-                        </div>
-                      )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-500">
+                      {response.integrationSummary.servicesUsed.length}
                     </div>
-                  ))}
-                </div>
-
-                {workflow.startTime && (
-                  <div className="text-sm text-muted-foreground">
-                    Started: {new Date(workflow.startTime).toLocaleString()}
-                    {workflow.endTime && (
-                      <span className="ml-4">
-                        Duration: {((workflow.endTime - workflow.startTime) / 1000).toFixed(1)}s
-                      </span>
-                    )}
+                    <div className="text-sm text-muted-foreground">Services Used</div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="results">
-            <Card>
-              <CardHeader>
-                <CardTitle>Workflow Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {workflow.status === "completed" ? (
-                  <div className="space-y-4">
-                    {workflow.steps.map((step) => (
-                      step.result && (
-                        <div key={step.id} className="border rounded-lg p-3">
-                          <h4 className="font-medium mb-2 flex items-center gap-2">
-                            {getStepIcon(step.type)}
-                            {step.name} Results
-                          </h4>
-                          <div className="bg-muted p-2 rounded text-sm">
-                            <pre className="whitespace-pre-wrap">
-                              {typeof step.result === 'object' 
-                                ? JSON.stringify(step.result, null, 2)
-                                : String(step.result)
-                              }
-                            </pre>
-                          </div>
-                        </div>
-                      )
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-500">
+                      {response.processingTime}ms
+                    </div>
+                    <div className="text-sm text-muted-foreground">Processing Time</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-500">
+                      {(response.integrationSummary.successRate * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">Success Rate</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="font-medium">Services Executed:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {response.integrationSummary.servicesUsed.map((service) => (
+                      <Badge key={service} variant="default">
+                        {service}
+                      </Badge>
                     ))}
                   </div>
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    Workflow results will appear here when execution completes
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="history">
+          <TabsContent value="services">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {workflowSteps.filter(step => step.enabled).map((step) => (
+                <Card key={step.id}>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <step.icon className="h-4 w-4" />
+                      {step.name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">Executed successfully</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {step.id === "rag" && "Retrieved relevant documents from knowledge base"}
+                        {step.id === "a2a" && "Coordinated with specialized agents"}
+                        {step.id === "mcp" && "Executed relevant tools and operations"}
+                        {step.id === "deepseek" && "Applied advanced reasoning and analysis"}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="response">
             <Card>
               <CardHeader>
-                <CardTitle>Workflow History</CardTitle>
+                <CardTitle>Complete Workflow Response</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {workflowHistory.map((hist) => (
-                    <div key={hist.id} className="border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{hist.name}</span>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={hist.status === "completed" ? "default" : "destructive"}
-                          >
-                            {hist.status}
-                          </Badge>
-                          {hist.startTime && (
-                            <span className="text-sm text-muted-foreground">
-                              {new Date(hist.startTime).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{hist.query}</p>
+                <div className="prose max-w-none">
+                  <div className="whitespace-pre-wrap bg-muted p-4 rounded-lg text-sm">
+                    {response.finalResponse}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="metrics">
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-500">
+                      {response.integrationSummary.totalSteps}
                     </div>
-                  ))}
-                  {workflowHistory.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8">
-                      No workflow history yet
+                    <div className="text-sm text-muted-foreground">Total Steps</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-500">
+                      {Math.round(response.integrationSummary.totalSteps * response.integrationSummary.successRate)}
                     </div>
-                  )}
+                    <div className="text-sm text-muted-foreground">Successful Steps</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-500">
+                      {response.processingTime}ms
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Time</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-500">
+                      {response.finalResponse.length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Response Length</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

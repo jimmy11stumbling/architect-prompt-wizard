@@ -1,4 +1,3 @@
-
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
@@ -29,14 +28,78 @@ export interface IntegratedQueryResponse {
   };
 }
 
+export interface SystemInitializationConfig {
+  projectDescription: string;
+  frontendTechStack: string[];
+  backendTechStack: string[];
+  customFrontendTech: string[];
+  customBackendTech: string[];
+  a2aIntegrationDetails: string;
+  additionalFeatures: string;
+  ragVectorDb: string;
+  customRagVectorDb: string;
+  mcpType: string;
+  customMcpType: string;
+  advancedPromptDetails: string;
+}
+
 export class SystemIntegrationService {
   private static instance: SystemIntegrationService;
+  private _isInitialized = false;
 
   static getInstance(): SystemIntegrationService {
     if (!SystemIntegrationService.instance) {
       SystemIntegrationService.instance = new SystemIntegrationService();
     }
     return SystemIntegrationService.instance;
+  }
+
+  get isInitialized(): boolean {
+    return this._isInitialized;
+  }
+
+  async initialize(config: SystemInitializationConfig): Promise<void> {
+    if (this._isInitialized) return;
+
+    realTimeResponseService.addResponse({
+      source: "system-integration",
+      status: "processing",
+      message: "Initializing integrated AI system...",
+      data: { 
+        project: config.projectDescription,
+        techStack: [...config.frontendTechStack, ...config.backendTechStack]
+      }
+    });
+
+    try {
+      // Initialize all services
+      await Promise.all([
+        ragService.initialize(),
+        // Other services are already initialized on import
+      ]);
+
+      this._isInitialized = true;
+
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "success",
+        message: "System initialization completed successfully",
+        data: {
+          services: ["rag", "a2a", "mcp", "deepseek"],
+          ragVectorDb: config.ragVectorDb,
+          mcpType: config.mcpType
+        }
+      });
+
+    } catch (error) {
+      realTimeResponseService.addResponse({
+        source: "system-integration",
+        status: "error",
+        message: `System initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        data: { error }
+      });
+      throw error;
+    }
   }
 
   async executeIntegratedQuery(request: IntegratedQueryRequest): Promise<IntegratedQueryResponse> {
@@ -364,8 +427,8 @@ export class SystemIntegrationService {
         deepseek: deepseekHealth.healthy
       },
       details: {
-        ragDocuments: ragHealth.documentCount || 0,
-        a2aAgents: a2aHealth.totalAgents || 0,
+        ragDocuments: (ragHealth.healthy && 'documentCount' in ragHealth) ? ragHealth.documentCount : 0,
+        a2aAgents: (a2aHealth.healthy && 'totalAgents' in a2aHealth) ? a2aHealth.totalAgents : 0,
         mcpServers: mcpService.getServers().length,
         lastHealthCheck: Date.now()
       }
