@@ -249,7 +249,7 @@ const WorkflowDashboard: React.FC = () => {
                   <div key={execution.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">Execution {execution.id.slice(-8)}</div>
-                      <div className="text-sm text-muted-foregroundc">
+                      <div className="text-sm text-muted-foreground">
                         Started: {new Date(execution.started_at).toLocaleString()}
                       </div>
                     </div>
@@ -304,7 +304,7 @@ const WorkflowDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </TabsContent>
-      </tabs>
+      </Tabs>
     </div>
   );
 };
