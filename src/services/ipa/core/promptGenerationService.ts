@@ -4,7 +4,7 @@ import { mockTaskId } from "../mockData";
 import { connectionPool } from "../connectionPool";
 import { performanceMonitor } from "../performanceMonitor";
 import { SpecValidator } from "../validation/specValidator";
-import { CacheManager } from "./cacheManager";
+import { CacheManager } from "../services/core/cacheManager";
 import { realTimeResponseService } from "../../integration/realTimeResponseService";
 import { toast } from "@/hooks/use-toast";
 

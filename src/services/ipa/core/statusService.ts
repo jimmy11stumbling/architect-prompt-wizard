@@ -3,8 +3,8 @@ import { GenerationStatus } from "@/types/ipa-types";
 import { performanceMonitor } from "../performanceMonitor";
 import { requestBatcher } from "../requestBatcher";
 import { StatusManager } from "../status/statusManager";
-import { GenerationManager } from "./generationManager";
-import { CacheManager } from "./cacheManager";
+import { GenerationManager } from "../services/core/generationManager";
+import { CacheManager } from "../services/core/cacheManager";
 import { realTimeResponseService } from "../../integration/realTimeResponseService";
 
 export class StatusService {
