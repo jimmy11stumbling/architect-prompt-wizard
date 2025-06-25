@@ -87,21 +87,25 @@ const NavigationSidebar: React.FC = () => {
   ];
 
   return (
-    <div className="w-64 bg-card border-r border-border flex flex-col h-screen">
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Brain className="h-6 w-6 text-primary" />
+    <div className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 border-r border-blue-400/20 flex flex-col h-screen">
+      {/* Header with logo */}
+      <div className="p-4 border-b border-blue-400/20">
+        <div className="flex items-center gap-3">
+          <img 
+            src="/lovable-uploads/0b601e77-6a17-4bff-ab47-fcf8bdb6e879.png" 
+            alt="NoCodeLos Logo" 
+            className="h-8 w-8 object-contain"
+          />
           <div>
-            <h1 className="font-bold text-lg">IPA System</h1>
-            <p className="text-xs text-muted-foreground">Intelligent Prompt Architect</p>
+            <h1 className="font-bold text-lg text-gradient">NoCodeLos</h1>
+            <p className="text-xs text-blue-300">Intelligent Prompt Architect</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+        <div className="text-xs font-medium text-blue-300 uppercase tracking-wider mb-3">
           Core Features
         </div>
         
@@ -113,18 +117,22 @@ const NavigationSidebar: React.FC = () => {
             <Link key={item.path} to={item.path}>
               <Button
                 variant={isActive ? "default" : "ghost"}
-                className="w-full justify-start h-auto p-3 flex flex-col items-start"
+                className={`w-full justify-start h-auto p-3 flex flex-col items-start ${
+                  isActive 
+                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 text-white" 
+                    : "hover:bg-blue-500/10 hover:border-blue-400/20 text-slate-300"
+                }`}
               >
                 <div className="flex items-center gap-2 w-full">
-                  <Icon className="h-4 w-4" />
+                  <Icon className={`h-4 w-4 ${isActive ? "text-blue-300" : "text-slate-400"}`} />
                   <span className="font-medium">{item.label}</span>
                   {item.badge && (
-                    <Badge variant="secondary" className="ml-auto text-xs">
+                    <Badge variant="secondary" className="ml-auto text-xs bg-purple-500/20 text-purple-300 border-purple-400/30">
                       {item.badge}
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground text-left mt-1">
+                <p className="text-xs text-slate-400 text-left mt-1">
                   {item.description}
                 </p>
               </Button>
@@ -132,7 +140,7 @@ const NavigationSidebar: React.FC = () => {
           );
         })}
 
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 mt-6">
+        <div className="text-xs font-medium text-blue-300 uppercase tracking-wider mb-3 mt-6">
           Integration Systems
         </div>
         
@@ -144,18 +152,22 @@ const NavigationSidebar: React.FC = () => {
             <Link key={item.path} to={item.path}>
               <Button
                 variant={isActive ? "default" : "ghost"}
-                className="w-full justify-start h-auto p-3 flex flex-col items-start"
+                className={`w-full justify-start h-auto p-3 flex flex-col items-start ${
+                  isActive 
+                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 text-white" 
+                    : "hover:bg-blue-500/10 hover:border-blue-400/20 text-slate-300"
+                }`}
               >
                 <div className="flex items-center gap-2 w-full">
-                  <Icon className="h-4 w-4" />
+                  <Icon className={`h-4 w-4 ${isActive ? "text-blue-300" : "text-slate-400"}`} />
                   <span className="font-medium">{item.label}</span>
                   {item.badge && (
-                    <Badge variant="secondary" className="ml-auto text-xs">
+                    <Badge variant="secondary" className="ml-auto text-xs bg-purple-500/20 text-purple-300 border-purple-400/30">
                       {item.badge}
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground text-left mt-1">
+                <p className="text-xs text-slate-400 text-left mt-1">
                   {item.description}
                 </p>
               </Button>
@@ -163,7 +175,7 @@ const NavigationSidebar: React.FC = () => {
           );
         })}
 
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 mt-6">
+        <div className="text-xs font-medium text-blue-300 uppercase tracking-wider mb-3 mt-6">
           Tools & Utilities
         </div>
         
@@ -175,18 +187,22 @@ const NavigationSidebar: React.FC = () => {
             <Link key={item.path} to={item.path}>
               <Button
                 variant={isActive ? "default" : "ghost"}
-                className="w-full justify-start h-auto p-3 flex flex-col items-start"
+                className={`w-full justify-start h-auto p-3 flex flex-col items-start ${
+                  isActive 
+                    ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 text-white" 
+                    : "hover:bg-blue-500/10 hover:border-blue-400/20 text-slate-300"
+                }`}
               >
                 <div className="flex items-center gap-2 w-full">
-                  <Icon className="h-4 w-4" />
+                  <Icon className={`h-4 w-4 ${isActive ? "text-blue-300" : "text-slate-400"}`} />
                   <span className="font-medium">{item.label}</span>
                   {item.badge && (
-                    <Badge variant="secondary" className="ml-auto text-xs">
+                    <Badge variant="secondary" className="ml-auto text-xs bg-purple-500/20 text-purple-300 border-purple-400/30">
                       {item.badge}
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground text-left mt-1">
+                <p className="text-xs text-slate-400 text-left mt-1">
                   {item.description}
                 </p>
               </Button>
@@ -196,13 +212,13 @@ const NavigationSidebar: React.FC = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
-        <div className="text-xs text-muted-foreground space-y-1">
+      <div className="p-4 border-t border-blue-400/20">
+        <div className="text-xs text-slate-400 space-y-1">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span>All Systems Online</span>
           </div>
-          <div>DeepSeek Reasoner • RAG 2.0 • A2A • MCP</div>
+          <div className="text-blue-300">DeepSeek Reasoner • RAG 2.0 • A2A • MCP</div>
         </div>
       </div>
     </div>

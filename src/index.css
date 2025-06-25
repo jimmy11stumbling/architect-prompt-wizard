@@ -43,17 +43,47 @@
   }
 
   body {
-    @apply bg-ipa-background text-ipa-text;
+    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-ipa-text;
   }
 }
 
 .bg-gradient-blue-purple {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #a855f7 100%);
 }
 
 .text-gradient {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+  background-image: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #c084fc 100%);
+}
+
+/* NoCodeLos theme enhancements */
+.nocodelos-cursor {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.nocodelos-blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.nocodelos-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+/* Enhanced button styling */
+.btn-nocodelos {
+  @apply bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl;
+}
+
+.btn-nocodelos-outline {
+  @apply border-2 border-blue-400 text-blue-300 hover:bg-blue-500/10 hover:border-blue-300 transition-all duration-300;
+}
+
+/* Card enhancements */
+.card-nocodelos {
+  @apply bg-gradient-to-br from-slate-800/50 to-slate-900/50 border border-blue-400/20 backdrop-blur-sm;
 }
