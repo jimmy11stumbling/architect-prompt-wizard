@@ -3,14 +3,68 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Code, FileText, Network, Database, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, Code, FileText, Network, Database, Settings, Copy } from "lucide-react";
 import { EnhancedResponse } from "@/services/integration/enhancedSystemService";
+import { useToast } from "@/hooks/use-toast";
 
 interface ResponseTabsProps {
   response: EnhancedResponse;
 }
 
 const ResponseTabs: React.FC<ResponseTabsProps> = ({ response }) => {
+  const { toast } = useToast();
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied to clipboard",
+        description: `${label} has been copied to your clipboard.`,
+      });
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy content to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copySourcesAsText = () => {
+    const sourcesText = [
+      "=== RAG DOCUMENTS ===",
+      ...(response.sources.ragDocuments?.map((doc, index) => 
+        `${index + 1}. ${doc.title}\n   ${doc.content}`
+      ) || []),
+      "",
+      "=== MCP TOOLS ===",
+      ...(response.sources.mcpTools?.map((tool, index) => 
+        `${index + 1}. ${tool.name}\n   ${tool.description}`
+      ) || []),
+      "",
+      "=== A2A AGENTS ===",
+      ...(response.sources.a2aAgents?.map((agent, index) => 
+        `${index + 1}. ${agent.name} (${agent.status})`
+      ) || [])
+    ].join("\n");
+
+    copyToClipboard(sourcesText, "Sources");
+  };
+
+  const copyIntegrationStatus = () => {
+    const integrationText = [
+      "=== INTEGRATION STATUS ===",
+      `RAG Integration: ${response.sources.ragDocuments?.length || 0} documents`,
+      `A2A Protocol: ${response.sources.a2aAgents?.length || 0} agents`,
+      `MCP Hub: ${response.sources.mcpTools?.length || 0} tools`,
+      `DeepSeek Reasoner ID: ${response.conversationId.slice(-8)}`
+    ].join("\n");
+
+    copyToClipboard(integrationText, "Integration Status");
+  };
+
   return (
     <Tabs defaultValue="response" className="w-full">
       <TabsList className="grid w-full grid-cols-4">
@@ -35,7 +89,18 @@ const ResponseTabs: React.FC<ResponseTabsProps> = ({ response }) => {
       <TabsContent value="response">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Enhanced Response</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Enhanced Response</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(response.response, "Response")}
+                className="flex items-center gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Response
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="prose max-w-none">
@@ -50,7 +115,18 @@ const ResponseTabs: React.FC<ResponseTabsProps> = ({ response }) => {
       <TabsContent value="reasoning">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Chain of Thought Process</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Chain of Thought Process</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(response.reasoning || "No reasoning content available", "Reasoning")}
+                className="flex items-center gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Reasoning
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="prose max-w-none">
@@ -64,6 +140,17 @@ const ResponseTabs: React.FC<ResponseTabsProps> = ({ response }) => {
 
       <TabsContent value="sources">
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copySourcesAsText}
+              className="flex items-center gap-2"
+            >
+              <Copy className="h-4 w-4" />
+              Copy All Sources
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
@@ -124,7 +211,18 @@ const ResponseTabs: React.FC<ResponseTabsProps> = ({ response }) => {
       <TabsContent value="integration">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Integration Status</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Integration Status</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyIntegrationStatus}
+                className="flex items-center gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Status
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
