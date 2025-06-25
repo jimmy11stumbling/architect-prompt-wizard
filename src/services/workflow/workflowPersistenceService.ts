@@ -44,7 +44,7 @@ export class WorkflowPersistenceService {
       .from('workflow_definitions')
       .insert({
         name: definition.name,
-        definition: definition,
+        definition: definition as any, // Cast to Json type
         user_id: user.data.user.id,
         is_active: true
       })
@@ -52,7 +52,12 @@ export class WorkflowPersistenceService {
       .single();
 
     if (error) throw error;
-    return data;
+    
+    // Cast the returned data to our expected type
+    return {
+      ...data,
+      definition: data.definition as WorkflowDefinition
+    } as WorkflowRecord;
   }
 
   async getWorkflows(): Promise<WorkflowRecord[]> {
@@ -67,7 +72,12 @@ export class WorkflowPersistenceService {
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Cast the returned data to our expected type
+    return (data || []).map(item => ({
+      ...item,
+      definition: item.definition as WorkflowDefinition
+    })) as WorkflowRecord[];
   }
 
   async saveExecution(execution: WorkflowExecution): Promise<WorkflowExecutionRecord> {
@@ -92,7 +102,7 @@ export class WorkflowPersistenceService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as WorkflowExecutionRecord;
   }
 
   async getExecutions(workflowId?: string): Promise<WorkflowExecutionRecord[]> {
@@ -111,7 +121,7 @@ export class WorkflowPersistenceService {
     const { data, error } = await query.order('started_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as WorkflowExecutionRecord[];
   }
 }
 
