@@ -3,11 +3,12 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bot } from "lucide-react";
+import { AgentName } from "@/types/ipa-types";
 
 interface AgentSelectorProps {
-  agents: string[];
-  selectedAgent: string | null;
-  onSelectAgent: (agent: string | null) => void;
+  agents: AgentName[];
+  selectedAgent: AgentName | null;
+  onSelectAgent: (agent: AgentName | null) => void;
 }
 
 const AgentSelector: React.FC<AgentSelectorProps> = ({ 

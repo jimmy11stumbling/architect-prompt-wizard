@@ -12,10 +12,10 @@ interface SystemService {
 
 export const useLiveMonitoring = () => {
   const [isLive, setIsLive] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
   const [responses, setResponses] = useState<any[]>([]);
 
-  const agents: string[] = [
+  const agents: AgentName[] = [
     "RequirementDecompositionAgent",
     "RAGContextIntegrationAgent", 
     "A2AProtocolExpertAgent",
