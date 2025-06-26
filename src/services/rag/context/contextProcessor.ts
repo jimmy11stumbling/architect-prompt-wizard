@@ -1,4 +1,3 @@
-
 import { SearchResult } from "../search/hybridSearchEngine";
 import { RAGQuery } from "@/types/rag-types";
 
@@ -68,7 +67,7 @@ export class ContextProcessor {
     // Calculate overall relevance score
     const relevanceScore = this.calculateOverallRelevance(rankedResults);
 
-    // Create source references
+    // Create source references - fix the title reference
     const sources = rankedResults.map(result => ({
       chunkId: result.chunk.id,
       title: result.chunk.metadata.title || `Chunk ${result.chunk.metadata.chunkIndex + 1}`,

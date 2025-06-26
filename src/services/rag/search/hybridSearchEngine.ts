@@ -221,12 +221,12 @@ export class HybridSearchEngine {
     }
     
     // Boost for chunks with tables if query suggests data lookup
-    if (chunk.metadata.tables && this.isDataQuery(query)) {
+    if (chunk.metadata.tables && chunk.metadata.tables.length > 0 && this.isDataQuery(query)) {
       score += 0.2;
     }
     
     // Boost for chunks with code if query is technical
-    if (chunk.metadata.codeBlocks && this.isTechnicalQuery(query)) {
+    if (chunk.metadata.codeBlocks && chunk.metadata.codeBlocks.length > 0 && this.isTechnicalQuery(query)) {
       score += 0.2;
     }
     

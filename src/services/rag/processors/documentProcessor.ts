@@ -14,6 +14,9 @@ export interface ProcessedChunk {
     headings?: string[];
     tables?: string[];
     images?: string[];
+    codeBlocks?: string[];
+    nearHeading?: boolean;
+    title?: string;
   };
 }
 
@@ -176,7 +179,11 @@ export class DocumentProcessor {
           text: currentChunk.trim(),
           startIndex,
           endIndex,
-          metadata: { ...currentMetadata }
+          metadata: { 
+            ...currentMetadata,
+            nearHeading: structure && this.isNearHeading(content, startIndex + currentChunk.length, structure.headings),
+            codeBlocks: structure?.codeBlocks || []
+          }
         });
 
         // Start new chunk with overlap
@@ -187,11 +194,6 @@ export class DocumentProcessor {
       } else {
         currentChunk = potentialChunk;
       }
-
-      // Update metadata based on structure
-      if (structure && this.isNearHeading(content, startIndex + currentChunk.length, structure.headings)) {
-        currentMetadata.nearHeading = true;
-      }
     }
 
     // Add final chunk
@@ -200,7 +202,11 @@ export class DocumentProcessor {
         text: currentChunk.trim(),
         startIndex,
         endIndex: startIndex + currentChunk.length,
-        metadata: currentMetadata
+        metadata: {
+          ...currentMetadata,
+          nearHeading: structure && this.isNearHeading(content, startIndex + currentChunk.length, structure.headings),
+          codeBlocks: structure?.codeBlocks || []
+        }
       });
     }
 
