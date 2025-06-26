@@ -23,21 +23,6 @@ export interface IntegratedQueryResponse {
   };
 }
 
-export interface SystemInitializationConfig {
-  projectDescription: string;
-  frontendTechStack: string[];
-  backendTechStack: string[];
-  customFrontendTech: string[];
-  customBackendTech: string[];
-  a2aIntegrationDetails: string;
-  additionalFeatures: string;
-  ragVectorDb: string;
-  customRagVectorDb: string;
-  mcpType: string;
-  customMcpType: string;
-  advancedPromptDetails: string;
-}
-
 export interface SystemHealthStatus {
   overallHealth: boolean;
   serviceHealth: {
@@ -52,4 +37,11 @@ export interface SystemHealthStatus {
     mcpServers: number;
     lastHealthCheck: number;
   };
+}
+
+export interface SystemInitializationConfig {
+  ragEnabled?: boolean;
+  a2aEnabled?: boolean;
+  mcpEnabled?: boolean;
+  deepseekEnabled?: boolean;
 }
