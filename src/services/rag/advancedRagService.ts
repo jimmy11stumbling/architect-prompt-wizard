@@ -1,4 +1,3 @@
-
 import { RAGQuery, RAGResponse, RAGDocument, RAGResult } from "@/types/rag-types";
 import { DocumentProcessor, ProcessedChunk } from "./processors/documentProcessor";
 import { HybridSearchEngine, SearchResult } from "./search/hybridSearchEngine";
@@ -27,7 +26,6 @@ export class AdvancedRAGService {
   }
 
   private async initializeWithSampleData() {
-    // Use the sample documents from the original service
     const sampleDocuments: RAGDocument[] = [
       {
         id: "rag-doc-1",
@@ -67,7 +65,6 @@ export class AdvancedRAGService {
       }
     ];
 
-    // Process each document
     for (const doc of sampleDocuments) {
       await this.indexDocument(doc);
     }
@@ -82,7 +79,6 @@ export class AdvancedRAGService {
     });
 
     try {
-      // Process document into chunks
       const chunks = await DocumentProcessor.processDocument(document, {
         chunkSize: 800,
         chunkOverlap: 150,
@@ -90,11 +86,8 @@ export class AdvancedRAGService {
         extractMetadata: true
       });
 
-      // Store processed chunks
       this.processedChunks.set(document.id, chunks);
       this.documentIndex.set(document.id, document);
-
-      // Add chunks to search engine
       this.searchEngine.addChunks(chunks);
 
       realTimeResponseService.addResponse({
@@ -137,11 +130,9 @@ export class AdvancedRAGService {
     const searchStartTime = Date.now();
     
     try {
-      // Perform hybrid search
       const searchResults = await this.searchEngine.search(query);
       const searchTime = Date.now() - searchStartTime;
 
-      // Compress context if requested
       let compressedContext: CompressedContext | undefined;
       let compressionTime = 0;
 
@@ -160,7 +151,6 @@ export class AdvancedRAGService {
         compressionTime = Date.now() - compressionStartTime;
       }
 
-      // Convert search results to RAG results
       const ragResults: RAGResult[] = searchResults.map(result => ({
         id: result.chunk.id,
         title: this.getDocumentTitle(result.chunk.metadata.documentId),
@@ -175,8 +165,6 @@ export class AdvancedRAGService {
       }));
 
       const totalProcessingTime = Date.now() - startTime;
-
-      // Generate search explanation
       const searchExplanation = this.generateSearchExplanation(searchResults, query);
 
       const response: AdvancedRAGResponse = {
