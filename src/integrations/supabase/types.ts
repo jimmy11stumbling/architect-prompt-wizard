@@ -90,62 +90,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ai_processing_jobs: {
-        Row: {
-          completed_at: string | null
-          created_at: string | null
-          document_id: string | null
-          error_details: string | null
-          id: string
-          input_data: Json | null
-          job_type: string
-          output_data: Json | null
-          processing_time_ms: number | null
-          progress: number | null
-          started_at: string | null
-          status: string | null
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string | null
-          document_id?: string | null
-          error_details?: string | null
-          id?: string
-          input_data?: Json | null
-          job_type: string
-          output_data?: Json | null
-          processing_time_ms?: number | null
-          progress?: number | null
-          started_at?: string | null
-          status?: string | null
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string | null
-          document_id?: string | null
-          error_details?: string | null
-          id?: string
-          input_data?: Json | null
-          job_type?: string
-          output_data?: Json | null
-          processing_time_ms?: number | null
-          progress?: number | null
-          started_at?: string | null
-          status?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_processing_jobs_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       conversations: {
         Row: {
           created_at: string | null
@@ -221,154 +165,61 @@ export type Database = {
         }
         Relationships: []
       }
-      deepseek_configurations: {
-        Row: {
-          api_settings: Json | null
-          config_name: string
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          model_name: string | null
-          processing_rules: Json | null
-          prompt_templates: Json | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          api_settings?: Json | null
-          config_name: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          model_name?: string | null
-          processing_rules?: Json | null
-          prompt_templates?: Json | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          api_settings?: Json | null
-          config_name?: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          model_name?: string | null
-          processing_rules?: Json | null
-          prompt_templates?: Json | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      document_formats: {
-        Row: {
-          created_at: string | null
-          format_name: string
-          id: string
-          is_active: boolean | null
-          mime_types: string[]
-          processing_config: Json | null
-          supported_operations: string[]
-        }
-        Insert: {
-          created_at?: string | null
-          format_name: string
-          id?: string
-          is_active?: boolean | null
-          mime_types?: string[]
-          processing_config?: Json | null
-          supported_operations?: string[]
-        }
-        Update: {
-          created_at?: string | null
-          format_name?: string
-          id?: string
-          is_active?: boolean | null
-          mime_types?: string[]
-          processing_config?: Json | null
-          supported_operations?: string[]
-        }
-        Relationships: []
-      }
       documents: {
         Row: {
-          ai_analysis: Json | null
-          category: string | null
+          analysis_results: Json | null
+          conversation_id: string | null
           created_at: string | null
-          deepseek_analysis: Json | null
           extracted_text: string | null
-          file_size: number
+          file_size: number | null
           filename: string
-          format_id: string | null
           id: string
-          is_public: boolean | null
-          mcp_tool_results: Json | null
-          metadata: Json | null
-          mime_type: string
-          original_filename: string
-          processed_at: string | null
+          mime_type: string | null
           processing_progress: number | null
-          processing_status: string | null
+          status: Database["public"]["Enums"]["document_status"] | null
           storage_path: string | null
-          tags: string[] | null
           updated_at: string | null
           user_id: string
-          vector_embeddings: Json | null
+          vector_id: string | null
         }
         Insert: {
-          ai_analysis?: Json | null
-          category?: string | null
+          analysis_results?: Json | null
+          conversation_id?: string | null
           created_at?: string | null
-          deepseek_analysis?: Json | null
           extracted_text?: string | null
-          file_size: number
+          file_size?: number | null
           filename: string
-          format_id?: string | null
           id?: string
-          is_public?: boolean | null
-          mcp_tool_results?: Json | null
-          metadata?: Json | null
-          mime_type: string
-          original_filename: string
-          processed_at?: string | null
+          mime_type?: string | null
           processing_progress?: number | null
-          processing_status?: string | null
+          status?: Database["public"]["Enums"]["document_status"] | null
           storage_path?: string | null
-          tags?: string[] | null
           updated_at?: string | null
           user_id: string
-          vector_embeddings?: Json | null
+          vector_id?: string | null
         }
         Update: {
-          ai_analysis?: Json | null
-          category?: string | null
+          analysis_results?: Json | null
+          conversation_id?: string | null
           created_at?: string | null
-          deepseek_analysis?: Json | null
           extracted_text?: string | null
-          file_size?: number
+          file_size?: number | null
           filename?: string
-          format_id?: string | null
           id?: string
-          is_public?: boolean | null
-          mcp_tool_results?: Json | null
-          metadata?: Json | null
-          mime_type?: string
-          original_filename?: string
-          processed_at?: string | null
+          mime_type?: string | null
           processing_progress?: number | null
-          processing_status?: string | null
+          status?: Database["public"]["Enums"]["document_status"] | null
           storage_path?: string | null
-          tags?: string[] | null
           updated_at?: string | null
           user_id?: string
-          vector_embeddings?: Json | null
+          vector_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "documents_format_id_fkey"
-            columns: ["format_id"]
+            foreignKeyName: "documents_conversation_id_fkey"
+            columns: ["conversation_id"]
             isOneToOne: false
-            referencedRelation: "document_formats"
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -588,49 +439,15 @@ export type Database = {
           metadata?: Json | null
           vector_id?: string | null
         }
-        Relationships: []
-      }
-      mcp_tools: {
-        Row: {
-          capabilities: string[] | null
-          configuration: Json | null
-          created_at: string | null
-          description: string | null
-          id: string
-          is_active: boolean | null
-          supported_formats: string[] | null
-          tool_name: string
-          tool_type: string
-          updated_at: string | null
-          version: string | null
-        }
-        Insert: {
-          capabilities?: string[] | null
-          configuration?: Json | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          supported_formats?: string[] | null
-          tool_name: string
-          tool_type: string
-          updated_at?: string | null
-          version?: string | null
-        }
-        Update: {
-          capabilities?: string[] | null
-          configuration?: Json | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          supported_formats?: string[] | null
-          tool_name?: string
-          tool_type?: string
-          updated_at?: string | null
-          version?: string | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_embeddings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
