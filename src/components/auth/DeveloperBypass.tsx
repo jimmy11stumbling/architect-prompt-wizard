@@ -96,8 +96,11 @@ const DeveloperBypass: React.FC = () => {
     }
   };
 
-  // Only show in development
-  if (process.env.NODE_ENV === 'production') {
+  // Show in all non-production environments (including Lovable preview)
+  const isProduction = window.location.hostname.includes('lovable.app') && 
+                      !window.location.hostname.includes('preview');
+  
+  if (isProduction) {
     return null;
   }
 
