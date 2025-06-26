@@ -10,9 +10,7 @@ const ProjectHeader: React.FC = () => {
       <h2 className="text-2xl font-semibold mb-4 text-blue-300">
         Intelligent Prompt Architect
       </h2>
-      <p className="text-lg text-slate-300 max-w-3xl mx-auto">
-        Generate sophisticated Cursor AI prompts for building full-stack applications with Agent-to-Agent communication, RAG 2.0, and MCP integration
-      </p>
+      <p className="text-lg text-slate-300 max-w-3xl mx-auto">Generate sophisticated AI prompts for building full-stack applications with Agent-to-Agent communication, RAG 2.0, and MCP integration</p>
       <div className="flex items-center justify-center gap-2 mt-4">
         <div className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm border border-blue-400/30">
           DeepSeek Powered
