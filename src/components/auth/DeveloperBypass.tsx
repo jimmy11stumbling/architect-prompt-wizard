@@ -14,39 +14,75 @@ const DeveloperBypass: React.FC = () => {
     setLoading(true);
     
     try {
-      // Create a temporary dev user
-      const devEmail = `dev-${Date.now()}@temp.com`;
+      // Create a more unique dev user
+      const timestamp = Date.now();
+      const devEmail = `dev-${timestamp}@temp.com`;
       const devPassword = "devpass123";
       
       console.log('Creating dev user:', devEmail);
       
-      const { data, error } = await supabase.auth.signUp({
+      // First try to sign up
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: devEmail,
         password: devPassword,
         options: {
           // Skip email confirmation for dev users
+          emailRedirectTo: window.location.origin,
           data: {
             email_confirm: true,
           }
         }
       });
       
-      if (error) {
-        // If signup fails, try to sign in (user might already exist)
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        // If signup fails, try to sign in with a generic dev account
+        const genericEmail = "dev@temp.com";
         const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: devEmail,
+          email: genericEmail,
           password: devPassword,
         });
         
         if (signInError) {
-          throw signInError;
+          // Create the generic dev account
+          const { error: genericSignUpError } = await supabase.auth.signUp({
+            email: genericEmail,
+            password: devPassword,
+            options: {
+              emailRedirectTo: window.location.origin,
+              data: {
+                email_confirm: true,
+              }
+            }
+          });
+          
+          if (genericSignUpError) {
+            throw genericSignUpError;
+          }
+          
+          // Now sign in with the generic account
+          const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+            email: genericEmail,
+            password: devPassword,
+          });
+          
+          if (finalSignInError) {
+            throw finalSignInError;
+          }
         }
       }
+      
+      // Wait a moment for auth state to update
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       toast({
         title: "Developer Login Successful",
         description: "You've been signed in with a temporary developer account.",
       });
+      
+      // Force a session check
+      const { data: session } = await supabase.auth.getSession();
+      console.log('Developer login session:', session);
       
     } catch (error: any) {
       console.error('Dev bypass error:', error);

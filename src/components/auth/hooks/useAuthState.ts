@@ -15,11 +15,14 @@ export const useAuthState = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email);
+        
+        // Update state immediately
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
         if (event === 'SIGNED_IN') {
+          console.log('User signed in successfully:', session?.user?.email);
           toast({
             title: "Welcome!",
             description: "You have been signed in successfully.",
@@ -27,6 +30,7 @@ export const useAuthState = () => {
         }
         
         if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
           toast({
             title: "Signed out",
             description: "You have been signed out successfully.",
@@ -43,21 +47,31 @@ export const useAuthState = () => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting session:', error);
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+        } else {
+          console.log('Initial session check:', session?.user?.email);
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
       }
-      console.log('Initial session check:', session?.user?.email);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    };
+
+    checkSession();
 
     return () => subscription.unsubscribe();
   }, [toast]);
 
   const handleSignOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
     } catch (error: any) {
@@ -67,6 +81,8 @@ export const useAuthState = () => {
         description: "Failed to sign out: " + (error.message || "Unknown error"),
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
