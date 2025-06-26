@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Brain, Send, History, Settings, Database, Network, Wrench } from "lucide-react";
+import { Brain, Send, History, Database, Network, Wrench } from "lucide-react";
 import { deepseekReasonerService, ReasonerQuery, ReasonerResponse, ConversationHistory } from "@/services/deepseek/deepseekReasonerService";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,11 +54,10 @@ const DeepSeekReasonerPanel: React.FC = () => {
       setResponse(result);
       setCurrentConversationId(result.conversationId);
       
-      // Update conversations
       const updatedConversations = deepseekReasonerService.getAllConversations();
       setConversations(updatedConversations);
 
-      setQuery(""); // Clear input after successful processing
+      setQuery("");
       
       toast({
         title: "Processing Complete",
@@ -106,14 +105,12 @@ const DeepSeekReasonerPanel: React.FC = () => {
   ];
 
   useEffect(() => {
-    // Load existing conversations on mount
     const existingConversations = deepseekReasonerService.getAllConversations();
     setConversations(existingConversations);
   }, []);
 
   return (
     <div className="space-y-6">
-      {/* Query Interface */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -137,7 +134,6 @@ const DeepSeekReasonerPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Integration Settings */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -206,7 +202,6 @@ const DeepSeekReasonerPanel: React.FC = () => {
             )}
           </div>
 
-          {/* Sample Queries */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Sample Questions:</Label>
             <div className="flex flex-wrap gap-2">
@@ -226,7 +221,6 @@ const DeepSeekReasonerPanel: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Response Display */}
       {response && (
         <Tabs defaultValue="answer" className="w-full">
           <TabsList>
@@ -260,7 +254,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
                 <CardTitle>Chain-of-Thought Reasoning</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted p-4 rounded-lg">
+                <div className="bg-muted p-4 rounded-lg max-h-96 overflow-y-auto">
                   <div className="whitespace-pre-wrap font-mono text-sm">
                     {response.reasoning}
                   </div>
@@ -282,14 +276,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
                       RAG Database Results
                     </h4>
                     <div className="text-sm text-muted-foreground">
-                      Retrieved {response.integrationData.ragResults.documents.length} documents:
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {response.integrationData.ragResults.documents.slice(0, 3).map((doc, index) => (
-                        <div key={index} className="text-xs p-2 bg-muted rounded">
-                          <strong>{doc.title}</strong> - {doc.source}
-                        </div>
-                      ))}
+                      Documents used: {response.integrationData.ragResults.documentsUsed || 0}
                     </div>
                   </div>
                 )}
@@ -314,13 +301,6 @@ const DeepSeekReasonerPanel: React.FC = () => {
                     </h4>
                     <div className="text-sm text-muted-foreground">
                       {response.integrationData.mcpToolCalls.length} tools executed
-                    </div>
-                    <div className="mt-2 space-y-1">
-                      {response.integrationData.mcpToolCalls.map((call, index) => (
-                        <div key={index} className="text-xs p-2 bg-muted rounded">
-                          <strong>{call.tool}</strong>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )}
@@ -387,7 +367,6 @@ const DeepSeekReasonerPanel: React.FC = () => {
         </Tabs>
       )}
 
-      {/* Conversation History */}
       {conversations.size > 0 && (
         <Card>
           <CardHeader>

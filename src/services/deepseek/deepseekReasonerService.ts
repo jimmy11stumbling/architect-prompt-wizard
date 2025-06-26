@@ -1,3 +1,4 @@
+
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface ReasonerQuery {
@@ -66,7 +67,6 @@ export class DeepSeekReasonerService {
     if (this.initialized) return;
     
     try {
-      // Initialize API key from environment
       this.apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || null;
       this.initialized = true;
     } catch (error) {
@@ -76,11 +76,9 @@ export class DeepSeekReasonerService {
   }
 
   private async makeDeepSeekCall(messages: Array<{role: string, content: string}>): Promise<any> {
-    // Check if we have API key from environment or use a placeholder for demo
     const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || this.apiKey;
     
     if (!apiKey) {
-      // Fallback to enhanced mock response for demo purposes
       return this.generateEnhancedMockResponse(messages[messages.length - 1].content);
     }
 
@@ -112,7 +110,6 @@ export class DeepSeekReasonerService {
   }
 
   private generateEnhancedMockResponse(prompt: string): any {
-    // Generate more sophisticated mock response based on prompt analysis
     const isRAGQuery = prompt.toLowerCase().includes('rag') || prompt.toLowerCase().includes('retrieval');
     const isA2AQuery = prompt.toLowerCase().includes('a2a') || prompt.toLowerCase().includes('agent');
     const isMCPQuery = prompt.toLowerCase().includes('mcp') || prompt.toLowerCase().includes('tool');
@@ -196,11 +193,9 @@ export class DeepSeekReasonerService {
     });
 
     try {
-      // Prepare messages for API call
       const messages = [];
       
-      // Add conversation history if available
-      if (query.conversationHistory) {
+      if (query.conversationHistory && query.conversationHistory.length > 0) {
         query.conversationHistory.forEach(msg => {
           messages.push({
             role: msg.role,
@@ -209,19 +204,16 @@ export class DeepSeekReasonerService {
         });
       }
 
-      // Add current query
       messages.push({
         role: "user",
         content: query.prompt
       });
 
-      // Make API call to DeepSeek
       const apiResponse = await this.makeDeepSeekCall(messages);
       
       const answer = apiResponse.choices[0].message.content;
       const reasoning = apiResponse.choices[0].message.reasoning || "Advanced reasoning process completed.";
 
-      // Extract token usage
       const tokenUsage: TokenUsage = {
         promptTokens: apiResponse.usage?.prompt_tokens || 0,
         completionTokens: apiResponse.usage?.completion_tokens || 0,
@@ -231,7 +223,6 @@ export class DeepSeekReasonerService {
 
       const processingTime = Date.now() - startTime;
 
-      // Store conversation
       const conversation: ConversationHistory[] = [
         { role: "user", content: query.prompt, timestamp: startTime },
         { role: "assistant", content: answer, timestamp: Date.now() }
@@ -247,7 +238,7 @@ export class DeepSeekReasonerService {
         processingTime,
         usage: tokenUsage,
         integrationData: query.ragEnabled || query.a2aEnabled || query.mcpEnabled ? {
-          ragResults: query.ragEnabled ? { documentsUsed: 3 } : undefined,
+          ragResults: query.ragEnabled ? { documentsUsed: 3, documents: [] } : undefined,
           a2aMessages: query.a2aEnabled ? [{ agent: "analyzer", message: "Analysis complete" }] : undefined,
           mcpToolCalls: query.mcpEnabled ? [{ tool: "search", status: "success" }] : undefined
         } : undefined
