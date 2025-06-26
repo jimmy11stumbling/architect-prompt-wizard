@@ -3,14 +3,21 @@ import { useState, useEffect } from "react";
 import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
 import { AgentName } from "@/types/ipa-types";
 
+interface SystemService {
+  name: string;
+  icon: string;
+  status: "active" | "inactive";
+  color: string;
+}
+
 export const useLiveMonitoring = () => {
   const [isLive, setIsLive] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState<AgentName | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [responses, setResponses] = useState<any[]>([]);
 
-  const agents: AgentName[] = [
+  const agents: string[] = [
     "RequirementDecompositionAgent",
-    "RAGContextIntegrationAgent",
+    "RAGContextIntegrationAgent", 
     "A2AProtocolExpertAgent",
     "TechStackImplementationAgent_Frontend",
     "TechStackImplementationAgent_Backend",
@@ -18,11 +25,11 @@ export const useLiveMonitoring = () => {
     "QualityAssuranceAgent"
   ];
 
-  const systemServices = [
-    { name: "RAG 2.0", icon: "Database", status: "active", color: "text-green-500" },
-    { name: "A2A Protocol", icon: "Network", status: "active", color: "text-blue-500" },
-    { name: "MCP Hub", icon: "Settings", status: "active", color: "text-purple-500" },
-    { name: "DeepSeek Reasoner", icon: "Brain", status: "active", color: "text-orange-500" }
+  const systemServices: SystemService[] = [
+    { name: "RAG 2.0", icon: "Database", status: "active" as const, color: "text-green-500" },
+    { name: "A2A Protocol", icon: "Network", status: "active" as const, color: "text-blue-500" },
+    { name: "MCP Hub", icon: "Settings", status: "active" as const, color: "text-purple-500" },
+    { name: "DeepSeek Reasoner", icon: "Brain", status: "active" as const, color: "text-orange-500" }
   ];
 
   const fetchLiveData = () => {
