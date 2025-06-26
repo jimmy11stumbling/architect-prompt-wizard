@@ -11,34 +11,21 @@ export const useAuthState = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session first
-    const getInitialSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Error getting initial session:', error);
-        } else {
-          console.log('Initial session check:', session?.user?.email || 'No session');
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-      } catch (error) {
-        console.error('Session check error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    let mounted = true;
 
-    // Set up auth state listener
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.email || 'No session');
+        
+        if (!mounted) return;
         
         // Update state immediately
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
+        // Handle different auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully:', session?.user?.email);
           toast({
@@ -65,9 +52,33 @@ export const useAuthState = () => {
     );
 
     // Get initial session after setting up listener
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting initial session:', error);
+        } else {
+          console.log('Initial session check:', session?.user?.email || 'No session');
+          if (mounted) {
+            setSession(session);
+            setUser(session?.user ?? null);
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     getInitialSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [toast]);
 
   const handleSignOut = async () => {

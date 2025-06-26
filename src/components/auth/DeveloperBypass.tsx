@@ -16,65 +16,105 @@ const DeveloperBypass: React.FC = () => {
     try {
       console.log('Starting developer bypass login...');
       
-      // Try to sign in with a generic dev account first
-      const genericEmail = "dev@temp.com";
+      // Use a simple, consistent dev account
+      const devEmail = "dev@temp.com";
       const devPassword = "devpass123";
       
+      // First, try to sign in
+      console.log('Attempting to sign in with existing account...');
       let { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: genericEmail,
+        email: devEmail,
         password: devPassword,
       });
       
       if (signInError) {
-        console.log('Generic dev account signin failed, creating account:', signInError.message);
+        console.log('Sign in failed:', signInError.message);
         
-        // If signin fails, create the account
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: genericEmail,
-          password: devPassword,
-          options: {
-            emailRedirectTo: window.location.origin,
+        // If signin fails due to user not found or invalid credentials, create account
+        if (signInError.message.includes("Invalid login credentials")) {
+          console.log('Creating new dev account...');
+          
+          // Create account with email confirmation disabled for dev
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: devEmail,
+            password: devPassword,
+            options: {
+              emailRedirectTo: window.location.origin,
+              data: {
+                dev_account: true
+              }
+            }
+          });
+          
+          if (signUpError) {
+            throw signUpError;
           }
-        });
-        
-        if (signUpError) {
-          throw signUpError;
+          
+          console.log('Dev account created:', signUpData);
+          
+          // If the account was created but needs confirmation, show appropriate message
+          if (signUpData.user && !signUpData.user.email_confirmed_at) {
+            toast({
+              title: "Developer Account Created",
+              description: "A confirmation email has been sent. For instant access in development, the admin should disable email confirmation in Supabase Auth settings.",
+              variant: "default",
+            });
+            return;
+          }
+          
+          // If account was created and confirmed, try signing in again
+          if (signUpData.user && signUpData.user.email_confirmed_at) {
+            console.log('Account confirmed, signing in...');
+            const { data: finalSignIn, error: finalError } = await supabase.auth.signInWithPassword({
+              email: devEmail,
+              password: devPassword,
+            });
+            
+            if (finalError) {
+              throw finalError;
+            }
+            
+            signInData = finalSignIn;
+          }
+        } else if (signInError.message.includes("Email not confirmed")) {
+          toast({
+            title: "Email Confirmation Required",
+            description: "The dev account exists but needs email confirmation. Check your email or ask the admin to disable email confirmation in Supabase Auth settings for faster development.",
+            variant: "destructive",
+          });
+          return;
+        } else {
+          throw signInError;
         }
-        
-        console.log('Account created, now signing in...');
-        
-        // Now try to sign in again
-        const { data: finalSignIn, error: finalSignInError } = await supabase.auth.signInWithPassword({
-          email: genericEmail,
-          password: devPassword,
-        });
-        
-        if (finalSignInError) {
-          throw finalSignInError;
-        }
-        
-        signInData = finalSignIn;
       }
       
-      console.log('Sign in successful:', signInData);
+      console.log('Authentication successful:', signInData);
       
-      if (signInData.session) {
+      if (signInData?.session && signInData?.user) {
         toast({
           title: "Developer Login Successful",
-          description: "You've been signed in with a temporary developer account.",
+          description: `Signed in as ${signInData.user.email}`,
         });
         
         // The auth state change listener will handle the redirect
-        console.log('Session established:', signInData.session.user.email);
+        console.log('Session established, waiting for auth state change...');
       } else {
-        throw new Error('No session established after signin');
+        throw new Error('No session established after authentication');
       }
       
     } catch (error: any) {
       console.error('Dev bypass error:', error);
+      let errorMessage = "Failed to authenticate with developer account";
+      
+      if (error.message?.includes("Email not confirmed")) {
+        errorMessage = "Dev account needs email confirmation. Check email or ask admin to disable email confirmation.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Developer Login Failed",
-        description: error.message || "Failed to create developer session",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -82,7 +122,7 @@ const DeveloperBypass: React.FC = () => {
     }
   };
 
-  // Show in all non-production environments (including Lovable preview)
+  // Show in development environments (not production lovable.app)
   const isProduction = window.location.hostname.includes('lovable.app') && 
                       !window.location.hostname.includes('preview');
   
@@ -98,7 +138,7 @@ const DeveloperBypass: React.FC = () => {
           Developer Mode
         </CardTitle>
         <CardDescription className="text-orange-600">
-          Quick login for development (bypasses email verification)
+          Quick login for development (may require email verification)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -108,8 +148,11 @@ const DeveloperBypass: React.FC = () => {
           className="w-full bg-orange-600 hover:bg-orange-700"
         >
           <User className="h-4 w-4 mr-2" />
-          {loading ? "Signing in..." : "Developer Login"}
+          {loading ? "Authenticating..." : "Developer Login"}
         </Button>
+        <p className="text-xs text-orange-600 mt-2 text-center">
+          Note: If login fails due to email confirmation, ask admin to disable email confirmation in Supabase Auth settings.
+        </p>
       </CardContent>
     </Card>
   );
