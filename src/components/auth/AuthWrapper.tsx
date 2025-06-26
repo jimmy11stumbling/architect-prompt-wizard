@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, LogIn, UserPlus, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -16,77 +16,126 @@ interface AuthWrapperProps {
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        
+        if (event === 'SIGNED_IN') {
+          toast({
+            title: "Welcome!",
+            description: "You have been signed in successfully.",
+          });
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          toast({
+            title: "Signed out",
+            description: "You have been signed out successfully.",
+          });
+        }
+      }
+    );
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
+      }
+      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [toast]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setAuthLoading(true);
 
     try {
+      const redirectUrl = `${window.location.origin}/`;
+      
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: redirectUrl
+          }
         });
+        
         if (error) throw error;
-        toast({
-          title: "Sign up successful",
-          description: "Please check your email to confirm your account.",
-        });
+        
+        if (data.user && !data.user.email_confirmed_at) {
+          toast({
+            title: "Check your email",
+            description: "We've sent you a confirmation link to complete your registration.",
+          });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+        
         if (error) throw error;
-        toast({
-          title: "Welcome back!",
-          description: "You have been signed in successfully.",
-        });
       }
-    } catch (error) {
+      
+      // Clear form
+      setEmail("");
+      setPassword("");
+      
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      
+      let errorMessage = "An error occurred during authentication";
+      
+      if (error.message?.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      } else if (error.message?.includes("Email not confirmed")) {
+        errorMessage = "Please check your email and click the confirmation link before signing in.";
+      } else if (error.message?.includes("User already registered")) {
+        errorMessage = "An account with this email already exists. Please sign in instead.";
+      } else if (error.message?.includes("Password should be at least 6 characters")) {
+        errorMessage = "Password must be at least 6 characters long.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Authentication Error",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setAuthLoading(false);
     }
   };
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Sign out error:', error);
       toast({
         title: "Error",
-        description: "Failed to sign out",
+        description: "Failed to sign out: " + (error.message || "Unknown error"),
         variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Signed out",
-        description: "You have been signed out successfully.",
       });
     }
   };
@@ -112,7 +161,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
               Intelligent Prompt Architect
             </CardTitle>
             <CardDescription>
-              Sign in to save and manage your prompts
+              Sign in to access your AI-powered document management and prompt generation tools
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -122,36 +171,40 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="signin">
+              <TabsContent value="signin" className="space-y-4">
                 <form onSubmit={handleAuth} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="signin-email">Email</Label>
                     <Input
-                      id="email"
+                      id="signin-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
                       required
+                      disabled={authLoading}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="signin-password">Password</Label>
                     <Input
-                      id="password"
+                      id="signin-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
                       required
+                      disabled={authLoading}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={authLoading}>
                     <LogIn className="h-4 w-4 mr-2" />
-                    {loading ? "Signing in..." : "Sign In"}
+                    {authLoading ? "Signing in..." : "Sign In"}
                   </Button>
                 </form>
               </TabsContent>
               
-              <TabsContent value="signup">
+              <TabsContent value="signup" className="space-y-4">
                 <form onSubmit={handleAuth} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
@@ -160,7 +213,9 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
                       required
+                      disabled={authLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -170,13 +225,15 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Create a password (min. 6 characters)"
                       required
                       minLength={6}
+                      disabled={authLoading}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={authLoading}>
                     <UserPlus className="h-4 w-4 mr-2" />
-                    {loading ? "Creating account..." : "Sign Up"}
+                    {authLoading ? "Creating account..." : "Sign Up"}
                   </Button>
                 </form>
               </TabsContent>
