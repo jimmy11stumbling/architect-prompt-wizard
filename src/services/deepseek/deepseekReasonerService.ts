@@ -1,4 +1,3 @@
-
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface ReasonerQuery {
@@ -53,7 +52,6 @@ export interface DeepSeekResponse {
 export class DeepSeekReasonerService {
   private static instance: DeepSeekReasonerService;
   private conversations: Map<string, ConversationHistory[]> = new Map();
-  private apiKey: string | null = null;
   private initialized = false;
 
   static getInstance(): DeepSeekReasonerService {
@@ -67,7 +65,6 @@ export class DeepSeekReasonerService {
     if (this.initialized) return;
     
     try {
-      this.apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || null;
       this.initialized = true;
     } catch (error) {
       console.error("Failed to initialize DeepSeek service:", error);
@@ -75,14 +72,27 @@ export class DeepSeekReasonerService {
     }
   }
 
+  private getApiKey(): string | null {
+    // Check localStorage first (from ApiKeyForm)
+    const storedKey = localStorage.getItem("deepseek_api_key");
+    if (storedKey) {
+      return storedKey;
+    }
+    
+    // Check environment variable as fallback
+    return import.meta.env.VITE_DEEPSEEK_API_KEY || null;
+  }
+
   private async makeDeepSeekCall(messages: Array<{role: string, content: string}>): Promise<any> {
-    const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || this.apiKey;
+    const apiKey = this.getApiKey();
     
     if (!apiKey) {
+      console.warn("No DeepSeek API key found, using mock response");
       return this.generateEnhancedMockResponse(messages[messages.length - 1].content);
     }
 
     try {
+      console.log("Making DeepSeek API call with real API key");
       const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -99,13 +109,17 @@ export class DeepSeekReasonerService {
       });
 
       if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`DeepSeek API error: ${response.status} - ${errorText}`);
+        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log("DeepSeek API call successful");
+      return result;
     } catch (error) {
-      console.warn('DeepSeek API call failed, using enhanced mock response:', error);
-      return this.generateEnhancedMockResponse(messages[messages.length - 1].content);
+      console.error('DeepSeek API call failed:', error);
+      throw error; // Don't fall back to mock on real API errors
     }
   }
 
@@ -188,7 +202,8 @@ export class DeepSeekReasonerService {
           rag: query.ragEnabled,
           a2a: query.a2aEnabled,
           mcp: query.mcpEnabled
-        }
+        },
+        hasApiKey: !!this.getApiKey()
       }
     });
 
@@ -252,7 +267,8 @@ export class DeepSeekReasonerService {
           conversationId,
           tokenUsage: tokenUsage.totalTokens,
           processingTime,
-          confidence: response.confidence
+          confidence: response.confidence,
+          usedRealApi: !!this.getApiKey()
         }
       });
 
@@ -313,7 +329,7 @@ export class DeepSeekReasonerService {
   }
 
   setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
+    localStorage.setItem("deepseek_api_key", apiKey);
   }
 }
 
