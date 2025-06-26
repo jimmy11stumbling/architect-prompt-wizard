@@ -1,4 +1,3 @@
-
 import { SearchResult } from "../search/hybridSearchEngine";
 import { RAGQuery } from "@/types/rag-types";
 import { RelevanceScorer } from "./core/relevanceScorer";
@@ -17,7 +16,7 @@ export interface CompressedContext {
   }>;
 }
 
-export { ContextCompressionOptions };
+export type { ContextCompressionOptions };
 
 export class ContextProcessor {
   private static readonly DEFAULT_OPTIONS: ContextCompressionOptions = {
