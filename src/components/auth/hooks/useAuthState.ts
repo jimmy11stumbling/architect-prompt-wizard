@@ -32,6 +32,13 @@ export const useAuthState = () => {
             description: "You have been signed out successfully.",
           });
         }
+
+        // Handle email confirmation
+        if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+          if (session?.user?.email_confirmed_at) {
+            console.log('Email confirmed for user:', session.user.email);
+          }
+        }
       }
     );
 
@@ -40,6 +47,7 @@ export const useAuthState = () => {
       if (error) {
         console.error('Error getting session:', error);
       }
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
