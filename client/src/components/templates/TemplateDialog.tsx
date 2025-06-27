@@ -63,6 +63,17 @@ const templates: Template[] = [
     icon: <MessageSquare className="h-5 w-5" />,
     tags: ["Chat", "Real-time", "AI Moderation"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["Real-time Communication", "AI Integration"],
+        preferredTechStack: ["React", "Express"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["WebSocket optimization", "AI moderation"],
+        promptStyle: "conversational",
+        contextPreferences: ["real-time", "messaging"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Real-time messaging application with group chats, file sharing, voice/video calls, AI moderation, and end-to-end encryption.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["Express", "MongoDB", "Redis"],
@@ -87,6 +98,17 @@ const templates: Template[] = [
     icon: <Music className="h-5 w-5" />,
     tags: ["Music", "Streaming", "AI Playlists"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["Music Streaming", "AI Recommendations"],
+        preferredTechStack: ["React", "NestJS"],
+        deploymentOptions: ["Vercel", "AWS"],
+        limitations: [],
+        bestPractices: ["Audio optimization", "CDN usage"],
+        promptStyle: "conversational",
+        contextPreferences: ["music", "entertainment"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Music streaming platform with personalized playlists, social features, artist profiles, and AI-powered music recommendations.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL", "Redis"],
@@ -111,6 +133,17 @@ const templates: Template[] = [
     icon: <Camera className="h-5 w-5" />,
     tags: ["Photo", "AI Enhancement", "Filters"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Advanced photo editing suite with AI enhancement, filters, batch processing, and cloud storage integration.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["FastAPI", "PostgreSQL"],
@@ -135,6 +168,17 @@ const templates: Template[] = [
     icon: <BookOpen className="h-5 w-5" />,
     tags: ["Education", "AI Tutor", "Progress Tracking"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Comprehensive online learning platform with courses, quizzes, AI tutoring, progress tracking, and certification system.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL"],
@@ -159,6 +203,17 @@ const templates: Template[] = [
     icon: <Heart className="h-5 w-5" />,
     tags: ["Dating", "AI Matching", "Social"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Dating application with AI-powered matchmaking, profile verification, chat features, and safety-focused design.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["Express", "MongoDB"],
@@ -183,6 +238,17 @@ const templates: Template[] = [
     icon: <Gamepad2 className="h-5 w-5" />,
     tags: ["Gaming", "Community", "Tournaments"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Gaming community platform with tournament organization, leaderboards, team formation, and live streaming integration.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL", "Redis"],
@@ -207,6 +273,17 @@ const templates: Template[] = [
     icon: <Palette className="h-5 w-5" />,
     tags: ["Content", "Social Media", "Publishing"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Comprehensive content creation platform with scheduling, analytics, multi-platform publishing, and AI-powered content suggestions.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["Express", "MongoDB"],
@@ -231,6 +308,17 @@ const templates: Template[] = [
     icon: <Dumbbell className="h-5 w-5" />,
     tags: ["Fitness", "Health", "AI Trainer"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Advanced fitness tracking app with workout planning, nutrition tracking, AI personal trainer, and social features for motivation.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["FastAPI", "PostgreSQL"],
@@ -255,6 +343,17 @@ const templates: Template[] = [
     icon: <ShoppingCart className="h-5 w-5" />,
     tags: ["E-commerce", "AI", "Payments"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Full-featured e-commerce platform with product catalog, shopping cart, payment processing, AI recommendations, and admin dashboard.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL", "Redis"],
@@ -279,6 +378,17 @@ const templates: Template[] = [
     icon: <Calendar className="h-5 w-5" />,
     tags: ["Productivity", "Collaboration", "AI"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Comprehensive project management tool with kanban boards, gantt charts, time tracking, team collaboration, and AI-powered insights.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["Express", "PostgreSQL"],
@@ -303,6 +413,17 @@ const templates: Template[] = [
     icon: <Briefcase className="h-5 w-5" />,
     tags: ["CRM", "Sales", "AI Automation"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Comprehensive CRM system with contact management, sales pipeline, AI-powered insights, and automation workflows.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL"],
@@ -327,6 +448,17 @@ const templates: Template[] = [
     icon: <DollarSign className="h-5 w-5" />,
     tags: ["Finance", "Budget", "AI Insights"],
     spec: {
+      targetPlatform: "cursor",
+      platformSpecificConfig: {
+        supportedFeatures: ["AI Integration", "Modern UI"],
+        preferredTechStack: ["React", "TypeScript"],
+        deploymentOptions: ["Vercel", "Netlify"],
+        limitations: [],
+        bestPractices: ["Performance optimization", "User experience"],
+        promptStyle: "conversational",
+        contextPreferences: ["modern", "scalable"],
+        outputFormat: "detailed"
+      },
       projectDescription: "Personal finance management app with expense tracking, budget planning, investment monitoring, and AI-powered financial insights.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["Express", "PostgreSQL"],

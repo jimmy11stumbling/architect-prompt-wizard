@@ -523,7 +523,9 @@ export class HybridSearchEngine {
     return filtered.slice(0, maxResults);
   }
 
-  private passesFilters(document: RAGDocument, filters: RAGQuery['filters']): boolean {
+  private passesFilters(document: RAGDocument, filters?: RAGQuery['filters']): boolean {
+    if (!filters) return true;
+
     if (filters.platform && document.metadata.platform !== filters.platform) {
       return false;
     }

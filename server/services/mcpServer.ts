@@ -261,12 +261,12 @@ export class MCPServer {
     return hubData.platforms.filter(platform => {
       const matchesQuery = 
         platform.platform.name.toLowerCase().includes(queryLower) ||
-        platform.platform.description.toLowerCase().includes(queryLower) ||
-        platform.features.some(f => f.name.toLowerCase().includes(queryLower)) ||
-        platform.integrations.some(i => i.name.toLowerCase().includes(queryLower));
+        (platform.platform.description?.toLowerCase().includes(queryLower) || false) ||
+        platform.features.some(f => f.featureName.toLowerCase().includes(queryLower)) ||
+        platform.integrations.some(i => i.serviceName.toLowerCase().includes(queryLower));
       
       const matchesCategory = !category || 
-        platform.platform.category.toLowerCase().includes(category.toLowerCase());
+        (platform.platform.category?.toLowerCase().includes(category.toLowerCase()) || false);
       
       return matchesQuery && matchesCategory;
     });
@@ -318,7 +318,7 @@ export class MCPServer {
     techStack.forEach(tech => {
       const techLower = tech.toLowerCase();
       const isSupported = platformData.features.some(f => 
-        f.name.toLowerCase().includes(techLower) ||
+        f.featureName.toLowerCase().includes(techLower) ||
         f.description?.toLowerCase().includes(techLower)
       );
       
@@ -329,12 +329,12 @@ export class MCPServer {
     });
 
     // Generate recommendations based on platform capabilities
-    if (platformData.platform.category.includes('AI')) {
+    if (platformData.platform.category?.includes('AI')) {
       compatibility.recommendations.push("Leverage AI-powered development features");
       compatibility.recommendations.push("Use conversational development workflows");
     }
 
-    if (platformData.features.some(f => f.name.includes('Database'))) {
+    if (platformData.features.some(f => f.featureName.includes('Database'))) {
       compatibility.recommendations.push("Utilize built-in database integration");
     }
 

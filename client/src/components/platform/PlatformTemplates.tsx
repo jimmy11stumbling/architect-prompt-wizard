@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Code, Palette, Cloud, Bot, Rocket, Database, Globe, Smartphone, Brain } from "lucide-react";
-import { ProjectSpec, PlatformType } from "@/types/ipa-types";
+import { ProjectSpec, PlatformType, TechStack } from "@/types/ipa-types";
 
 interface PlatformTemplate {
   id: string;
@@ -30,7 +30,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
     const configs = {
       bolt: {
         supportedFeatures: ["WebContainer", "Browser Runtime", "Instant Deploy"],
-        preferredTechStack: ["React", "TypeScript", "Next.js"],
+        preferredTechStack: ["React" as TechStack, "TypeScript" as TechStack, "Next.js" as TechStack],
         deploymentOptions: ["StackBlitz", "Vercel"],
         limitations: ["WebContainer limitations"],
         bestPractices: ["Use WebContainer-compatible packages"],
@@ -40,7 +40,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       },
       cursor: {
         supportedFeatures: ["AI Chat", "Codebase Context", "Code Completion"],
-        preferredTechStack: ["TypeScript", "React", "Node.js"],
+        preferredTechStack: ["TypeScript" as TechStack, "React" as TechStack, "Node.js" as TechStack],
         deploymentOptions: ["Vercel", "Railway"],
         limitations: ["Local development focused"],
         bestPractices: ["Use AI chat for refactoring"],
@@ -50,7 +50,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       },
       lovable: {
         supportedFeatures: ["Conversational UI", "Visual Design", "Template Generation"],
-        preferredTechStack: ["React", "TypeScript"],
+        preferredTechStack: ["React" as TechStack, "TypeScript" as TechStack],
         deploymentOptions: ["Lovable Cloud", "Vercel"],
         limitations: ["Template-based generation"],
         bestPractices: ["Use conversational prompts"],
@@ -60,7 +60,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       },
       replit: {
         supportedFeatures: ["Cloud Hosting", "Collaboration", "AI Agent"],
-        preferredTechStack: ["Python", "JavaScript", "React"],
+        preferredTechStack: ["Python" as TechStack, "JavaScript" as TechStack, "React" as TechStack],
         deploymentOptions: ["Replit Hosting"],
         limitations: ["Cloud-based environment"],
         bestPractices: ["Use Replit AI Agent"],
@@ -70,7 +70,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       },
       windsurf: {
         supportedFeatures: ["Agent Workflows", "MCP Protocol", "Database Tools"],
-        preferredTechStack: ["TypeScript", "React", "PostgreSQL"],
+        preferredTechStack: ["TypeScript" as TechStack, "React" as TechStack, "PostgreSQL" as TechStack],
         deploymentOptions: ["Railway", "Render"],
         limitations: ["Agent-based development"],
         bestPractices: ["Use agentic workflows"],

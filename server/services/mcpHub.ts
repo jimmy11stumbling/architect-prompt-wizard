@@ -85,7 +85,7 @@ export class MCPHub {
           // Get platform-specific knowledge base entries
           const platformKnowledge = knowledgeBase.filter(kb => 
             kb.title.toLowerCase().includes(platform.name.toLowerCase().split(' ')[0]) ||
-            kb.category?.toLowerCase().includes(platform.category.toLowerCase())
+            kb.category?.toLowerCase().includes(platform.category?.toLowerCase() || '')
           );
 
           return {
