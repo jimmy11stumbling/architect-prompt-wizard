@@ -98,7 +98,7 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
             className="w-full bg-gradient-blue-purple hover:opacity-90"
             disabled={!isFormValid}
           >
-            {isFormValid ? "Generate Cursor Prompt" : "Complete Required Fields"}
+            {isFormValid ? "Generate Master Blueprint" : "Complete Required Fields"}
           </Button>
         </form>
       </CardContent>
