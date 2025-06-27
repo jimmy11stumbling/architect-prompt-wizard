@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router, Route, Switch } from "wouter";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import NavigationSidebar from "@/components/navigation/NavigationSidebar";
+
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import ReasonerPage from "./pages/ReasonerPage";

@@ -1,11 +1,11 @@
 
 import React from "react";
 import SavedPrompts from "@/components/SavedPrompts";
-import AuthWrapper from "@/components/auth/AuthWrapper";
+import { RequireAuth } from "@/components/auth/AuthWrapper";
 
 const SavedPromptsPage: React.FC = () => {
   return (
-    <AuthWrapper>
+    <RequireAuth>
       <div className="container py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
@@ -17,7 +17,7 @@ const SavedPromptsPage: React.FC = () => {
         </div>
         <SavedPrompts />
       </div>
-    </AuthWrapper>
+    </RequireAuth>
   );
 };
 

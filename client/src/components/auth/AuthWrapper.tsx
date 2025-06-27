@@ -1,213 +1,169 @@
-
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, LogIn, UserPlus, LogOut } from "lucide-react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-interface AuthWrapperProps {
-  children: React.ReactNode;
+interface User {
+  id: number;
+  username: string;
+  email?: string;
 }
 
-const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+interface AuthContextType {
+  user: User | null;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (username: string, password: string, email?: string) => Promise<void>;
+  isLoading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    checkAuth();
   }, []);
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const checkAuth = async () => {
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
+      const response = await fetch("/api/auth/me");
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
         toast({
-          title: "Sign up successful",
-          description: "Please check your email to confirm your account.",
+          title: "Login Successful",
+          description: `Welcome back, ${data.user.username}!`
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast({
-          title: "Welcome back!",
-          description: "You have been signed in successfully.",
-        });
+        const error = await response.json();
+        throw new Error(error.message || "Login failed");
       }
     } catch (error) {
       toast({
-        title: "Authentication Error",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
       });
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
+  const logout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST"
       });
-    } else {
-      toast({
-        title: "Signed out",
-        description: "You have been signed out successfully.",
-      });
+
+      if (response.ok) {
+        setUser(null);
+        toast({
+          title: "Logged Out",
+          description: "You have been successfully logged out"
+        });
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
   };
 
-  if (loading) {
+  const register = async (username: string, password: string, email?: string) => {
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, email })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+        toast({
+          title: "Registration Successful",
+          description: `Welcome to IPA, ${data.user.username}!`
+        });
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || "Registration failed");
+      }
+    } catch (error) {
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout, register, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Simple auth wrapper for protected routes
+export const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to access this feature",
+        variant: "destructive"
+      });
+    }
+  }, [isLoading, user, toast]);
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="flex items-center justify-center gap-2">
-              <User className="h-5 w-5" />
-              Intelligent Prompt Architect
-            </CardTitle>
-            <CardDescription>
-              Sign in to save and manage your prompts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={isSignUp ? "signup" : "signin"} onValueChange={(value) => setIsSignUp(value === "signup")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="signin">
-                <form onSubmit={handleAuth} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    <LogIn className="h-4 w-4 mr-2" />
-                    {loading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleAuth} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    {loading ? "Creating account..." : "Sign Up"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Authentication Required</h3>
+          <p className="text-muted-foreground">Please log in to access this feature</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container flex items-center justify-between py-4">
-          <h1 className="text-xl font-bold">Intelligent Prompt Architect</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {user.email}
-            </span>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-      <main className="flex-1">
-        {children}
-      </main>
-    </div>
-  );
+  return <>{children}</>;
 };
-
-export default AuthWrapper;

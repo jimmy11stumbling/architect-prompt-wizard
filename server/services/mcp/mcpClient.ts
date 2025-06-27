@@ -311,3 +311,41 @@ export class MCPRegistry {
 
 // Global MCP registry instance
 export const mcpRegistry = new MCPRegistry();
+
+// Initialize default MCP clients
+export async function initializeDefaultClients() {
+  // Filesystem MCP client
+  mcpRegistry.registerClient("filesystem", {
+    serverName: "filesystem-mcp",
+    transport: "stdio",
+    endpoint: "/mcp/filesystem"
+  });
+
+  // Web Search MCP client
+  mcpRegistry.registerClient("websearch", {
+    serverName: "websearch-mcp",
+    transport: "stdio",
+    endpoint: "/mcp/websearch"
+  });
+
+  // Database MCP client
+  mcpRegistry.registerClient("database", {
+    serverName: "database-mcp",
+    transport: "stdio",
+    endpoint: "/mcp/database"
+  });
+
+  // Code Analysis MCP client
+  mcpRegistry.registerClient("codeanalysis", {
+    serverName: "codeanalysis-mcp",
+    transport: "stdio",
+    endpoint: "/mcp/codeanalysis"
+  });
+
+  // Document Processing MCP client
+  mcpRegistry.registerClient("docprocessing", {
+    serverName: "docprocessing-mcp",
+    transport: "stdio",
+    endpoint: "/mcp/docprocessing"
+  });
+}

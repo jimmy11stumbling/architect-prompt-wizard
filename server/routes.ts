@@ -389,6 +389,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/rag/analytics/metrics", async (req, res) => {
+    try {
+      const { ragMonitor } = await import("./services/rag/ragMonitor");
+      const metrics = await ragMonitor.getPerformanceMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error getting RAG metrics:", error);
+      res.status(500).json({ error: "Failed to get metrics" });
+    }
+  });
+
+  app.get("/api/rag/analytics/patterns", async (req, res) => {
+    try {
+      const { ragMonitor } = await import("./services/rag/ragMonitor");
+      const patterns = await ragMonitor.analyzeQueryPatterns();
+      res.json(patterns);
+    } catch (error) {
+      console.error("Error analyzing patterns:", error);
+      res.status(500).json({ error: "Failed to analyze patterns" });
+    }
+  });
+
   app.post("/api/rag/reindex", async (req, res) => {
     try {
       const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
@@ -427,8 +449,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/mcp/tools", async (req, res) => {
     try {
-      const { mcpRegistry } = await import("./services/mcp/mcpClient");
-      const tools = await mcpRegistry.getAllTools();
+      const { mcpToolRegistry } = await import("./services/mcp/mcpToolRegistry");
+      const tools = mcpToolRegistry.getAllTools().map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        clientName: "ipa-mcp-server"
+      }));
       res.json({ tools });
     } catch (error) {
       console.error("Error getting MCP tools:", error);
@@ -440,17 +467,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { clientName, toolName, arguments: toolArgs } = req.body;
       
-      if (!clientName || !toolName) {
-        return res.status(400).json({ error: "clientName and toolName are required" });
+      if (!toolName) {
+        return res.status(400).json({ error: "toolName is required" });
       }
 
-      const { mcpRegistry } = await import("./services/mcp/mcpClient");
-      const result = await mcpRegistry.callTool(clientName, toolName, toolArgs || {});
+      const { mcpToolRegistry } = await import("./services/mcp/mcpToolRegistry");
+      const result = await mcpToolRegistry.executeTool(toolName, toolArgs || {});
       
       res.json({ result });
     } catch (error) {
       console.error("Error calling MCP tool:", error);
-      res.status(500).json({ error: "Failed to call MCP tool" });
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to call MCP tool" });
+    }
+  });
+
+  app.get("/api/mcp/resources", async (req, res) => {
+    try {
+      // Return some default resources
+      const resources = [
+        {
+          uri: "config://app",
+          name: "Application Configuration",
+          description: "Current application configuration and settings",
+          mimeType: "application/json",
+          clientName: "ipa-mcp-server"
+        },
+        {
+          uri: "docs://api",
+          name: "API Documentation",
+          description: "API endpoints and usage documentation",
+          mimeType: "text/markdown",
+          clientName: "ipa-mcp-server"
+        },
+        {
+          uri: "schema://database",
+          name: "Database Schema",
+          description: "Current database schema and relationships",
+          mimeType: "application/json",
+          clientName: "ipa-mcp-server"
+        }
+      ];
+      res.json({ resources });
+    } catch (error) {
+      console.error("Error getting MCP resources:", error);
+      res.status(500).json({ error: "Failed to get MCP resources" });
+    }
+  });
+
+  app.post("/api/mcp/resources/read", async (req, res) => {
+    try {
+      const { uri } = req.body;
+      
+      if (!uri) {
+        return res.status(400).json({ error: "uri is required" });
+      }
+
+      let result;
+      switch (uri) {
+        case "config://app":
+          result = {
+            name: "IPA Application",
+            version: "2.0.0",
+            features: ["RAG 2.0", "MCP", "A2A Communication"],
+            database: "PostgreSQL",
+            environment: process.env.NODE_ENV
+          };
+          break;
+        
+        case "docs://api":
+          result = `# IPA API Documentation\n\n## Endpoints\n\n### RAG System\n- POST /api/rag/initialize\n- POST /api/rag/index\n- POST /api/rag/search\n\n### MCP System\n- POST /api/mcp/initialize\n- GET /api/mcp/tools\n- POST /api/mcp/tools/call\n\n### A2A System\n- POST /api/a2a/initialize\n- POST /api/a2a/message\n- GET /api/a2a/agents`;
+          break;
+        
+        case "schema://database":
+          result = {
+            tables: ["users", "platforms", "platform_features", "prompt_generations", "saved_prompts", "workflows", "knowledge_base"],
+            relationships: {
+              platform_features: "belongs to platforms",
+              prompt_generations: "belongs to users"
+            }
+          };
+          break;
+        
+        default:
+          return res.status(404).json({ error: "Resource not found" });
+      }
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error reading MCP resource:", error);
+      res.status(500).json({ error: "Failed to read MCP resource" });
     }
   });
 
@@ -574,6 +679,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting A2A stats:", error);
       res.status(500).json({ error: "Failed to get A2A stats" });
+    }
+  });
+
+  app.post("/api/a2a/negotiate", async (req, res) => {
+    try {
+      const { initiator, participants, task } = req.body;
+      
+      if (!initiator || !participants || !task) {
+        return res.status(400).json({ error: "Initiator, participants, and task are required" });
+      }
+
+      const { FIPAProtocol } = await import("./services/a2a/fipaProtocol");
+      const protocol = new FIPAProtocol();
+      
+      // Simulate Contract Net Protocol negotiation
+      const proposals = participants.map((participant: string) => ({
+        performative: "propose",
+        sender: { name: participant },
+        content: `Agent ${participant} proposes to handle task: ${task}`
+      }));
+      
+      // Simple winner selection (could be based on capabilities, availability, etc.)
+      const winner = participants[Math.floor(Math.random() * participants.length)];
+      
+      res.json({ 
+        result: {
+          winner,
+          proposals
+        }
+      });
+    } catch (error) {
+      console.error("Error performing negotiation:", error);
+      res.status(500).json({ error: "Failed to perform negotiation" });
+    }
+  });
+
+  // Authentication Routes
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password, email } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+
+      // Simple password hashing using crypto (in production use proper bcrypt)
+      const crypto = await import("crypto");
+      const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+      
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        email
+      });
+      
+      // Set user ID in response header (simple auth)
+      res.setHeader('X-User-Id', user.id.toString());
+      res.json({ user: { id: user.id, username: user.username, email: user.email } });
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ error: "Failed to register user" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required" });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Simple password verification
+      const crypto = await import("crypto");
+      const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+      
+      if (hashedPassword !== user.password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // Set user ID in response header
+      res.setHeader('X-User-Id', user.id.toString());
+      res.json({ user: { id: user.id, username: user.username, email: user.email } });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    // Simple logout - client should clear stored user data
+    res.json({ message: "Logged out successfully" });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    // Get user ID from header (simple auth)
+    const userId = req.headers['x-user-id'];
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUser(parseInt(userId as string));
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({ user: { id: user.id, username: user.username, email: user.email } });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ error: "Failed to fetch user" });
     }
   });
 
