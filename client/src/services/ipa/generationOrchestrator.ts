@@ -1,12 +1,14 @@
 
-import { GenerationStatus, ProjectSpec, AgentStatus, DeepSeekMessage } from "@/types/ipa-types";
+import { GenerationStatus, ProjectSpec, AgentStatus, DeepSeekMessage, AgentName, DeepSeekCompletionRequest } from "@/types/ipa-types";
 import { agentList, initialMockStatus } from "./mockData";
 import { buildConversationHistory } from "./deepseekAPI";
+import { getAgentSystemPrompt, createUserMessageFromSpec } from "./agentPrompts";
 import { AgentProcessor } from "./agentProcessor";
 import { ConversationManager } from "./conversationManager";
 import { FinalPromptGenerator } from "./finalPromptGenerator";
 import { savePrompt } from "../db/promptDatabaseService";
 import { toast } from "@/hooks/use-toast";
+import { DeepSeekClient } from "./api/deepseekClient";
 
 export class GenerationOrchestrator {
   private currentStatus: GenerationStatus;
@@ -76,6 +78,118 @@ export class GenerationOrchestrator {
     }
     
     return { ...this.currentStatus };
+  }
+
+  /**
+   * Process all agents with real-time streaming support
+   */
+  async processAllAgentsWithStreaming(
+    onAgentStart: (agentName: AgentName) => void,
+    onAgentToken: (agentName: AgentName, token: string) => void,
+    onAgentComplete: (agentName: AgentName, response: string) => void,
+    onAllComplete: (finalStatus: GenerationStatus) => void
+  ): Promise<void> {
+    if (!this.currentProjectSpec) {
+      throw new Error("No project specification set");
+    }
+
+    // Prepare agent requests
+    const agentRequests = agentList.map((agent) => {
+      const systemPrompt = getAgentSystemPrompt(agent, this.currentProjectSpec!);
+      const userMessage = createUserMessageFromSpec(agent, this.currentProjectSpec!);
+      
+      const request: DeepSeekCompletionRequest = {
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage }
+        ],
+        max_tokens: 4096,
+        temperature: 0.7
+      };
+
+      return { name: agent, request };
+    });
+
+    // Initialize all agents as processing
+    this.currentStatus.agents = agentList.map((agent, index) => ({
+      id: `agent-${Date.now()}-${index}`,
+      name: agent,
+      agent: agent,
+      status: "idle",
+      progress: 0,
+      timestamp: Date.now()
+    }));
+    
+    this.currentStatus.status = "processing";
+    this.currentStatus.progress = 0;
+
+    try {
+      await DeepSeekClient.streamAgentResponses(
+        agentRequests,
+        (agentName) => {
+          // Mark agent as processing
+          const agentIndex = agentList.indexOf(agentName);
+          if (agentIndex >= 0) {
+            this.currentStatus.agents[agentIndex] = {
+              ...this.currentStatus.agents[agentIndex],
+              status: "processing",
+              progress: 0
+            };
+          }
+          onAgentStart(agentName);
+        },
+        (agentName, token) => {
+          // Update agent with streaming token
+          const agentIndex = agentList.indexOf(agentName);
+          if (agentIndex >= 0) {
+            this.currentStatus.agents[agentIndex] = {
+              ...this.currentStatus.agents[agentIndex],
+              status: "processing",
+              progress: 50 // Indicate active processing
+            };
+            
+            // Add token to existing output
+            const currentOutput = this.currentStatus.agents[agentIndex].output || "";
+            this.currentStatus.agents[agentIndex].output = currentOutput + token;
+          }
+          onAgentToken(agentName, token);
+        },
+        (agentName, fullResponse) => {
+          // Mark agent as complete
+          const agentIndex = agentList.indexOf(agentName);
+          if (agentIndex >= 0) {
+            this.currentStatus.agents[agentIndex] = {
+              ...this.currentStatus.agents[agentIndex],
+              status: "completed",
+              progress: 100,
+              output: fullResponse,
+              result: fullResponse
+            };
+            
+            // Update conversation
+            this.conversationManager.addAgentResponse(agentName, fullResponse);
+          }
+          onAgentComplete(agentName, fullResponse);
+        },
+        async () => {
+          // All agents completed
+          this.currentStatus.status = "completed";
+          this.currentStatus.progress = agentList.length;
+          this.currentStatus.messages = this.conversationManager.getMessages();
+          
+          // Generate final result
+          await this.generateFinalResult();
+          
+          onAllComplete({ ...this.currentStatus });
+        }
+      );
+    } catch (error) {
+      console.error("Error in streaming agent processing:", error);
+      this.currentStatus.status = "failed";
+      this.currentStatus.error = error instanceof Error ? error.message : "Unknown error";
+      onAllComplete({ ...this.currentStatus });
+    }
   }
 
   private async generateFinalResult(): Promise<void> {

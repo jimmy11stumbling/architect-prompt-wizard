@@ -1,13 +1,15 @@
 
 import { useState, useCallback } from "react";
-import { ProjectSpec, GenerationStatus, TechStack } from "@/types/ipa-types";
+import { ProjectSpec, GenerationStatus, TechStack, AgentName } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { useToast } from "@/hooks/use-toast";
 import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
+import { GenerationOrchestrator } from "@/services/ipa/generationOrchestrator";
 
 export const useProjectGeneration = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [orchestrator] = useState(() => new GenerationOrchestrator());
   const { toast } = useToast();
 
   const handleSubmit = useCallback(async (spec: ProjectSpec) => {
@@ -137,9 +139,166 @@ export const useProjectGeneration = () => {
     }
   }, [toast]);
 
+  // Real-time streaming method with DeepSeek integration
+  const handleStreamingSubmit = useCallback(async (spec: ProjectSpec) => {
+    try {
+      // Prepare complete spec
+      const completeSpec: ProjectSpec = {
+        ...spec,
+        frontendTechStack: [
+          ...spec.frontendTechStack,
+          ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack)).map(tech => tech as TechStack)
+        ],
+        backendTechStack: [
+          ...spec.backendTechStack,
+          ...spec.customBackendTech.filter(tech => !spec.backendTechStack.includes(tech as TechStack)).map(tech => tech as TechStack)
+        ]
+      };
+
+      setIsGenerating(true);
+      setGenerationStatus(null);
+      orchestrator.setProjectSpec(completeSpec);
+
+      // Initialize status for streaming
+      const initialStatus: GenerationStatus = {
+        taskId: `streaming-${Date.now()}`,
+        status: "processing",
+        agents: [],
+        progress: 0,
+        startTime: Date.now(),
+        spec: completeSpec,
+        messages: []
+      };
+      setGenerationStatus(initialStatus);
+
+      realTimeResponseService.addResponse({
+        source: "streaming-generation",
+        status: "processing",
+        message: "Starting real-time DeepSeek streaming generation",
+        data: { taskId: initialStatus.taskId, streaming: true }
+      });
+
+      // Start streaming generation
+      await orchestrator.processAllAgentsWithStreaming(
+        (agentName: AgentName) => {
+          // Agent started
+          setGenerationStatus(prev => {
+            if (!prev) return prev;
+            const updatedAgents = [...prev.agents];
+            const agentIndex = updatedAgents.findIndex(a => a.name === agentName);
+            if (agentIndex >= 0) {
+              updatedAgents[agentIndex] = {
+                ...updatedAgents[agentIndex],
+                status: "processing"
+              };
+            } else {
+              updatedAgents.push({
+                id: `${agentName}-${Date.now()}`,
+                name: agentName,
+                agent: agentName,
+                status: "processing",
+                progress: 0,
+                timestamp: Date.now()
+              });
+            }
+            return { ...prev, agents: updatedAgents };
+          });
+
+          realTimeResponseService.addResponse({
+            source: "agent-processing",
+            status: "processing",
+            message: `Agent ${agentName} started processing`,
+            data: { agent: agentName, streaming: true }
+          });
+        },
+        (agentName: AgentName, token: string) => {
+          // Agent token received
+          setGenerationStatus(prev => {
+            if (!prev) return prev;
+            const updatedAgents = [...prev.agents];
+            const agentIndex = updatedAgents.findIndex(a => a.name === agentName);
+            if (agentIndex >= 0) {
+              const currentOutput = updatedAgents[agentIndex].output || "";
+              updatedAgents[agentIndex] = {
+                ...updatedAgents[agentIndex],
+                output: currentOutput + token,
+                progress: 50
+              };
+            }
+            return { ...prev, agents: updatedAgents };
+          });
+        },
+        (agentName: AgentName, response: string) => {
+          // Agent completed
+          setGenerationStatus(prev => {
+            if (!prev) return prev;
+            const updatedAgents = [...prev.agents];
+            const agentIndex = updatedAgents.findIndex(a => a.name === agentName);
+            if (agentIndex >= 0) {
+              updatedAgents[agentIndex] = {
+                ...updatedAgents[agentIndex],
+                status: "completed",
+                progress: 100,
+                output: response,
+                result: response
+              };
+            }
+            return { ...prev, agents: updatedAgents };
+          });
+
+          realTimeResponseService.addResponse({
+            source: "agent-processing",
+            status: "success",
+            message: `Agent ${agentName} completed successfully`,
+            data: { agent: agentName, responseLength: response.length }
+          });
+        },
+        (finalStatus: GenerationStatus) => {
+          // All agents completed
+          setGenerationStatus(finalStatus);
+          setIsGenerating(false);
+
+          realTimeResponseService.addResponse({
+            source: "streaming-generation",
+            status: "success",
+            message: "Real-time streaming generation completed successfully",
+            data: { 
+              taskId: finalStatus.taskId,
+              completedAgents: finalStatus.agents.filter(a => a.status === "completed").length,
+              finalResult: !!finalStatus.result
+            }
+          });
+
+          toast({
+            title: "Streaming Generation Complete",
+            description: "Your real-time DeepSeek prompt has been successfully generated!",
+          });
+        }
+      );
+
+    } catch (error) {
+      console.error("Error in streaming generation:", error);
+      setIsGenerating(false);
+      
+      realTimeResponseService.addResponse({
+        source: "streaming-generation",
+        status: "error",
+        message: `Streaming generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+
+      toast({
+        title: "Streaming Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to start streaming generation",
+        variant: "destructive"
+      });
+    }
+  }, [orchestrator, toast]);
+
   return {
     generationStatus,
     isGenerating,
-    handleSubmit
+    handleSubmit,
+    handleStreamingSubmit
   };
 };

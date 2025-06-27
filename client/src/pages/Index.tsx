@@ -19,7 +19,7 @@ const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("create");
   const projectFormRef = useRef<ProjectSpecFormHandle>(null);
   const { toast } = useToast();
-  const { generationStatus, isGenerating, handleSubmit } = useProjectGeneration();
+  const { generationStatus, isGenerating, handleSubmit, handleStreamingSubmit } = useProjectGeneration();
 
   const handleSelectTemplate = (spec: ProjectSpec) => {
     console.log("Index: Applying template from header", spec);
@@ -61,7 +61,7 @@ const Index: React.FC = () => {
         <TabsContent value="create">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-8">
-              <ProjectSpecForm ref={projectFormRef} onSubmit={handleSubmit} />
+              <ProjectSpecForm ref={projectFormRef} onSubmit={handleStreamingSubmit} />
               <ApiKeyForm />
             </div>
             <div className="space-y-8">

@@ -273,8 +273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/seed-platform-data", async (req, res) => {
     try {
       // Import the seeding script
-      const { seedPlatformData } = await import("./seedData");
-      await seedPlatformData();
+      const seedDataModule = await import("./seedData.js");
+      await seedDataModule.seedPlatformData();
       res.json({ message: "Platform data seeded successfully" });
     } catch (error) {
       console.error("Error seeding platform data:", error);
