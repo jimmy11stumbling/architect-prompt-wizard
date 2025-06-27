@@ -93,9 +93,9 @@ export class GenerationOrchestrator {
       throw new Error("No project specification set");
     }
 
-    // Prepare agent requests
-    const agentRequests = agentList.map((agent) => {
-      const systemPrompt = getAgentSystemPrompt(agent, this.currentProjectSpec!);
+    // Prepare agent requests with documentation-aware prompts
+    const agentRequests = await Promise.all(agentList.map(async (agent) => {
+      const systemPrompt = await getAgentSystemPrompt(agent, this.currentProjectSpec!);
       const userMessage = createUserMessageFromSpec(agent, this.currentProjectSpec!);
       
       const request: DeepSeekCompletionRequest = {
@@ -109,7 +109,7 @@ export class GenerationOrchestrator {
       };
 
       return { name: agent, request };
-    });
+    }));
 
     // Initialize all agents as processing
     this.currentStatus.agents = agentList.map((agent, index) => ({

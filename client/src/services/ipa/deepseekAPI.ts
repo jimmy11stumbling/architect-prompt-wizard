@@ -13,8 +13,8 @@ export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec, m
     throw new Error("Project specification is required");
   }
   
-  // Get system prompt and user message for this agent
-  const systemPrompt = getAgentSystemPrompt(agent, spec);
+  // Get system prompt and user message for this agent (now async to fetch documentation)
+  const systemPrompt = await getAgentSystemPrompt(agent, spec);
   const userMessage = createUserMessageFromSpec(agent, spec);
   
   // Create the messages array for DeepSeek Chat

@@ -279,6 +279,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get comprehensive documentation for AI agent
+  app.get("/api/agent-documentation", async (req, res) => {
+    try {
+      // Gather all relevant documentation
+      const platforms = await storage.getAllPlatforms();
+      const knowledgeBase = await storage.getAllKnowledgeBase();
+      
+      // Get platform features, integrations, and pricing for each platform
+      const platformsWithDetails = await Promise.all(
+        platforms.map(async (platform) => {
+          const features = await storage.getPlatformFeatures(platform.id);
+          const integrations = await storage.getPlatformIntegrations(platform.id);
+          const pricing = await storage.getPlatformPricing(platform.id);
+          
+          return {
+            ...platform,
+            features,
+            integrations,
+            pricing
+          };
+        })
+      );
+
+      // Structure the comprehensive documentation
+      const documentation = {
+        platforms: platformsWithDetails,
+        knowledgeBase: knowledgeBase,
+        technologies: {
+          rag2: {
+            description: "Advanced RAG 2.0 vector search system with hybrid search capabilities",
+            features: ["Semantic chunking", "Vector embeddings", "Hybrid search", "Context compression"],
+            implementations: ["Pinecone", "Weaviate", "Qdrant", "Custom vector stores"],
+            bestPractices: [
+              "Use semantic chunking for better context preservation",
+              "Implement hybrid search combining semantic and keyword search",
+              "Optimize embedding models for domain-specific content",
+              "Use context compression for large documents"
+            ]
+          },
+          mcp: {
+            description: "Model Context Protocol for standardized tool and resource access",
+            features: ["JSON-RPC 2.0 messaging", "Tool registry", "Resource access", "Server management"],
+            tools: ["list_files", "read_file", "write_file", "web_search", "query_database", "analyze_code"],
+            bestPractices: [
+              "Implement proper error handling for tool calls",
+              "Use resource discovery for dynamic content",
+              "Standardize message formats across tools",
+              "Implement authentication for secure tool access"
+            ]
+          },
+          a2a: {
+            description: "Agent-to-Agent communication using FIPA ACL protocols",
+            features: ["Multi-agent coordination", "Message passing", "Negotiation protocols", "Workflow orchestration"],
+            protocols: ["Contract Net Protocol", "FIPA ACL", "Coordination patterns"],
+            bestPractices: [
+              "Define clear agent roles and responsibilities",
+              "Implement proper message routing and discovery",
+              "Use negotiation protocols for task allocation",
+              "Monitor agent performance and health"
+            ]
+          }
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      res.json(documentation);
+    } catch (error) {
+      console.error("Error fetching agent documentation:", error);
+      res.status(500).json({ error: "Failed to fetch documentation" });
+    }
+  });
+
   // Data seeding route for attached assets
   app.post("/api/seed-platform-data", async (req, res) => {
     try {

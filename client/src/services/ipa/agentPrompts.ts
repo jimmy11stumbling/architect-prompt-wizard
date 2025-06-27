@@ -1,16 +1,110 @@
 
 import { AgentName, ProjectSpec } from "@/types/ipa-types";
 
-export function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec): string {
+// Global documentation cache
+let documentationCache: any = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function getDocumentation(): Promise<any> {
+  const now = Date.now();
+  
+  // Return cached documentation if still valid
+  if (documentationCache && (now - cacheTimestamp) < CACHE_DURATION) {
+    return documentationCache;
+  }
+  
+  try {
+    const response = await fetch('/api/agent-documentation');
+    if (!response.ok) {
+      throw new Error(`Documentation fetch failed: ${response.status}`);
+    }
+    
+    documentationCache = await response.json();
+    cacheTimestamp = now;
+    return documentationCache;
+  } catch (error) {
+    console.error('Error fetching documentation:', error);
+    return null;
+  }
+}
+
+function buildPlatformContext(spec: ProjectSpec, documentation: any): string {
+  if (!documentation || !spec.targetPlatform) return "";
+  
+  const platform = documentation.platforms?.find((p: any) => 
+    p.name.toLowerCase() === spec.targetPlatform.toLowerCase()
+  );
+  
+  if (!platform) return "";
+  
+  return `
+PLATFORM-SPECIFIC CONTEXT (${spec.targetPlatform}):
+- Overview: ${platform.description}
+- Capabilities: ${platform.capabilities || "Standard web development"}
+- Key Features: ${platform.features?.map((f: any) => f.name).join(", ") || "Not specified"}
+- Integrations: ${platform.integrations?.map((i: any) => i.name).join(", ") || "Standard APIs"}
+- Limitations: ${spec.platformSpecificConfig?.limitations?.join(", ") || "None specified"}
+- Best Practices: ${spec.platformSpecificConfig?.bestPractices?.join(", ") || "Follow platform guidelines"}`;
+}
+
+function buildTechnologyContext(spec: ProjectSpec, documentation: any): string {
+  if (!documentation?.technologies) return "";
+  
+  let context = "\nTECHNOLOGY-SPECIFIC GUIDANCE:";
+  
+  // RAG 2.0 Context
+  if (spec.ragVectorDb !== "None") {
+    const ragInfo = documentation.technologies.rag2;
+    context += `
+RAG 2.0 Implementation:
+- Vector Database: ${spec.ragVectorDb}
+- Description: ${ragInfo.description}
+- Key Features: ${ragInfo.features.join(", ")}
+- Best Practices: ${ragInfo.bestPractices.join(", ")}`;
+  }
+  
+  // MCP Context
+  if (spec.mcpType !== "None") {
+    const mcpInfo = documentation.technologies.mcp;
+    context += `
+Model Context Protocol (MCP):
+- Type: ${spec.mcpType}
+- Description: ${mcpInfo.description}
+- Available Tools: ${mcpInfo.tools.join(", ")}
+- Best Practices: ${mcpInfo.bestPractices.join(", ")}`;
+  }
+  
+  // A2A Context
+  if (spec.a2aIntegrationDetails) {
+    const a2aInfo = documentation.technologies.a2a;
+    context += `
+Agent-to-Agent Communication:
+- Integration Details: ${spec.a2aIntegrationDetails}
+- Description: ${a2aInfo.description}
+- Protocols: ${a2aInfo.protocols.join(", ")}
+- Best Practices: ${a2aInfo.bestPractices.join(", ")}`;
+  }
+  
+  return context;
+}
+
+export async function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec): Promise<string> {
+  const documentation = await getDocumentation();
+  
   const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system. Your role is to provide expert analysis and recommendations for building applications with RAG 2.0, A2A Protocol, and MCP integration.
 
-Project Context:
+PROJECT SPECIFICATION:
 - Description: ${spec.projectDescription}
-- Frontend: ${spec.frontendTechStack.join(", ")}
-- Backend: ${spec.backendTechStack.join(", ")}
-- RAG Database: ${spec.ragVectorDb}
+- Frontend Stack: ${spec.frontendTechStack.join(", ")}
+- Backend Stack: ${spec.backendTechStack.join(", ")}
+- RAG Vector Database: ${spec.ragVectorDb}
 - MCP Type: ${spec.mcpType}
-- A2A Details: ${spec.a2aIntegrationDetails}`;
+- A2A Integration: ${spec.a2aIntegrationDetails}
+- Additional Features: ${spec.additionalFeatures}
+- Advanced Prompt Details: ${spec.advancedPromptDetails}
+- Authentication Method: ${spec.authenticationMethod}
+- Deployment Preference: ${spec.deploymentPreference}${buildPlatformContext(spec, documentation)}${buildTechnologyContext(spec, documentation)}`;
 
   const agentSpecificPrompts: Record<AgentName, string> = {
     "reasoning-assistant": `${baseContext}
