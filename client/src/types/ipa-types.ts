@@ -93,7 +93,19 @@ export type TechStack =
   | "AWS"
   | "Azure"
   | "Google Cloud"
-  | "GCP";
+  | "GCP"
+  | "Tailwind CSS"
+  | "CSS"
+  | "SCSS"
+  | "Styled Components"
+  | "Material-UI"
+  | "Chakra UI"
+  | "Bootstrap"
+  | "Vite"
+  | "Webpack"
+  | "Parcel"
+  | "Rollup"
+  | "ESBuild";
 
 export type VectorDatabase = 
   | "Chroma" 

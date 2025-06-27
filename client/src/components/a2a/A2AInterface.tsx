@@ -1,591 +1,600 @@
-import React, { useState, useEffect } from "react";
-import { Users, MessageCircle, Zap, BarChart3, GitBranch, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  Users, 
+  MessageSquare, 
+  Network, 
+  Activity, 
+  Send,
+  UserCheck,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Bot
+} from 'lucide-react';
+import { 
+  a2aSystem, 
+  AgentRegistration, 
+  ACLMessage, 
+  TaskAnnouncement, 
+  Bid,
+  ACLPerformative 
+} from '@/services/a2a/agentCommunicationSystem';
 
-interface A2AStats {
+interface A2AInterfaceProps {
+  onAgentSelect?: (agent: AgentRegistration) => void;
+}
+
+interface SystemStats {
   totalAgents: number;
   activeAgents: number;
-  totalTasks: number;
-  completedTasks: number;
-  pendingTasks: number;
-  averageTaskTime: number;
+  totalCapabilities: number;
+  activeConversations: number;
+  averageLoad: number;
 }
 
-interface TaskResult {
-  id: string;
-  description: string;
-  requiredCapabilities: string[];
-  priority: string;
-  assignedAgents: string[];
-  status: string;
-  created: string;
-}
-
-interface NegotiationResult {
-  winner?: string;
-  proposals: Array<{
-    performative: string;
-    sender: { name: string };
-    content: string;
-  }>;
-}
-
-export const A2AInterface: React.FC = () => {
-  const [stats, setStats] = useState<A2AStats | null>(null);
-  const [taskDescription, setTaskDescription] = useState("");
-  const [taskCapabilities, setTaskCapabilities] = useState("");
-  const [taskPriority, setTaskPriority] = useState("medium");
-  const [taskResult, setTaskResult] = useState<TaskResult | null>(null);
-  const [collaborativeAgents, setCollaborativeAgents] = useState("");
-  const [coordinationStrategy, setCoordinationStrategy] = useState("parallel");
-  const [collaborativeResult, setCollaborativeResult] = useState<any>(null);
-  const [negotiationInitiator, setNegotiationInitiator] = useState("reasoning-assistant");
-  const [negotiationParticipants, setNegotiationParticipants] = useState("context-analyzer,documentation-expert");
-  const [negotiationTask, setNegotiationTask] = useState("");
-  const [negotiationResult, setNegotiationResult] = useState<NegotiationResult | null>(null);
-  const [loading, setLoading] = useState(false);
+export default function A2AInterface({ onAgentSelect }: A2AInterfaceProps) {
+  const [isInitializing, setIsInitializing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const { toast } = useToast();
+  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
+  const [agents, setAgents] = useState<AgentRegistration[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<AgentRegistration | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Message composition
+  const [messageContent, setMessageContent] = useState('');
+  const [messageType, setMessageType] = useState<ACLPerformative>('inform');
+  const [receiverAgent, setReceiverAgent] = useState<string>('');
+
+  // Task announcement
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskCapabilities, setTaskCapabilities] = useState('');
+  const [taskDeadline, setTaskDeadline] = useState('');
+  const [isAnnouncingTask, setIsAnnouncingTask] = useState(false);
 
   useEffect(() => {
-    fetchStats();
+    initializeA2ASystem();
   }, []);
 
-  const initializeA2A = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/a2a/initialize", { method: "POST" });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-        setIsInitialized(true);
-        toast({
-          title: "A2A System Initialized",
-          description: "Agent-to-Agent communication system is ready"
-        });
-      } else {
-        throw new Error("Failed to initialize A2A");
-      }
-    } catch (error) {
-      toast({
-        title: "A2A Initialization Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const initializeA2ASystem = async () => {
+    if (isInitialized) return;
+    
+    setIsInitializing(true);
+    setError(null);
 
-  const fetchStats = async () => {
     try {
-      const response = await fetch("/api/a2a/stats");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-        setIsInitialized(data.totalAgents > 0);
-      }
-    } catch (error) {
-      console.error("Error fetching A2A stats:", error);
-    }
-  };
-
-  const createTask = async () => {
-    if (!taskDescription.trim()) return;
-
-    setLoading(true);
-    try {
-      const capabilities = taskCapabilities.split(",").map(c => c.trim()).filter(c => c);
+      // Initialize A2A system
+      await a2aSystem.initialize();
       
-      const response = await fetch("/api/a2a/task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: taskDescription,
-          requiredCapabilities: capabilities,
-          priority: taskPriority
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTaskResult(data.result);
-        toast({
-          title: "Task Created Successfully",
-          description: `Task ${data.result.id} has been created and assigned`
-        });
-        fetchStats();
-      } else {
-        throw new Error("Failed to create task");
-      }
-    } catch (error) {
-      toast({
-        title: "Task Creation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const executeCollaborativeTask = async () => {
-    if (!taskDescription.trim() || !collaborativeAgents.trim()) return;
-
-    setLoading(true);
-    try {
-      const agents = collaborativeAgents.split(",").map(a => a.trim()).filter(a => a);
+      // Get initial stats and agents
+      updateSystemStats();
+      updateAgentList();
       
-      const response = await fetch("/api/a2a/task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: taskDescription,
-          agents,
-          strategy: coordinationStrategy
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCollaborativeResult(data.result);
-        toast({
-          title: "Collaborative Task Executed",
-          description: `Task completed using ${coordinationStrategy} coordination`
-        });
-        fetchStats();
-      } else {
-        throw new Error("Failed to execute collaborative task");
-      }
-    } catch (error) {
-      toast({
-        title: "Collaborative Task Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const performNegotiation = async () => {
-    if (!negotiationTask.trim() || !negotiationParticipants.trim()) return;
-
-    setLoading(true);
-    try {
-      const participants = negotiationParticipants.split(",").map(p => p.trim()).filter(p => p);
+      setIsInitialized(true);
+      console.log('A2A system initialized successfully');
       
-      const response = await fetch("/api/a2a/negotiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          initiator: negotiationInitiator,
-          participants,
-          task: negotiationTask
-        })
-      });
+      // Set up periodic updates
+      const interval = setInterval(() => {
+        if (isInitialized) {
+          updateSystemStats();
+          updateAgentList();
+        }
+      }, 5000); // Update every 5 seconds
 
-      if (response.ok) {
-        const data = await response.json();
-        setNegotiationResult(data.result);
-        toast({
-          title: "Negotiation Completed",
-          description: data.result.winner ? `Winner: ${data.result.winner}` : "No winner selected"
-        });
-      } else {
-        throw new Error("Failed to perform negotiation");
-      }
-    } catch (error) {
-      toast({
-        title: "Negotiation Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive"
-      });
+      return () => clearInterval(interval);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize A2A system';
+      setError(errorMessage);
+      console.error('A2A initialization error:', err);
     } finally {
-      setLoading(false);
+      setIsInitializing(false);
     }
   };
 
-  if (!isInitialized) {
+  const updateSystemStats = () => {
+    try {
+      const stats = a2aSystem.getSystemStats();
+      setSystemStats(stats);
+    } catch (err) {
+      console.error('Failed to update system stats:', err);
+    }
+  };
+
+  const updateAgentList = () => {
+    try {
+      const allAgents = a2aSystem.directory.getAllAgents();
+      setAgents(allAgents);
+    } catch (err) {
+      console.error('Failed to update agent list:', err);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!messageContent.trim() || !receiverAgent) return;
+
+    try {
+      const receiver = agents.find(agent => agent.identifier.name === receiverAgent);
+      if (!receiver) {
+        setError('Receiver agent not found');
+        return;
+      }
+
+      const message: ACLMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        performative: messageType,
+        sender: {
+          name: 'user-interface',
+          addresses: ['local://user-interface']
+        },
+        receivers: [receiver.identifier],
+        content: {
+          type: 'text',
+          data: messageContent
+        },
+        language: 'text',
+        encoding: 'utf-8',
+        timestamp: new Date()
+      };
+
+      const results = await a2aSystem.sendMessage(message);
+      const success = results.every(result => result);
+
+      if (success) {
+        setMessageContent('');
+        console.log('Message sent successfully');
+      } else {
+        setError('Failed to send message to some recipients');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+      setError(errorMessage);
+    }
+  };
+
+  const announceTask = async () => {
+    if (!taskDescription.trim() || !taskCapabilities.trim()) return;
+
+    setIsAnnouncingTask(true);
+    setError(null);
+
+    try {
+      const deadline = taskDeadline ? new Date(taskDeadline) : new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours default
+      
+      const task: TaskAnnouncement = {
+        taskId: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        description: taskDescription,
+        requirements: {
+          capabilities: taskCapabilities.split(',').map(c => c.trim()),
+          constraints: [],
+          deadline: deadline
+        },
+        evaluationCriteria: {
+          cost: 0.3,
+          quality: 0.4,
+          time: 0.2,
+          reliability: 0.1
+        }
+      };
+
+      const taskId = await a2aSystem.contractNetProtocol.announceTask(task, {
+        name: 'user-interface',
+        addresses: ['local://user-interface']
+      });
+
+      console.log(`Task announced with ID: ${taskId}`);
+      setTaskDescription('');
+      setTaskCapabilities('');
+      setTaskDeadline('');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to announce task';
+      setError(errorMessage);
+    } finally {
+      setIsAnnouncingTask(false);
+    }
+  };
+
+  const handleAgentSelect = (agent: AgentRegistration) => {
+    setSelectedAgent(agent);
+    onAgentSelect?.(agent);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'busy': return 'bg-yellow-100 text-yellow-800';
+      case 'inactive': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatLoad = (load: number) => {
+    return `${Math.round(load * 100)}%`;
+  };
+
+  if (isInitializing) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Agent-to-Agent (A2A) Communication
-            </CardTitle>
-            <CardDescription>
-              Initialize the A2A system to enable multi-agent coordination and communication
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={initializeA2A} 
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <Zap className="h-4 w-4" />
-              Initialize A2A System
-            </Button>
-            
-            <div className="bg-muted p-4 rounded-lg">
-              <h4 className="font-medium mb-2">A2A Communication provides:</h4>
-              <ul className="text-sm space-y-1">
-                <li>• FIPA ACL protocol implementation</li>
-                <li>• Multi-agent task coordination</li>
-                <li>• Contract Net Protocol negotiation</li>
-                <li>• Agent capability matching and assignment</li>
-              </ul>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Network className="h-5 w-5" />
+            A2A Communication System
+          </CardTitle>
+          <CardDescription>
+            Initializing agent-to-agent communication protocol...
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+              <p className="text-sm text-muted-foreground">
+                Setting up FIPA ACL protocol and agent registry...
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            A2A System Error
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button 
+            onClick={initializeA2ASystem} 
+            className="mt-4"
+            disabled={isInitializing}
+          >
+            {isInitializing ? 'Retrying...' : 'Retry Initialization'}
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="space-y-6">
+      {/* System Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Agent-to-Agent Communication
+            <Network className="h-5 w-5" />
+            A2A Communication System
+            {isInitialized && (
+              <Badge variant="secondary" className="ml-auto">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Online
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
-            Multi-agent coordination using FIPA ACL protocols
+            Multi-agent coordination using FIPA ACL protocol
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              <div>
-                <div className="text-2xl font-bold">{stats.totalAgents}</div>
+          {systemStats && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{systemStats.totalAgents}</div>
                 <div className="text-sm text-muted-foreground">Total Agents</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.activeAgents}</div>
-                <div className="text-sm text-muted-foreground">Active Agents</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{systemStats.activeAgents}</div>
+                <div className="text-sm text-muted-foreground">Active</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.totalTasks}</div>
-                <div className="text-sm text-muted-foreground">Total Tasks</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{systemStats.totalCapabilities}</div>
+                <div className="text-sm text-muted-foreground">Capabilities</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.completedTasks}</div>
-                <div className="text-sm text-muted-foreground">Completed</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">{systemStats.activeConversations}</div>
+                <div className="text-sm text-muted-foreground">Conversations</div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{stats.pendingTasks}</div>
-                <div className="text-sm text-muted-foreground">Pending</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{Math.round(stats.averageTaskTime)}ms</div>
-                <div className="text-sm text-muted-foreground">Avg Task Time</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{formatLoad(systemStats.averageLoad)}</div>
+                <div className="text-sm text-muted-foreground">Avg Load</div>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="task-creation" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="task-creation">
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Task Creation
-          </TabsTrigger>
-          <TabsTrigger value="collaboration">
-            <GitBranch className="h-4 w-4 mr-2" />
-            Collaborative Tasks
-          </TabsTrigger>
-          <TabsTrigger value="negotiation">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Agent Negotiation
-          </TabsTrigger>
+      {/* Main Interface */}
+      <Tabs defaultValue="agents" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="agents">Agent Directory</TabsTrigger>
+          <TabsTrigger value="messaging">Messaging</TabsTrigger>
+          <TabsTrigger value="tasks">Task Coordination</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="task-creation" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Agent Task</CardTitle>
-                <CardDescription>
-                  Create and assign tasks to available agents
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Task Description</Label>
-                  <Textarea
-                    placeholder="Describe the task to be performed..."
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    rows={3}
-                  />
+        
+        <TabsContent value="agents" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Registered Agents
+              </CardTitle>
+              <CardDescription>
+                Browse and interact with available agents in the system
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {agents.map((agent) => (
+                  <Card 
+                    key={agent.identifier.name} 
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handleAgentSelect(agent)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Bot className="h-4 w-4" />
+                            <h3 className="font-semibold">{agent.identifier.name}</h3>
+                            <Badge className={getStatusColor(agent.status)}>
+                              {agent.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-1">
+                            {agent.capabilities.slice(0, 3).map((capability, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {capability.name}
+                              </Badge>
+                            ))}
+                            {agent.capabilities.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{agent.capabilities.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                            <div>Services: {agent.services.join(', ')}</div>
+                            <div>Protocols: {agent.protocols.join(', ')}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right space-y-1">
+                          <div className="text-sm font-medium">
+                            Load: {formatLoad(agent.load)}
+                          </div>
+                          <Progress value={agent.load * 100} className="w-16 h-2" />
+                          <div className="text-xs text-muted-foreground">
+                            v{agent.metadata.version}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {agents.length === 0 && (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No agents registered in the system.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="messaging" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Direct Messaging
+              </CardTitle>
+              <CardDescription>
+                Send messages directly to agents using FIPA ACL protocol
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Receiver Agent</label>
+                  <Select value={receiverAgent} onValueChange={setReceiverAgent}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.filter(agent => agent.status === 'active').map((agent) => (
+                        <SelectItem key={agent.identifier.name} value={agent.identifier.name}>
+                          {agent.identifier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-
-                <div>
-                  <Label>Required Capabilities (comma-separated)</Label>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Message Type</label>
+                  <Select value={messageType} onValueChange={(value) => setMessageType(value as ACLPerformative)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inform">Inform</SelectItem>
+                      <SelectItem value="request">Request</SelectItem>
+                      <SelectItem value="query-if">Query If</SelectItem>
+                      <SelectItem value="query-ref">Query Reference</SelectItem>
+                      <SelectItem value="propose">Propose</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Message Content</label>
+                <Textarea
+                  placeholder="Enter your message content..."
+                  value={messageContent}
+                  onChange={(e) => setMessageContent(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+              
+              <Button 
+                onClick={sendMessage}
+                disabled={!messageContent.trim() || !receiverAgent}
+                className="w-full"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Send Message
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="tasks" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Task Coordination
+              </CardTitle>
+              <CardDescription>
+                Announce tasks using Contract Net Protocol for agent bidding
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Task Description</label>
+                <Textarea
+                  placeholder="Describe the task you want to announce..."
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Required Capabilities</label>
                   <Input
-                    placeholder="reasoning, analysis, documentation"
+                    placeholder="e.g., logical-reasoning, context-analysis"
                     value={taskCapabilities}
                     onChange={(e) => setTaskCapabilities(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Comma-separated list of required capabilities
+                  </p>
                 </div>
-
-                <div>
-                  <Label>Priority</Label>
-                  <Select value={taskPriority} onValueChange={setTaskPriority}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button 
-                  onClick={createTask} 
-                  disabled={loading || !taskDescription.trim()}
-                  className="w-full flex items-center gap-2"
-                >
-                  <Play className="h-4 w-4" />
-                  Create Task
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Task Result</CardTitle>
-                <CardDescription>
-                  Details of the created task
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {taskResult ? (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-sm font-medium">Task ID</Label>
-                      <p className="text-sm font-mono">{taskResult.id}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Status</Label>
-                      <Badge variant={taskResult.status === 'completed' ? 'default' : 'secondary'}>
-                        {taskResult.status}
-                      </Badge>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Priority</Label>
-                      <Badge variant="outline">{taskResult.priority}</Badge>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Assigned Agents</Label>
-                      <div className="flex gap-2 mt-1">
-                        {taskResult.assignedAgents.map((agent, index) => (
-                          <Badge key={index} variant="secondary">{agent}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Description</Label>
-                      <p className="text-sm text-muted-foreground">{taskResult.description}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    Create a task to see results
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="collaboration" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Collaborative Task Execution</CardTitle>
-                <CardDescription>
-                  Execute tasks using multiple agents with different coordination strategies
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Task Description</Label>
-                  <Textarea
-                    placeholder="Describe the collaborative task..."
-                    value={taskDescription}
-                    onChange={(e) => setTaskDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label>Agent Names (comma-separated)</Label>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Deadline (Optional)</label>
                   <Input
-                    placeholder="reasoning-assistant, context-analyzer, documentation-expert"
-                    value={collaborativeAgents}
-                    onChange={(e) => setCollaborativeAgents(e.target.value)}
+                    type="datetime-local"
+                    value={taskDeadline}
+                    onChange={(e) => setTaskDeadline(e.target.value)}
                   />
                 </div>
-
-                <div>
-                  <Label>Coordination Strategy</Label>
-                  <Select value={coordinationStrategy} onValueChange={setCoordinationStrategy}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sequential">Sequential</SelectItem>
-                      <SelectItem value="parallel">Parallel</SelectItem>
-                      <SelectItem value="pipeline">Pipeline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button 
-                  onClick={executeCollaborativeTask} 
-                  disabled={loading || !taskDescription.trim() || !collaborativeAgents.trim()}
-                  className="w-full flex items-center gap-2"
-                >
-                  <GitBranch className="h-4 w-4" />
-                  Execute Collaborative Task
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Collaboration Result</CardTitle>
-                <CardDescription>
-                  Output from collaborative task execution
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {collaborativeResult ? (
-                  <pre className="bg-muted p-4 rounded-lg text-sm overflow-auto max-h-64">
-                    {typeof collaborativeResult === 'string' ? collaborativeResult : JSON.stringify(collaborativeResult, null, 2)}
-                  </pre>
+              </div>
+              
+              <Button 
+                onClick={announceTask}
+                disabled={!taskDescription.trim() || !taskCapabilities.trim() || isAnnouncingTask}
+                className="w-full"
+              >
+                {isAnnouncingTask ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Announcing Task...
+                  </>
                 ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    Execute a collaborative task to see results
-                  </div>
+                  <>
+                    <Activity className="h-4 w-4 mr-2" />
+                    Announce Task
+                  </>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="negotiation" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Agent Negotiation</CardTitle>
-                <CardDescription>
-                  Use FIPA Contract Net Protocol for agent negotiation
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Initiator Agent</Label>
-                  <Select value={negotiationInitiator} onValueChange={setNegotiationInitiator}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="reasoning-assistant">Reasoning Assistant</SelectItem>
-                      <SelectItem value="context-analyzer">Context Analyzer</SelectItem>
-                      <SelectItem value="documentation-expert">Documentation Expert</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Participant Agents (comma-separated)</Label>
-                  <Input
-                    placeholder="context-analyzer, documentation-expert"
-                    value={negotiationParticipants}
-                    onChange={(e) => setNegotiationParticipants(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label>Negotiation Task</Label>
-                  <Textarea
-                    placeholder="Describe the task to negotiate..."
-                    value={negotiationTask}
-                    onChange={(e) => setNegotiationTask(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-                <Button 
-                  onClick={performNegotiation} 
-                  disabled={loading || !negotiationTask.trim() || !negotiationParticipants.trim()}
-                  className="w-full flex items-center gap-2"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Start Negotiation
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Negotiation Result</CardTitle>
-                <CardDescription>
-                  Contract Net Protocol negotiation outcome
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {negotiationResult ? (
-                  <div className="space-y-4">
-                    {negotiationResult.winner && (
-                      <div>
-                        <Label className="text-sm font-medium">Winner</Label>
-                        <Badge className="ml-2">{negotiationResult.winner}</Badge>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <Label className="text-sm font-medium">Proposals ({negotiationResult.proposals.length})</Label>
-                      <div className="space-y-2 mt-2">
-                        {negotiationResult.proposals.map((proposal, index) => (
-                          <div key={index} className="bg-muted p-3 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline">{proposal.sender.name}</Badge>
-                              <Badge variant="secondary">{proposal.performative}</Badge>
-                            </div>
-                            <p className="text-sm">{proposal.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-muted-foreground py-8">
-                    Start a negotiation to see results
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Selected Agent Details */}
+      {selectedAgent && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Agent Details: {selectedAgent.identifier.name}</CardTitle>
+            <CardDescription>
+              Detailed information about the selected agent
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Status:</strong> 
+                  <Badge className={`ml-2 ${getStatusColor(selectedAgent.status)}`}>
+                    {selectedAgent.status}
+                  </Badge>
+                </div>
+                <div>
+                  <strong>Load:</strong> {formatLoad(selectedAgent.load)}
+                </div>
+                <div>
+                  <strong>Version:</strong> {selectedAgent.metadata.version}
+                </div>
+                <div>
+                  <strong>Last Heartbeat:</strong> {selectedAgent.lastHeartbeat.toLocaleTimeString()}
+                </div>
+              </div>
+              
+              <div>
+                <strong>Capabilities:</strong>
+                <div className="mt-2 space-y-2">
+                  {selectedAgent.capabilities.map((capability, index) => (
+                    <div key={index} className="p-3 bg-muted rounded text-sm">
+                      <div className="font-medium">{capability.name}</div>
+                      <div className="text-muted-foreground text-xs mt-1">{capability.description}</div>
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <div>Cost: {capability.cost}</div>
+                        <div>Reliability: {(capability.reliability * 100).toFixed(0)}%</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <strong>Addresses:</strong>
+                <div className="mt-1 space-y-1">
+                  {selectedAgent.identifier.addresses.map((address, index) => (
+                    <Badge key={index} variant="outline" className="text-xs mr-1">
+                      {address}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
-};
+}

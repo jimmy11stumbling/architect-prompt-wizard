@@ -28,6 +28,17 @@ const templates: Template[] = [
     icon: <Video className="h-5 w-5" />,
     tags: ["Video", "Editing", "Collaboration"],
     spec: {
+      targetPlatform: "bolt" as const,
+      platformSpecificConfig: {
+        supportedFeatures: ["Real-time collaboration", "Video processing", "Timeline editing"],
+        preferredTechStack: ["React", "Next.js", "NestJS"],
+        deploymentOptions: ["AWS", "Vercel"],
+        limitations: ["Large file uploads", "Real-time sync"],
+        bestPractices: ["Component splitting", "State management"],
+        promptStyle: "code-focused",
+        contextPreferences: ["Performance optimization", "Real-time features"],
+        outputFormat: "step-by-step"
+      },
       projectDescription: "A professional video editing platform with real-time collaboration, timeline editing, effects library, and export capabilities for content creators.",
       frontendTechStack: ["React", "Next.js"],
       backendTechStack: ["NestJS", "PostgreSQL", "Redis"],
