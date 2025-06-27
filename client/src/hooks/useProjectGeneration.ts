@@ -176,7 +176,7 @@ export const useProjectGeneration = () => {
 
       setIsGenerating(true);
       setGenerationStatus(null);
-      orchestrator.setProjectSpec(completeSpec);
+      await orchestrator.setProjectSpec(completeSpec);
 
       // Show notification for generation start
       toast({

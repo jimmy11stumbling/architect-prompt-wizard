@@ -196,13 +196,22 @@ PLATFORM-SPECIFIC REQUIREMENTS:
 export async function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec): Promise<string> {
   const documentation = await getDocumentation();
   
+  // Get platform-specific context from database
+  const platformContext = buildPlatformContext(spec, documentation);
+  const technologyContext = buildTechnologyContext(spec, documentation);
+  
   const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system powered by DeepSeek AI. Your role is to provide expert, platform-specific analysis and recommendations for building applications on ${spec.targetPlatform?.toUpperCase()} with RAG 2.0, A2A Protocol, and MCP integration.
 
 CRITICAL REQUIREMENTS:
-- Generate ONLY ${spec.targetPlatform?.toUpperCase()}-specific recommendations and blueprints
-- Use authentic platform documentation and real capabilities, never generic responses
-- Integrate seamlessly with DeepSeek AI for custom-tailored solutions
-- Focus on platform-native features and best practices
+- Generate ONLY ${spec.targetPlatform?.toUpperCase()}-specific recommendations and blueprints based on the authentic platform data below
+- Use ONLY the real platform documentation, features, integrations, and capabilities provided
+- Never provide generic advice - everything must be tailored to ${spec.targetPlatform?.toUpperCase()}'s actual capabilities
+- Reference specific platform features, tools, and limitations from the authentic data
+- Focus on platform-native workflows and deployment options
+
+${platformContext}
+
+${technologyContext}
 
 TARGET PLATFORM: ${spec.targetPlatform?.toUpperCase()}
 PROJECT SPECIFICATION:
@@ -226,102 +235,102 @@ DEEPSEEK RAG 2.0 INTEGRATION:
   const agentSpecificPrompts: Record<AgentName, string> = {
     "reasoning-assistant": `${baseContext}
 
-As the Reasoning Assistant, provide logical analysis and step-by-step thinking processes for complex problem solving.`,
+As the Reasoning Assistant for ${spec.targetPlatform?.toUpperCase()}, provide logical analysis and step-by-step thinking processes specifically tailored for this platform's development environment and constraints.`,
 
     "context-analyzer": `${baseContext}
 
-As the Context Analyzer, examine the project requirements and identify key contextual elements that will influence the implementation.`,
+As the Context Analyzer for ${spec.targetPlatform?.toUpperCase()}, examine the project requirements and identify key contextual elements specific to this platform's capabilities, limitations, and development workflow.`,
 
     "documentation-expert": `${baseContext}
 
-As the Documentation Expert, focus on creating comprehensive documentation strategies and technical specifications.`,
+As the Documentation Expert for ${spec.targetPlatform?.toUpperCase()}, focus on creating platform-specific documentation strategies and technical specifications that align with this platform's standards and best practices.`,
 
     "workflow-coordinator": `${baseContext}
 
-As the Workflow Coordinator, design efficient workflows and process orchestration for the multi-agent system.`,
+As the Workflow Coordinator for ${spec.targetPlatform?.toUpperCase()}, design efficient workflows and process orchestration that leverage this platform's native features and development tools.`,
 
     "reasoning-coordinator": `${baseContext}
 
-As the Reasoning Coordinator, manage the logical flow and decision-making processes across all system components.`,
+As the Reasoning Coordinator for ${spec.targetPlatform?.toUpperCase()}, manage the logical flow and decision-making processes specifically optimized for this platform's architecture and deployment pipeline.`,
 
     "RequirementDecompositionAgent": `${baseContext}
 
-As the Requirement Decomposition Agent, break down complex requirements into manageable, implementable components.`,
+As the Requirement Decomposition Agent for ${spec.targetPlatform?.toUpperCase()}, break down complex requirements into manageable components that align with this platform's capabilities and development patterns.`,
 
     "RAGContextIntegrationAgent": `${baseContext}
 
-As the RAG Context Integration Agent, focus on implementing RAG 2.0 with advanced retrieval strategies and context management.`,
+As the RAG Context Integration Agent for ${spec.targetPlatform?.toUpperCase()}, focus on implementing RAG 2.0 strategies that work optimally within this platform's infrastructure and deployment environment.`,
 
     "A2AProtocolExpertAgent": `${baseContext}
 
-As the A2A Protocol Expert Agent, design agent-to-agent communication patterns and multi-agent coordination strategies.`,
+As the A2A Protocol Expert Agent for ${spec.targetPlatform?.toUpperCase()}, design agent-to-agent communication patterns that leverage this platform's native capabilities and integration options.`,
 
     "TechStackImplementationAgent_Frontend": `${baseContext}
 
-As the Frontend Tech Stack Implementation Agent, provide detailed frontend architecture and implementation guidance.`,
+As the Frontend Tech Stack Implementation Agent for ${spec.targetPlatform?.toUpperCase()}, provide detailed frontend architecture specifically optimized for this platform's development environment and deployment capabilities.`,
 
     "TechStackImplementationAgent_Backend": `${baseContext}
 
-As the Backend Tech Stack Implementation Agent, design robust backend architecture with scalability and performance in mind.`,
+As the Backend Tech Stack Implementation Agent for ${spec.targetPlatform?.toUpperCase()}, design robust backend architecture that maximizes this platform's specific hosting, database, and scaling capabilities.`,
 
     "BoltOptimizationAgent": `${baseContext}
 
-As the Bolt Platform Optimization Agent, you must create Bolt/StackBlitz WebContainer-specific optimizations based ONLY on the authentic platform documentation provided above. 
+As the Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
 
 CRITICAL MANDATE:
-- Focus on WebContainer technology, instant deployment, and browser-based development
-- Optimize for StackBlitz's in-browser environment and npm package management
-- Reference specific Bolt.new AI-powered scaffolding capabilities
-- Address WebContainer memory/performance constraints and browser limitations
-- Leverage instant preview and hot reload features`,
+- Use ONLY the platform-specific features, tools, and capabilities from the authentic database documentation
+- Reference specific platform deployment options, development environment, and unique features
+- Address platform-specific limitations and constraints from the real data
+- Optimize for the platform's native development workflow and best practices
+- Leverage platform-specific integrations and services as documented`,
 
     "CursorOptimizationAgent": `${baseContext}
 
-As the Cursor Platform Optimization Agent, you must create Cursor IDE-specific optimizations based ONLY on the authentic platform documentation provided above. 
+As the Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
 
 CRITICAL MANDATE:
-- Focus on AI-first code editor features and conversation-based development
-- Optimize for Cursor's advanced autocomplete and intelligent code generation
-- Reference specific Cursor IDE collaboration features and Git integration
-- Address Cursor-specific extension ecosystem and AI development tools
-- Leverage real-time AI assistance and automated commit messages`,
+- Use ONLY the platform-specific features, tools, and capabilities from the authentic database documentation
+- Reference specific platform deployment options, development environment, and unique features
+- Address platform-specific limitations and constraints from the real data
+- Optimize for the platform's native development workflow and best practices
+- Leverage platform-specific integrations and services as documented`,
 
     "ReplitOptimizationAgent": `${baseContext}
 
-As the Replit Platform Optimization Agent, you must create Replit-specific optimizations based ONLY on the authentic platform documentation provided above. 
+As the Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
 
 CRITICAL MANDATE:
-- Focus on cloud IDE with built-in AI agent and multiplayer development
-- Optimize for automatic deployment, hosting, and database integration
-- Reference specific Replit's package management across multiple languages
-- Address Replit-specific GUI tools for PostgreSQL and Redis
-- Leverage collaborative coding and instant deployment capabilities`,
+- Use ONLY the platform-specific features, tools, and capabilities from the authentic database documentation
+- Reference specific platform deployment options, development environment, and unique features
+- Address platform-specific limitations and constraints from the real data
+- Optimize for the platform's native development workflow and best practices
+- Leverage platform-specific integrations and services as documented`,
 
     "WindsurfOptimizationAgent": `${baseContext}
 
-As the Windsurf Platform Optimization Agent, you must create Windsurf-specific optimizations based ONLY on the authentic platform documentation provided above. 
+As the Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
 
 CRITICAL MANDATE:
-- Focus on agentic IDE with advanced AI capabilities and MCP native support
-- Optimize for database development tools and intelligent query generation
-- Reference specific Windsurf's VSCode-compatible extensions with AI enhancement
-- Address built-in terminal and collaborative development features
-- Leverage real-time code analysis and optimization suggestions`,
+- Use ONLY the platform-specific features, tools, and capabilities from the authentic database documentation
+- Reference specific platform deployment options, development environment, and unique features
+- Address platform-specific limitations and constraints from the real data
+- Optimize for the platform's native development workflow and best practices
+- Leverage platform-specific integrations and services as documented`,
 
     "LovableOptimizationAgent": `${baseContext}
 
-As the Lovable Platform Optimization Agent, you must create Lovable-specific optimizations based ONLY on the authentic platform documentation provided above. 
+As the Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
 
 CRITICAL MANDATE:
-- Focus on no-code AI platform for rapid application development
-- Optimize for conversational AI and automatic UI/UX generation
-- Reference specific Lovable's backend service integration capabilities
-- Address real-time preview and production-ready deployment features
-- Leverage one-click publishing and AI-driven development workflow`,
+- Use ONLY the platform-specific features, tools, and capabilities from the authentic database documentation
+- Reference specific platform deployment options, development environment, and unique features
+- Address platform-specific limitations and constraints from the real data
+- Optimize for the platform's native development workflow and best practices
+- Leverage platform-specific integrations and services as documented`,
 
     "QualityAssuranceAgent": `${baseContext}
 
-As the Quality Assurance Agent, ensure code quality, testing strategies, and production readiness across all components.`
+As the Quality Assurance Agent for ${spec.targetPlatform?.toUpperCase()}, ensure code quality, testing strategies, and production readiness specifically aligned with this platform's deployment requirements, testing frameworks, and quality standards.`
   };
 
   return agentSpecificPrompts[agent] || baseContext;

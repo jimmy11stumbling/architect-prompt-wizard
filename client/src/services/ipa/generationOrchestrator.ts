@@ -10,21 +10,145 @@ import { savePrompt } from "../db/promptApiService";
 import { toast } from "@/hooks/use-toast";
 import { DeepSeekClient } from "./api/deepseekClient";
 
+// A2A and MCP Protocol Integration
+interface A2AMessage {
+  sender: AgentName;
+  receiver: AgentName;
+  content: string;
+  messageType: 'request' | 'response' | 'notification' | 'coordination';
+  timestamp: number;
+  contextData?: any;
+}
+
+interface MCPRequest {
+  jsonrpc: "2.0";
+  id: string | number;
+  method: string;
+  params?: any;
+}
+
 export class GenerationOrchestrator {
   private currentStatus: GenerationStatus;
   private conversationManager: ConversationManager;
   private currentProjectSpec: ProjectSpec | null = null;
   private agentList: AgentName[] = [];
+  private a2aMessages: A2AMessage[] = [];
+  private mcpCache: Map<string, any> = new Map();
 
   constructor() {
     this.currentStatus = { ...initialMockStatus };
     this.conversationManager = new ConversationManager();
   }
 
-  setProjectSpec(spec: ProjectSpec): void {
+  // MCP Protocol Integration
+  private async makeMCPRequest(method: string, params?: any): Promise<any> {
+    const cacheKey = `${method}_${JSON.stringify(params)}`;
+    
+    // Check cache first for performance
+    if (this.mcpCache.has(cacheKey)) {
+      return this.mcpCache.get(cacheKey);
+    }
+
+    const request: MCPRequest = {
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method,
+      params
+    };
+
+    try {
+      const response = await fetch('/api/mcp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        throw new Error(`MCP request failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Cache result for future use
+      this.mcpCache.set(cacheKey, result);
+      
+      return result;
+    } catch (error) {
+      console.error(`MCP request error for ${method}:`, error);
+      throw error;
+    }
+  }
+
+  // A2A Protocol Integration
+  private sendA2AMessage(sender: AgentName, receiver: AgentName, content: string, messageType: A2AMessage['messageType'], contextData?: any): void {
+    const message: A2AMessage = {
+      sender,
+      receiver,
+      content,
+      messageType,
+      timestamp: Date.now(),
+      contextData
+    };
+
+    this.a2aMessages.push(message);
+    console.log(`[A2A] ${sender} → ${receiver}: ${messageType}`, { content: content.substring(0, 100) });
+  }
+
+  private getA2AMessagesForAgent(agent: AgentName): A2AMessage[] {
+    return this.a2aMessages.filter(msg => msg.receiver === agent || msg.sender === agent);
+  }
+
+  // Enhanced Platform Context via MCP
+  private async getEnhancedPlatformContext(targetPlatform: string): Promise<any> {
+    try {
+      // Use MCP to get comprehensive platform context
+      const platformData = await this.makeMCPRequest('tools/call', {
+        name: 'get_comprehensive_context',
+        arguments: { platform: targetPlatform }
+      });
+
+      // Get technology compatibility analysis via MCP
+      const techStack = this.currentProjectSpec?.frontendTechStack?.concat(this.currentProjectSpec?.backendTechStack || []) || [];
+      const compatibility = await this.makeMCPRequest('tools/call', {
+        name: 'analyze_platform_compatibility',
+        arguments: { 
+          platform: targetPlatform,
+          techStack: techStack,
+          requirements: this.currentProjectSpec?.projectDescription || ''
+        }
+      });
+
+      return {
+        platform: platformData,
+        compatibility,
+        techStack
+      };
+    } catch (error) {
+      console.warn('MCP platform context fetch failed, using fallback:', error);
+      return null;
+    }
+  }
+
+  async setProjectSpec(spec: ProjectSpec): Promise<void> {
     this.currentProjectSpec = spec;
     this.agentList = getAgentListForPlatform(spec.targetPlatform);
+    
+    // Clear A2A messages and MCP cache for new project
+    this.a2aMessages = [];
+    this.mcpCache.clear();
+    
     console.log(`Using platform: ${spec.targetPlatform} for target: ${spec.targetPlatform?.toLowerCase()}`);
+    
+    // Pre-fetch enhanced platform context via MCP
+    if (spec.targetPlatform) {
+      try {
+        const enhancedContext = await this.getEnhancedPlatformContext(spec.targetPlatform);
+        console.log(`[MCP] Enhanced platform context loaded for ${spec.targetPlatform}`);
+      } catch (error) {
+        console.warn('[MCP] Failed to load enhanced context:', error);
+      }
+    }
+    
     this.currentStatus = { 
       ...initialMockStatus,
       spec: spec,
@@ -96,10 +220,33 @@ export class GenerationOrchestrator {
       throw new Error("No project specification set");
     }
 
-    // Prepare agent requests with documentation-aware prompts
-    const agentRequests = await Promise.all(this.agentList.map(async (agent) => {
+    // Prepare agent requests with enhanced MCP context and A2A coordination
+    const agentRequests = await Promise.all(this.agentList.map(async (agent, index) => {
       const systemPrompt = await getAgentSystemPrompt(agent, this.currentProjectSpec!);
-      const userMessage = createUserMessageFromSpec(agent, this.currentProjectSpec!);
+      let userMessage = createUserMessageFromSpec(agent, this.currentProjectSpec!);
+      
+      // Add MCP-enhanced platform context
+      try {
+        const enhancedContext = await this.getEnhancedPlatformContext(this.currentProjectSpec!.targetPlatform!);
+        if (enhancedContext) {
+          userMessage += `\n\nENHANCED PLATFORM CONTEXT (via MCP):\n${JSON.stringify(enhancedContext, null, 2)}`;
+        }
+      } catch (error) {
+        console.warn(`[MCP] Failed to get enhanced context for ${agent}:`, error);
+      }
+      
+      // Add A2A coordination context (previous agent outputs)
+      if (index > 0) {
+        const previousAgents = this.agentList.slice(0, index);
+        const a2aContext = previousAgents.map(prevAgent => {
+          const messages = this.getA2AMessagesForAgent(prevAgent);
+          return `\n[A2A CONTEXT from ${prevAgent}]: Previous findings and recommendations to coordinate with.`;
+        }).join('\n');
+        
+        if (a2aContext) {
+          userMessage += `\n\nA2A COORDINATION CONTEXT:${a2aContext}`;
+        }
+      }
       
       const request: DeepSeekCompletionRequest = {
         model: "deepseek-chat",
@@ -169,6 +316,18 @@ export class GenerationOrchestrator {
               output: fullResponse,
               result: fullResponse
             };
+            
+            // A2A Protocol: Share agent results with subsequent agents
+            const remainingAgents = this.agentList.slice(agentIndex + 1);
+            remainingAgents.forEach(nextAgent => {
+              this.sendA2AMessage(
+                agentName,
+                nextAgent,
+                `Agent ${agentName} completed analysis. Key findings: ${fullResponse.substring(0, 500)}...`,
+                'notification',
+                { fullResponse, agentType: agentName }
+              );
+            });
             
             // Update conversation
             this.conversationManager.addAgentResponse(agentName, fullResponse);
