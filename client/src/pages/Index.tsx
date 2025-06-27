@@ -9,7 +9,7 @@ import { ComponentTester, AgentResponseTester } from "@/components/testing";
 import RealTimeResponseMonitor from "@/components/enhanced-features/RealTimeResponseMonitor";
 import MainLayout from "@/components/layout/MainLayout";
 import ProjectHeader from "@/components/project/ProjectHeader";
-import QuickCopyBar from "@/components/templates/QuickCopyBar";
+
 import TemplateApplicator from "@/components/templates/TemplateApplicator";
 import PlatformSelector from "@/components/platform/PlatformSelector";
 import PlatformTemplates from "@/components/platform/PlatformTemplates";
@@ -116,11 +116,8 @@ const Index: React.FC = () => {
               onSelectTemplate={handleSelectTemplate}
             />
             
-            {/* Quick Copy Bar and Template Applicator */}
-            <div className="flex justify-between items-center">
-              <div className="flex-1">
-                <QuickCopyBar />
-              </div>
+            {/* Template Applicator */}
+            <div className="flex justify-end items-center">
               <TemplateApplicator onApplyTemplate={handleSelectTemplate} />
             </div>
             
