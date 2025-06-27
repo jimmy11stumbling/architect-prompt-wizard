@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { mcpHub } from "./services/mcpHub";
+import { mcpServer, MCPRequest } from "./services/mcpServer";
 import { 
   insertPlatformSchema,
   insertPlatformFeatureSchema,
@@ -279,68 +281,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get comprehensive documentation for AI agent
+  // MCP Hub routes - comprehensive platform data management
   app.get("/api/agent-documentation", async (req, res) => {
     try {
-      // Gather all relevant documentation
-      const platforms = await storage.getAllPlatforms();
-      const knowledgeBase = await storage.getAllKnowledgeBase();
+      const comprehensiveData = await mcpHub.getComprehensiveContext();
       
-      // Get platform features, integrations, and pricing for each platform
-      const platformsWithDetails = await Promise.all(
-        platforms.map(async (platform) => {
-          const features = await storage.getPlatformFeatures(platform.id);
-          const integrations = await storage.getPlatformIntegrations(platform.id);
-          const pricing = await storage.getPlatformPricing(platform.id);
-          
-          return {
-            ...platform,
-            features,
-            integrations,
-            pricing
-          };
-        })
-      );
-
-      // Structure the comprehensive documentation
+      // Convert to the format expected by existing agents
       const documentation = {
-        platforms: platformsWithDetails,
-        knowledgeBase: knowledgeBase,
-        technologies: {
-          rag2: {
-            description: "Advanced RAG 2.0 vector search system with hybrid search capabilities",
-            features: ["Semantic chunking", "Vector embeddings", "Hybrid search", "Context compression"],
-            implementations: ["Pinecone", "Weaviate", "Qdrant", "Custom vector stores"],
-            bestPractices: [
-              "Use semantic chunking for better context preservation",
-              "Implement hybrid search combining semantic and keyword search",
-              "Optimize embedding models for domain-specific content",
-              "Use context compression for large documents"
-            ]
-          },
-          mcp: {
-            description: "Model Context Protocol for standardized tool and resource access",
-            features: ["JSON-RPC 2.0 messaging", "Tool registry", "Resource access", "Server management"],
-            tools: ["list_files", "read_file", "write_file", "web_search", "query_database", "analyze_code"],
-            bestPractices: [
-              "Implement proper error handling for tool calls",
-              "Use resource discovery for dynamic content",
-              "Standardize message formats across tools",
-              "Implement authentication for secure tool access"
-            ]
-          },
-          a2a: {
-            description: "Agent-to-Agent communication using FIPA ACL protocols",
-            features: ["Multi-agent coordination", "Message passing", "Negotiation protocols", "Workflow orchestration"],
-            protocols: ["Contract Net Protocol", "FIPA ACL", "Coordination patterns"],
-            bestPractices: [
-              "Define clear agent roles and responsibilities",
-              "Implement proper message routing and discovery",
-              "Use negotiation protocols for task allocation",
-              "Monitor agent performance and health"
-            ]
-          }
-        },
+        platforms: comprehensiveData.allPlatforms.map(p => ({
+          ...p.platform,
+          features: p.features,
+          integrations: p.integrations,
+          pricing: p.pricing
+        })),
+        knowledgeBase: comprehensiveData.allPlatforms.flatMap(p => p.knowledgeBase),
+        technologies: comprehensiveData.technologies,
         timestamp: new Date().toISOString()
       };
 
@@ -348,6 +303,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching agent documentation:", error);
       res.status(500).json({ error: "Failed to fetch documentation" });
+    }
+  });
+
+  // MCP Server routes
+  app.post("/api/mcp", async (req, res) => {
+    try {
+      const mcpRequest: MCPRequest = req.body;
+      const response = await mcpServer.handleRequest(mcpRequest);
+      res.json(response);
+    } catch (error) {
+      console.error("Error handling MCP request:", error);
+      res.status(500).json({
+        jsonrpc: "2.0",
+        id: req.body?.id || null,
+        error: {
+          code: -1,
+          message: "Internal server error",
+          data: error
+        }
+      });
+    }
+  });
+
+  app.get("/api/mcp/hub/status", async (req, res) => {
+    try {
+      const status = mcpHub.getCacheStatus();
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting MCP hub status:", error);
+      res.status(500).json({ error: "Failed to get hub status" });
+    }
+  });
+
+  app.post("/api/mcp/hub/refresh", async (req, res) => {
+    try {
+      await mcpHub.invalidateCache();
+      await mcpHub.getAllPlatformData(); // Rebuild cache
+      res.json({ success: true, message: "MCP Hub refreshed successfully" });
+    } catch (error) {
+      console.error("Error refreshing MCP hub:", error);
+      res.status(500).json({ error: "Failed to refresh hub" });
+    }
+  });
+
+  app.get("/api/mcp/platform/:name", async (req, res) => {
+    try {
+      const platformData = await mcpHub.getPlatformByName(req.params.name);
+      if (!platformData) {
+        return res.status(404).json({ error: "Platform not found" });
+      }
+      res.json(platformData);
+    } catch (error) {
+      console.error("Error getting platform data:", error);
+      res.status(500).json({ error: "Failed to get platform data" });
+    }
+  });
+
+  app.get("/api/mcp/context/:platform?", async (req, res) => {
+    try {
+      const context = await mcpHub.getComprehensiveContext(req.params.platform);
+      res.json(context);
+    } catch (error) {
+      console.error("Error getting comprehensive context:", error);
+      res.status(500).json({ error: "Failed to get context" });
     }
   });
 

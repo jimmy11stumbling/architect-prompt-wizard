@@ -32,26 +32,114 @@ async function getDocumentation(): Promise<any> {
 function buildPlatformContext(spec: ProjectSpec, documentation: any): string {
   if (!documentation || !spec.targetPlatform) return "";
   
-  const platform = documentation.platforms?.find((p: any) => 
-    p.name.toLowerCase() === spec.targetPlatform.toLowerCase()
+  // Enhanced platform matching with multiple strategies
+  const targetPlatform = spec.targetPlatform.toLowerCase();
+  let platform = null;
+  
+  // First try exact name match
+  platform = documentation.platforms?.find((p: any) => 
+    p.name.toLowerCase() === targetPlatform
   );
   
-  if (!platform) return "";
+  // If not found, try partial match for platform names
+  if (!platform) {
+    platform = documentation.platforms?.find((p: any) => 
+      p.name.toLowerCase().includes(targetPlatform) || 
+      targetPlatform.includes(p.name.toLowerCase().split(' ')[0])
+    );
+  }
+  
+  // Specific mappings for known platforms
+  if (!platform) {
+    const platformMappings: { [key: string]: string } = {
+      'windsurf': 'Windsurf (Codeium)',
+      'cursor': 'Cursor',
+      'bolt': 'Bolt (StackBlitz)',
+      'replit': 'Replit',
+      'lovable': 'Lovable 2.0'
+    };
+    
+    const mappedName = platformMappings[targetPlatform];
+    if (mappedName) {
+      platform = documentation.platforms?.find((p: any) => 
+        p.name === mappedName
+      );
+    }
+  }
+  
+  if (!platform) {
+    console.warn(`Platform not found: ${spec.targetPlatform}`, documentation.platforms?.map((p: any) => p.name));
+    return "";
+  }
+  
+  console.log(`Using platform: ${platform.name} for target: ${spec.targetPlatform}`);
   
   return `
-PLATFORM-SPECIFIC CONTEXT (${spec.targetPlatform}):
+PLATFORM-SPECIFIC CONTEXT (${platform.name}):
 - Overview: ${platform.description}
-- Capabilities: ${platform.capabilities || "Standard web development"}
-- Key Features: ${platform.features?.map((f: any) => f.name).join(", ") || "Not specified"}
+- Category: ${platform.category}
+- Key Features: ${platform.features?.map((f: any) => f.name).join(", ") || "Advanced development capabilities"}
 - Integrations: ${platform.integrations?.map((i: any) => i.name).join(", ") || "Standard APIs"}
+- Pricing: ${platform.pricing?.map((p: any) => `${p.name}: ${p.price}`).join(", ") || "Contact for pricing"}
 - Limitations: ${spec.platformSpecificConfig?.limitations?.join(", ") || "None specified"}
-- Best Practices: ${spec.platformSpecificConfig?.bestPractices?.join(", ") || "Follow platform guidelines"}`;
+- Best Practices: ${spec.platformSpecificConfig?.bestPractices?.join(", ") || "Follow platform guidelines"}
+
+PLATFORM KNOWLEDGE BASE:
+${documentation.knowledgeBase?.find((kb: any) => kb.title.toLowerCase().includes(targetPlatform))?.content || "Standard development practices apply"}`;
 }
 
 function buildTechnologyContext(spec: ProjectSpec, documentation: any): string {
   if (!documentation?.technologies) return "";
   
-  let context = "\nTECHNOLOGY-SPECIFIC GUIDANCE:";
+  // Build platform-specific technology recommendations
+  const platformName = spec.targetPlatform?.toLowerCase() || '';
+  let platformTechContext = "";
+  
+  if (platformName.includes('windsurf')) {
+    platformTechContext = `
+WINDSURF-SPECIFIC TECHNOLOGIES:
+- Agentic IDE with advanced AI capabilities and MCP native support
+- Database development tools with intelligent query generation
+- VSCode-compatible extensions with AI enhancement
+- Built-in terminal and collaborative development features
+- Real-time code analysis and optimization suggestions`;
+  } else if (platformName.includes('cursor')) {
+    platformTechContext = `
+CURSOR-SPECIFIC TECHNOLOGIES:
+- AI-first code editor with conversation-based development
+- Advanced autocomplete and intelligent code generation
+- Real-time collaboration with AI assistance
+- Git integration with AI-powered commit messages
+- Extension ecosystem optimized for AI development`;
+  } else if (platformName.includes('bolt')) {
+    platformTechContext = `
+BOLT-SPECIFIC TECHNOLOGIES:
+- WebContainer technology for instant full-stack development
+- Browser-based environment with real-time preview
+- npm package management and instant deployment
+- AI-powered scaffolding and project generation`;
+  } else if (platformName.includes('replit')) {
+    platformTechContext = `
+REPLIT-SPECIFIC TECHNOLOGIES:
+- Cloud IDE with built-in AI agent and multiplayer development
+- Automatic deployment and hosting capabilities
+- Database integration (PostgreSQL, Redis) with GUI tools
+- Package management across multiple programming languages`;
+  } else if (platformName.includes('lovable')) {
+    platformTechContext = `
+LOVABLE-SPECIFIC TECHNOLOGIES:
+- No-code AI platform for rapid application development
+- Conversational AI for automatic UI/UX generation
+- Backend service integration with real-time preview
+- Production-ready deployment with one-click publishing`;
+  }
+  
+  let context = `
+TECHNOLOGY-SPECIFIC GUIDANCE FOR ${spec.targetPlatform?.toUpperCase()}:
+
+${platformTechContext}
+
+ADVANCED AI INTEGRATION:`;
   
   // RAG 2.0 Context
   if (spec.ragVectorDb !== "None") {
@@ -59,9 +147,9 @@ function buildTechnologyContext(spec: ProjectSpec, documentation: any): string {
     context += `
 RAG 2.0 Implementation:
 - Vector Database: ${spec.ragVectorDb}
-- Description: ${ragInfo.description}
-- Key Features: ${ragInfo.features.join(", ")}
-- Best Practices: ${ragInfo.bestPractices.join(", ")}`;
+- Description: ${ragInfo?.description || "Advanced retrieval-augmented generation with vector search"}
+- Key Features: ${ragInfo?.features?.join(", ") || "Semantic search, document chunking, context compression"}
+- Best Practices: ${ragInfo?.bestPractices?.join(", ") || "Use semantic chunking, implement hybrid search, optimize context windows"}`;
   }
   
   // MCP Context
@@ -70,9 +158,9 @@ RAG 2.0 Implementation:
     context += `
 Model Context Protocol (MCP):
 - Type: ${spec.mcpType}
-- Description: ${mcpInfo.description}
-- Available Tools: ${mcpInfo.tools.join(", ")}
-- Best Practices: ${mcpInfo.bestPractices.join(", ")}`;
+- Description: ${mcpInfo?.description || "Standardized tool and resource integration for AI agents"}
+- Available Tools: ${mcpInfo?.tools?.join(", ") || "Filesystem, web search, database, code analysis"}
+- Best Practices: ${mcpInfo?.bestPractices?.join(", ") || "Use JSON-RPC messaging, implement proper error handling, maintain session state"}`;
   }
   
   // A2A Context
@@ -81,10 +169,26 @@ Model Context Protocol (MCP):
     context += `
 Agent-to-Agent Communication:
 - Integration Details: ${spec.a2aIntegrationDetails}
-- Description: ${a2aInfo.description}
-- Protocols: ${a2aInfo.protocols.join(", ")}
-- Best Practices: ${a2aInfo.bestPractices.join(", ")}`;
+- Description: ${a2aInfo?.description || "Multi-agent coordination using FIPA ACL protocols"}
+- Protocols: ${a2aInfo?.protocols?.join(", ") || "FIPA ACL, Contract Net Protocol"}
+- Best Practices: ${a2aInfo?.bestPractices?.join(", ") || "Use standardized messaging, implement negotiation protocols, maintain agent state"}`;
   }
+
+  // Platform-Specific Tech Stack Recommendations
+  context += `
+
+RECOMMENDED IMPLEMENTATION APPROACH:
+- Frontend: ${spec.frontendTechStack?.join(" + ") || "React + TypeScript"}
+- Backend: ${spec.backendTechStack?.join(" + ") || "Node.js + Express"}
+- Database: ${spec.ragVectorDb !== "None" ? spec.ragVectorDb + " for vector search" : "PostgreSQL for relational data"}
+- Authentication: ${spec.authenticationMethod || "JWT-based authentication"}
+- Deployment: ${spec.deploymentPreference || "Platform-native deployment"}
+
+PLATFORM-SPECIFIC REQUIREMENTS:
+- Must be optimized for ${spec.targetPlatform?.toUpperCase()} development environment
+- Follow ${spec.targetPlatform} best practices and limitations
+- Use ${spec.targetPlatform}-native features and integrations where possible
+- Ensure compatibility with ${spec.targetPlatform}'s deployment pipeline`;
   
   return context;
 }
@@ -92,19 +196,32 @@ Agent-to-Agent Communication:
 export async function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec): Promise<string> {
   const documentation = await getDocumentation();
   
-  const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system. Your role is to provide expert analysis and recommendations for building applications with RAG 2.0, A2A Protocol, and MCP integration.
+  const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system powered by DeepSeek AI. Your role is to provide expert, platform-specific analysis and recommendations for building applications on ${spec.targetPlatform?.toUpperCase()} with RAG 2.0, A2A Protocol, and MCP integration.
 
+CRITICAL REQUIREMENTS:
+- Generate ONLY ${spec.targetPlatform?.toUpperCase()}-specific recommendations and blueprints
+- Use authentic platform documentation and real capabilities, never generic responses
+- Integrate seamlessly with DeepSeek AI for custom-tailored solutions
+- Focus on platform-native features and best practices
+
+TARGET PLATFORM: ${spec.targetPlatform?.toUpperCase()}
 PROJECT SPECIFICATION:
-- Description: ${spec.projectDescription}
-- Frontend Stack: ${spec.frontendTechStack.join(", ")}
-- Backend Stack: ${spec.backendTechStack.join(", ")}
-- RAG Vector Database: ${spec.ragVectorDb}
-- MCP Type: ${spec.mcpType}
-- A2A Integration: ${spec.a2aIntegrationDetails}
-- Additional Features: ${spec.additionalFeatures}
-- Advanced Prompt Details: ${spec.advancedPromptDetails}
-- Authentication Method: ${spec.authenticationMethod}
-- Deployment Preference: ${spec.deploymentPreference}${buildPlatformContext(spec, documentation)}${buildTechnologyContext(spec, documentation)}`;
+- Description: ${spec.projectDescription || "Custom application development"}
+- Frontend Stack: ${spec.frontendTechStack?.join(", ") || "React, TypeScript"}
+- Backend Stack: ${spec.backendTechStack?.join(", ") || "Node.js, Express"}
+- RAG Vector Database: ${spec.ragVectorDb || "None"}
+- MCP Type: ${spec.mcpType || "None"}
+- A2A Integration: ${spec.a2aIntegrationDetails || "None"}
+- Additional Features: ${spec.additionalFeatures || "Standard features"}
+- Advanced Prompt Details: ${spec.advancedPromptDetails || "None"}
+- Authentication Method: ${spec.authenticationMethod || "JWT"}
+- Deployment Preference: ${spec.deploymentPreference || "Platform-native"}${buildPlatformContext(spec, documentation)}${buildTechnologyContext(spec, documentation)}
+
+DEEPSEEK RAG 2.0 INTEGRATION:
+- Use real platform documentation from knowledge base
+- Generate custom-tailored blueprints based on authentic capabilities
+- Seamlessly integrate with vector search and semantic retrieval
+- No generic or placeholder recommendations allowed`;
 
   const agentSpecificPrompts: Record<AgentName, string> = {
     "reasoning-assistant": `${baseContext}
@@ -149,7 +266,21 @@ As the Backend Tech Stack Implementation Agent, design robust backend architectu
 
     "CursorOptimizationAgent": `${baseContext}
 
-As the Cursor Optimization Agent, create Cursor IDE specific optimizations and development workflow enhancements.`,
+As the Platform Optimization Agent for ${spec.targetPlatform?.toUpperCase()}, you must create ${spec.targetPlatform}-specific optimizations and development workflow enhancements based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE:
+- Use ONLY the platform-specific context and knowledge base provided
+- Generate recommendations that are 100% specific to ${spec.targetPlatform}'s actual capabilities
+- Reference specific ${spec.targetPlatform} features, tools, and limitations from the documentation
+- Never provide generic advice that could apply to any platform
+- Focus on ${spec.targetPlatform}'s unique strengths and optimization opportunities
+
+Your response must demonstrate deep knowledge of ${spec.targetPlatform}'s specific:
+- Development environment and IDE features
+- Built-in tools and integrations 
+- Deployment and hosting capabilities
+- Platform-specific best practices and patterns
+- Known limitations and workarounds`,
 
     "QualityAssuranceAgent": `${baseContext}
 
