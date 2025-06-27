@@ -38,7 +38,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
             // Create a unique key for each agent
             const key = `${agent.name}-${index}`;
             return (
-              <React.Fragment key={key}>
+              <div key={key}>
                 <motion.div
                   className={`flex flex-col p-3 rounded-md ${
                     agent.status === "processing"
@@ -65,7 +65,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
                     <ArrowRight className="h-4 w-4 text-ipa-muted" />
                   </div>
                 )}
-              </React.Fragment>
+              </div>
             );
           })}
         </div>
