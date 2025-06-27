@@ -45,8 +45,8 @@ export const RAGSearchInterface: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<RAGStats | null>(null);
   const [filters, setFilters] = useState({
-    platform: "",
-    category: "",
+    platform: "all",
+    category: "all",
     maxResults: "10"
   });
   const [isInitialized, setIsInitialized] = useState(false);
@@ -131,9 +131,9 @@ export const RAGSearchInterface: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query,
-          filters: filters.platform || filters.category ? {
-            platform: filters.platform || undefined,
-            category: filters.category || undefined
+          filters: (filters.platform && filters.platform !== "all") || (filters.category && filters.category !== "all") ? {
+            platform: filters.platform !== "all" ? filters.platform : undefined,
+            category: filters.category !== "all" ? filters.category : undefined
           } : undefined,
           maxResults: parseInt(filters.maxResults)
         })
@@ -303,7 +303,7 @@ export const RAGSearchInterface: React.FC = () => {
                   <SelectValue placeholder="Filter by platform" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Platforms</SelectItem>
+                  <SelectItem value="all">All Platforms</SelectItem>
                   {stats && Object.keys(stats.platformCounts).map(platform => (
                     <SelectItem key={platform} value={platform}>
                       {platform} ({stats.platformCounts[platform]})
@@ -317,7 +317,7 @@ export const RAGSearchInterface: React.FC = () => {
                   <SelectValue placeholder="Filter by category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {stats && Object.keys(stats.categoryCounts).map(category => (
                     <SelectItem key={category} value={category}>
                       {category} ({stats.categoryCounts[category]})

@@ -159,6 +159,7 @@ Advanced workflow orchestration system:
   - **Comprehensive Frontend Interfaces**: React components for all three systems with full functionality
   - **Database Integration**: Extended schema and API routes for all new systems
   - **Advanced Features**: Negotiation, collaboration strategies, real-time monitoring, statistics dashboards
+  - **UI Bug Fixes**: Fixed Select.Item runtime error by replacing empty string values with "all" in RAG interface
 
 ## Recent Changes
 
