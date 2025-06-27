@@ -49,7 +49,7 @@ const PromptOutput: React.FC<PromptOutputProps> = ({ prompt }) => {
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Generated Cursor Prompt</CardTitle>
+          <CardTitle>Master Blueprint</CardTitle>
           <CardDescription>
             Created using DeepSeek Reasoner model with Chain-of-Thought reasoning
           </CardDescription>
