@@ -282,6 +282,291 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // RAG 2.0 Vector Search Routes
+  app.post("/api/rag/initialize", async (req, res) => {
+    try {
+      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
+      const ragOrchestrator = new RAGOrchestrator();
+      await ragOrchestrator.initialize();
+      res.json({ message: "RAG system initialized successfully" });
+    } catch (error) {
+      console.error("Error initializing RAG:", error);
+      res.status(500).json({ error: "Failed to initialize RAG system" });
+    }
+  });
+
+  app.post("/api/rag/index", async (req, res) => {
+    try {
+      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
+      const ragOrchestrator = new RAGOrchestrator();
+      
+      // Setup progress tracking
+      const progressUpdates: any[] = [];
+      await ragOrchestrator.indexAllData((progress) => {
+        progressUpdates.push(progress);
+      });
+      
+      res.json({ 
+        message: "Indexing completed successfully",
+        progress: progressUpdates 
+      });
+    } catch (error) {
+      console.error("Error indexing data:", error);
+      res.status(500).json({ error: "Failed to index data" });
+    }
+  });
+
+  app.post("/api/rag/search", async (req, res) => {
+    try {
+      const { query, filters, maxResults } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query is required" });
+      }
+
+      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
+      const ragOrchestrator = new RAGOrchestrator();
+      
+      const result = await ragOrchestrator.query({
+        query,
+        filters: {
+          platform: filters?.platform,
+          category: filters?.category,
+          maxResults: maxResults || 10
+        }
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error performing RAG search:", error);
+      res.status(500).json({ error: "Failed to perform search" });
+    }
+  });
+
+  app.get("/api/rag/suggestions", async (req, res) => {
+    try {
+      const { q: query, limit } = req.query;
+      
+      if (!query) {
+        return res.status(400).json({ error: "Query parameter 'q' is required" });
+      }
+
+      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
+      const ragOrchestrator = new RAGOrchestrator();
+      
+      const suggestions = await ragOrchestrator.getSuggestions(
+        query as string, 
+        parseInt(limit as string) || 5
+      );
+      
+      res.json({ suggestions });
+    } catch (error) {
+      console.error("Error getting suggestions:", error);
+      res.status(500).json({ error: "Failed to get suggestions" });
+    }
+  });
+
+  app.get("/api/rag/stats", async (req, res) => {
+    try {
+      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
+      const ragOrchestrator = new RAGOrchestrator();
+      
+      const stats = await ragOrchestrator.getStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting RAG stats:", error);
+      res.status(500).json({ error: "Failed to get stats" });
+    }
+  });
+
+  app.post("/api/rag/reindex", async (req, res) => {
+    try {
+      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
+      const ragOrchestrator = new RAGOrchestrator();
+      
+      await ragOrchestrator.reIndex();
+      res.json({ message: "Re-indexing completed successfully" });
+    } catch (error) {
+      console.error("Error re-indexing:", error);
+      res.status(500).json({ error: "Failed to re-index" });
+    }
+  });
+
+  // MCP (Model Context Protocol) Routes
+  app.post("/api/mcp/initialize", async (req, res) => {
+    try {
+      const { mcpRegistry } = await import("./services/mcp/mcpClient");
+      
+      // Register default MCP clients
+      mcpRegistry.registerClient("platform-tools", {
+        serverName: "platform-tools",
+        transport: "stdio"
+      });
+
+      await mcpRegistry.initializeAll();
+      
+      res.json({ 
+        message: "MCP system initialized successfully",
+        clients: mcpRegistry.listClients()
+      });
+    } catch (error) {
+      console.error("Error initializing MCP:", error);
+      res.status(500).json({ error: "Failed to initialize MCP system" });
+    }
+  });
+
+  app.get("/api/mcp/tools", async (req, res) => {
+    try {
+      const { mcpRegistry } = await import("./services/mcp/mcpClient");
+      const tools = await mcpRegistry.getAllTools();
+      res.json({ tools });
+    } catch (error) {
+      console.error("Error getting MCP tools:", error);
+      res.status(500).json({ error: "Failed to get MCP tools" });
+    }
+  });
+
+  app.post("/api/mcp/tools/call", async (req, res) => {
+    try {
+      const { clientName, toolName, arguments: toolArgs } = req.body;
+      
+      if (!clientName || !toolName) {
+        return res.status(400).json({ error: "clientName and toolName are required" });
+      }
+
+      const { mcpRegistry } = await import("./services/mcp/mcpClient");
+      const result = await mcpRegistry.callTool(clientName, toolName, toolArgs || {});
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error calling MCP tool:", error);
+      res.status(500).json({ error: "Failed to call MCP tool" });
+    }
+  });
+
+  app.get("/api/mcp/resources", async (req, res) => {
+    try {
+      const { mcpRegistry } = await import("./services/mcp/mcpClient");
+      const resources = await mcpRegistry.getAllResources();
+      res.json({ resources });
+    } catch (error) {
+      console.error("Error getting MCP resources:", error);
+      res.status(500).json({ error: "Failed to get MCP resources" });
+    }
+  });
+
+  app.post("/api/mcp/resources/read", async (req, res) => {
+    try {
+      const { clientName, uri } = req.body;
+      
+      if (!clientName || !uri) {
+        return res.status(400).json({ error: "clientName and uri are required" });
+      }
+
+      const { mcpRegistry } = await import("./services/mcp/mcpClient");
+      const result = await mcpRegistry.readResource(clientName, uri);
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error reading MCP resource:", error);
+      res.status(500).json({ error: "Failed to read MCP resource" });
+    }
+  });
+
+  // A2A (Agent-to-Agent) Communication Routes
+  app.post("/api/a2a/initialize", async (req, res) => {
+    try {
+      const { AgentCoordinator } = await import("./services/a2a/agentCoordinator");
+      const coordinator = new AgentCoordinator();
+
+      // Register default agents
+      coordinator.registerAgent("reasoning-assistant", [
+        { name: "reasoning", description: "Advanced reasoning and analysis" },
+        { name: "problem-solving", description: "Complex problem solving" }
+      ], ["reasoning", "analysis"]);
+
+      coordinator.registerAgent("context-analyzer", [
+        { name: "context-analysis", description: "Context analysis and interpretation" },
+        { name: "information-extraction", description: "Information extraction from context" }
+      ], ["context", "analysis"]);
+
+      coordinator.registerAgent("documentation-expert", [
+        { name: "documentation", description: "Documentation generation and analysis" },
+        { name: "technical-writing", description: "Technical writing and editing" }
+      ], ["documentation", "writing"]);
+
+      res.json({ 
+        message: "A2A communication system initialized successfully",
+        stats: coordinator.getCoordinationStats()
+      });
+    } catch (error) {
+      console.error("Error initializing A2A:", error);
+      res.status(500).json({ error: "Failed to initialize A2A system" });
+    }
+  });
+
+  app.post("/api/a2a/task", async (req, res) => {
+    try {
+      const { description, requiredCapabilities, priority, agents, strategy } = req.body;
+      
+      if (!description) {
+        return res.status(400).json({ error: "Task description is required" });
+      }
+
+      const { AgentCoordinator } = await import("./services/a2a/agentCoordinator");
+      const coordinator = new AgentCoordinator();
+
+      let result;
+      if (agents && strategy) {
+        result = await coordinator.executeCollaborativeTask(description, agents, strategy);
+      } else {
+        result = coordinator.createTask(
+          description,
+          requiredCapabilities || [],
+          priority || "medium"
+        );
+      }
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error creating A2A task:", error);
+      res.status(500).json({ error: "Failed to create A2A task" });
+    }
+  });
+
+  app.post("/api/a2a/negotiate", async (req, res) => {
+    try {
+      const { initiator, participants, task } = req.body;
+      
+      if (!initiator || !participants || !task) {
+        return res.status(400).json({ error: "initiator, participants, and task are required" });
+      }
+
+      const { AgentCoordinator } = await import("./services/a2a/agentCoordinator");
+      const coordinator = new AgentCoordinator();
+
+      const result = await coordinator.negotiateTask(initiator, participants, task);
+      
+      res.json({ result });
+    } catch (error) {
+      console.error("Error in A2A negotiation:", error);
+      res.status(500).json({ error: "Failed to perform A2A negotiation" });
+    }
+  });
+
+  app.get("/api/a2a/stats", async (req, res) => {
+    try {
+      const { AgentCoordinator } = await import("./services/a2a/agentCoordinator");
+      const coordinator = new AgentCoordinator();
+      
+      const stats = coordinator.getCoordinationStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error getting A2A stats:", error);
+      res.status(500).json({ error: "Failed to get A2A stats" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
