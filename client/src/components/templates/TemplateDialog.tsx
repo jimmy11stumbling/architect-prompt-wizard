@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Zap, Video, Palette, Dumbbell, ShoppingCart, Calendar, MessageSquare, Music, Camera, BookOpen, Heart, Gamepad2, Briefcase, Car, Home, Coffee, Plane, Utensils, Stethoscope, GraduationCap, DollarSign } from "lucide-react";
 import { ProjectSpec } from "@/types/ipa-types";
 import TemplateViewer from "./TemplateViewer";
+import OneClickCopy from "./OneClickCopy";
+import CopyFormats from "./CopyFormats";
 
 interface Template {
   id: string;
@@ -407,10 +409,19 @@ const TemplateDialog: React.FC<TemplateDialogProps> = ({ onSelectTemplate, child
                     >
                       Use This Template
                     </Button>
-                    <TemplateViewer 
-                      template={template} 
-                      onSelectTemplate={onSelectTemplate}
-                    />
+                    <div className="space-y-1">
+                      <div className="flex gap-1">
+                        <OneClickCopy 
+                          template={template}
+                          className="flex-1"
+                        />
+                        <TemplateViewer 
+                          template={template} 
+                          onSelectTemplate={onSelectTemplate}
+                        />
+                      </div>
+                      <CopyFormats template={template} />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

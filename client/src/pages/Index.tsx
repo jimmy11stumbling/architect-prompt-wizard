@@ -9,6 +9,8 @@ import { ComponentTester, AgentResponseTester } from "@/components/testing";
 import RealTimeResponseMonitor from "@/components/enhanced-features/RealTimeResponseMonitor";
 import MainLayout from "@/components/layout/MainLayout";
 import ProjectHeader from "@/components/project/ProjectHeader";
+import QuickCopyBar from "@/components/templates/QuickCopyBar";
+import TemplateApplicator from "@/components/templates/TemplateApplicator";
 import { ProjectSpec } from "@/types/ipa-types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +61,12 @@ const Index: React.FC = () => {
           <TabsTrigger value="monitor">Real-time Monitor</TabsTrigger>
         </TabsList>
         <TabsContent value="create">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1">
+              <QuickCopyBar />
+            </div>
+            <TemplateApplicator onApplyTemplate={handleSelectTemplate} />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-8">
               <ProjectSpecForm ref={projectFormRef} onSubmit={handleStreamingSubmit} />
