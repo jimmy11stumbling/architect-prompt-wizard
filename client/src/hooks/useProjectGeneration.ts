@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ProjectSpec, GenerationStatus, TechStack, AgentName } from "@/types/ipa-types";
 import { ipaService } from "@/services/ipaService";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,17 @@ export const useProjectGeneration = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [orchestrator] = useState(() => new GenerationOrchestrator());
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  // Cleanup polling timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = useCallback(async (spec: ProjectSpec) => {
     try {
@@ -95,8 +105,17 @@ export const useProjectGeneration = () => {
       });
       
       if (status.status !== "completed" && status.status !== "failed") {
-        // Continue polling with a 2-second interval
-        setTimeout(() => startPolling(taskId), 2000);
+        // Clear any existing timeout and set a new one
+        if (pollingTimeoutRef.current) {
+          clearTimeout(pollingTimeoutRef.current);
+        }
+        
+        pollingTimeoutRef.current = setTimeout(() => {
+          startPolling(taskId).catch(error => {
+            console.error("Polling continuation error:", error);
+            setIsGenerating(false);
+          });
+        }, 2000);
       } else {
         // Generation complete or failed
         setIsGenerating(false);

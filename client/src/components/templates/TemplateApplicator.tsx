@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,6 +88,9 @@ const TemplateApplicator: React.FC<TemplateApplicatorProps> = ({ onApplyTemplate
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Apply Custom Template</DialogTitle>
+          <DialogDescription>
+            Import and apply custom project templates from JSON files or by pasting template data directly.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">
