@@ -51,17 +51,15 @@ export const useProjectSpec = ({ externalSpec, onSpecChange }: UseProjectSpecPro
 
   const updateSpec = useCallback((newSpec: ProjectSpec) => {
     console.log("useProjectSpec: updateSpec called with", newSpec);
-    // Don't overwrite external spec with form changes
-    if (externalSpec && JSON.stringify(newSpec) === JSON.stringify(defaultSpec)) {
-      console.log("useProjectSpec: skipping default spec override of external spec");
-      return;
-    }
+    
     setInternalSpec(newSpec);
-    if (onSpecChange && !externalSpec) {
+    
+    // Always call onSpecChange to update parent state
+    if (onSpecChange) {
       console.log("useProjectSpec: calling onSpecChange");
       onSpecChange(newSpec);
     }
-  }, [onSpecChange, externalSpec]);
+  }, [onSpecChange]);
 
   const handleFieldChange = useCallback((field: string, value: string) => {
     updateSpec({ ...currentSpec, [field]: value });

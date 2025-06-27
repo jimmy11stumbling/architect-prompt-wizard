@@ -165,6 +165,14 @@ Advanced workflow orchestration system:
 
 ## Recent Changes
 
+### Critical Form Input Functionality Fix (June 27, 2025)
+- **FIXED CRITICAL BUG**: Form inputs completely non-functional due to useProjectSpec logic error
+- **Root Cause**: updateSpec callback was incorrectly blocking updates when external specs were present
+- **Solution**: Removed blocking logic, allowing proper form state management and user input
+- **Impact**: All form fields now properly accept user input and update project specifications
+- **Templates**: Platform-specific templates now correctly populate form fields
+- **Platform Integration**: Full multi-platform support (Bolt, Cursor, Lovable, Replit, Windsurf) operational
+
 ### Comprehensive Implementation of Missing Components (June 27, 2025)
 - **Fixed All TypeScript Errors**: Resolved transport type mismatches in MCP, fixed authentication without bcrypt dependency
 - **MCP Tools Working**: Implemented 7 functional tools (list_files, read_file, write_file, web_search, query_database, analyze_code, run_command, process_document)
