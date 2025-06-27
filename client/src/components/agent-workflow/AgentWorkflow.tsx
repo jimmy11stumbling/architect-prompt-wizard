@@ -21,7 +21,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
   };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full" data-component="agent-workflow">
       <CardHeader>
         <CardTitle>
           DeepSeek Prompt Synthesis Swarm

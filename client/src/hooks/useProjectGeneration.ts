@@ -178,6 +178,23 @@ export const useProjectGeneration = () => {
       setGenerationStatus(null);
       orchestrator.setProjectSpec(completeSpec);
 
+      // Show notification for generation start
+      toast({
+        title: "Master Blueprint Generation Started",
+        description: "Agents are now working on your comprehensive blueprint...",
+      });
+
+      // Scroll to agent workflow section after a brief delay
+      setTimeout(() => {
+        const agentWorkflowElement = document.querySelector('[data-component="agent-workflow"]');
+        if (agentWorkflowElement) {
+          agentWorkflowElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 500);
+
       // Initialize status for streaming
       const initialStatus: GenerationStatus = {
         taskId: `streaming-${Date.now()}`,
