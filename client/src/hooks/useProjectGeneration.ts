@@ -135,7 +135,7 @@ export const useProjectGeneration = () => {
           
           toast({
             title: "Generation Complete",
-            description: "Your comprehensive Cursor AI prompt has been successfully generated!",
+            description: `Your comprehensive ${status.spec?.targetPlatform || 'AI'} prompt has been successfully generated!`,
           });
         }
       }

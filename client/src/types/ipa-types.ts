@@ -279,7 +279,11 @@ export type AgentName =
   | "A2AProtocolExpertAgent"
   | "TechStackImplementationAgent_Frontend"
   | "TechStackImplementationAgent_Backend"
+  | "BoltOptimizationAgent"
   | "CursorOptimizationAgent"
+  | "ReplitOptimizationAgent" 
+  | "WindsurfOptimizationAgent"
+  | "LovableOptimizationAgent"
   | "QualityAssuranceAgent";
 
 // Type alias for compatibility

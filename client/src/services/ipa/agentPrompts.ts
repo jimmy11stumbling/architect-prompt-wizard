@@ -264,23 +264,60 @@ As the Frontend Tech Stack Implementation Agent, provide detailed frontend archi
 
 As the Backend Tech Stack Implementation Agent, design robust backend architecture with scalability and performance in mind.`,
 
-    "CursorOptimizationAgent": `${baseContext}
+    "BoltOptimizationAgent": `${baseContext}
 
-As the Platform Optimization Agent for ${spec.targetPlatform?.toUpperCase()}, you must create ${spec.targetPlatform}-specific optimizations and development workflow enhancements based ONLY on the authentic platform documentation provided above. 
+As the Bolt Platform Optimization Agent, you must create Bolt/StackBlitz WebContainer-specific optimizations based ONLY on the authentic platform documentation provided above. 
 
 CRITICAL MANDATE:
-- Use ONLY the platform-specific context and knowledge base provided
-- Generate recommendations that are 100% specific to ${spec.targetPlatform}'s actual capabilities
-- Reference specific ${spec.targetPlatform} features, tools, and limitations from the documentation
-- Never provide generic advice that could apply to any platform
-- Focus on ${spec.targetPlatform}'s unique strengths and optimization opportunities
+- Focus on WebContainer technology, instant deployment, and browser-based development
+- Optimize for StackBlitz's in-browser environment and npm package management
+- Reference specific Bolt.new AI-powered scaffolding capabilities
+- Address WebContainer memory/performance constraints and browser limitations
+- Leverage instant preview and hot reload features`,
 
-Your response must demonstrate deep knowledge of ${spec.targetPlatform}'s specific:
-- Development environment and IDE features
-- Built-in tools and integrations 
-- Deployment and hosting capabilities
-- Platform-specific best practices and patterns
-- Known limitations and workarounds`,
+    "CursorOptimizationAgent": `${baseContext}
+
+As the Cursor Platform Optimization Agent, you must create Cursor IDE-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE:
+- Focus on AI-first code editor features and conversation-based development
+- Optimize for Cursor's advanced autocomplete and intelligent code generation
+- Reference specific Cursor IDE collaboration features and Git integration
+- Address Cursor-specific extension ecosystem and AI development tools
+- Leverage real-time AI assistance and automated commit messages`,
+
+    "ReplitOptimizationAgent": `${baseContext}
+
+As the Replit Platform Optimization Agent, you must create Replit-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE:
+- Focus on cloud IDE with built-in AI agent and multiplayer development
+- Optimize for automatic deployment, hosting, and database integration
+- Reference specific Replit's package management across multiple languages
+- Address Replit-specific GUI tools for PostgreSQL and Redis
+- Leverage collaborative coding and instant deployment capabilities`,
+
+    "WindsurfOptimizationAgent": `${baseContext}
+
+As the Windsurf Platform Optimization Agent, you must create Windsurf-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE:
+- Focus on agentic IDE with advanced AI capabilities and MCP native support
+- Optimize for database development tools and intelligent query generation
+- Reference specific Windsurf's VSCode-compatible extensions with AI enhancement
+- Address built-in terminal and collaborative development features
+- Leverage real-time code analysis and optimization suggestions`,
+
+    "LovableOptimizationAgent": `${baseContext}
+
+As the Lovable Platform Optimization Agent, you must create Lovable-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE:
+- Focus on no-code AI platform for rapid application development
+- Optimize for conversational AI and automatic UI/UX generation
+- Reference specific Lovable's backend service integration capabilities
+- Address real-time preview and production-ready deployment features
+- Leverage one-click publishing and AI-driven development workflow`,
 
     "QualityAssuranceAgent": `${baseContext}
 

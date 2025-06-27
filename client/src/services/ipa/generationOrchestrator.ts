@@ -1,6 +1,6 @@
 
 import { GenerationStatus, ProjectSpec, AgentStatus, DeepSeekMessage, AgentName, DeepSeekCompletionRequest } from "@/types/ipa-types";
-import { agentList, initialMockStatus } from "./mockData";
+import { getAgentListForPlatform, initialMockStatus } from "./mockData";
 import { buildConversationHistory } from "./deepseekAPI";
 import { getAgentSystemPrompt, createUserMessageFromSpec } from "./agentPrompts";
 import { AgentProcessor } from "./agentProcessor";
@@ -14,6 +14,7 @@ export class GenerationOrchestrator {
   private currentStatus: GenerationStatus;
   private conversationManager: ConversationManager;
   private currentProjectSpec: ProjectSpec | null = null;
+  private agentList: AgentName[] = [];
 
   constructor() {
     this.currentStatus = { ...initialMockStatus };
@@ -22,6 +23,8 @@ export class GenerationOrchestrator {
 
   setProjectSpec(spec: ProjectSpec): void {
     this.currentProjectSpec = spec;
+    this.agentList = getAgentListForPlatform(spec.targetPlatform);
+    console.log(`Using platform: ${spec.targetPlatform} for target: ${spec.targetPlatform?.toLowerCase()}`);
     this.currentStatus = { 
       ...initialMockStatus,
       spec: spec,
@@ -31,11 +34,11 @@ export class GenerationOrchestrator {
   }
 
   async processNextStep(): Promise<GenerationStatus> {
-    const currentStep = Math.min(this.currentStatus.progress + 1, agentList.length + 1);
+    const currentStep = Math.min(this.currentStatus.progress + 1, this.agentList.length + 1);
     
     // If we're processing a new agent, invoke DeepSeek API for that agent
-    if (currentStep > 0 && currentStep <= agentList.length) {
-      const currentAgent = agentList[currentStep - 1];
+    if (currentStep > 0 && currentStep <= this.agentList.length) {
+      const currentAgent = this.agentList[currentStep - 1];
       
       // Mark the current agent as processing first
       this.currentStatus.agents[currentStep - 1] = {
@@ -48,7 +51,7 @@ export class GenerationOrchestrator {
       };
       
       // For multi-round conversation, build history of previous agents
-      const messageHistory = buildConversationHistory(agentList.slice(0, currentStep - 1), this.currentProjectSpec!);
+      const messageHistory = buildConversationHistory(this.agentList.slice(0, currentStep - 1), this.currentProjectSpec!);
       
       // Process the agent
       const agentResult = await AgentProcessor.processAgent(currentAgent, this.currentProjectSpec!, messageHistory);
@@ -68,12 +71,12 @@ export class GenerationOrchestrator {
     this.currentStatus = {
       ...this.currentStatus,
       progress: currentStep,
-      status: currentStep <= agentList.length ? "processing" : "completed",
+      status: currentStep <= this.agentList.length ? "processing" : "completed",
       agents: this.currentStatus.agents
     };
     
     // If we've completed all agents, generate the final result
-    if (currentStep > agentList.length && !this.currentStatus.result) {
+    if (currentStep > this.agentList.length && !this.currentStatus.result) {
       await this.generateFinalResult();
     }
     
@@ -94,7 +97,7 @@ export class GenerationOrchestrator {
     }
 
     // Prepare agent requests with documentation-aware prompts
-    const agentRequests = await Promise.all(agentList.map(async (agent) => {
+    const agentRequests = await Promise.all(this.agentList.map(async (agent) => {
       const systemPrompt = await getAgentSystemPrompt(agent, this.currentProjectSpec!);
       const userMessage = createUserMessageFromSpec(agent, this.currentProjectSpec!);
       
@@ -112,7 +115,7 @@ export class GenerationOrchestrator {
     }));
 
     // Initialize all agents as processing
-    this.currentStatus.agents = agentList.map((agent, index) => ({
+    this.currentStatus.agents = this.agentList.map((agent, index) => ({
       id: `agent-${Date.now()}-${index}`,
       name: agent,
       agent: agent,
@@ -129,7 +132,7 @@ export class GenerationOrchestrator {
         agentRequests,
         (agentName) => {
           // Mark agent as processing
-          const agentIndex = agentList.indexOf(agentName);
+          const agentIndex = this.agentList.indexOf(agentName);
           if (agentIndex >= 0) {
             this.currentStatus.agents[agentIndex] = {
               ...this.currentStatus.agents[agentIndex],
@@ -141,7 +144,7 @@ export class GenerationOrchestrator {
         },
         (agentName, token) => {
           // Update agent with streaming token
-          const agentIndex = agentList.indexOf(agentName);
+          const agentIndex = this.agentList.indexOf(agentName);
           if (agentIndex >= 0) {
             this.currentStatus.agents[agentIndex] = {
               ...this.currentStatus.agents[agentIndex],
@@ -157,7 +160,7 @@ export class GenerationOrchestrator {
         },
         (agentName, fullResponse) => {
           // Mark agent as complete
-          const agentIndex = agentList.indexOf(agentName);
+          const agentIndex = this.agentList.indexOf(agentName);
           if (agentIndex >= 0) {
             this.currentStatus.agents[agentIndex] = {
               ...this.currentStatus.agents[agentIndex],
@@ -175,7 +178,7 @@ export class GenerationOrchestrator {
         async () => {
           // All agents completed
           this.currentStatus.status = "completed";
-          this.currentStatus.progress = agentList.length;
+          this.currentStatus.progress = this.agentList.length;
           this.currentStatus.messages = this.conversationManager.getMessages();
           
           // Generate final result
@@ -196,7 +199,7 @@ export class GenerationOrchestrator {
     try {
       const completedAgents = this.currentStatus.agents.filter(agent => agent.status === "completed");
       
-      if (completedAgents.length === agentList.length) {
+      if (completedAgents.length === this.agentList.length) {
         const finalPrompt = await FinalPromptGenerator.generate(this.currentStatus.agents);
         this.currentStatus.result = finalPrompt;
         
@@ -223,13 +226,13 @@ export class GenerationOrchestrator {
           });
         }
       } else {
-        this.currentStatus.result = `⚠️ Warning: ${agentList.length - completedAgents.length} out of ${agentList.length} agents failed to complete. The generated prompt may be incomplete.\n\n` +
+        this.currentStatus.result = `⚠️ Warning: ${this.agentList.length - completedAgents.length} out of ${this.agentList.length} agents failed to complete. The generated prompt may be incomplete.\n\n` +
           completedAgents.map(agent => `## ${agent.agent} Output\n${agent.output || "No output available"}\n`).join('\n');
         this.currentStatus.status = "failed";
         
         toast({
           title: "Partial Generation",
-          description: `${completedAgents.length}/${agentList.length} agents completed successfully`,
+          description: `${completedAgents.length}/${this.agentList.length} agents completed successfully`,
           variant: "destructive"
         });
       }

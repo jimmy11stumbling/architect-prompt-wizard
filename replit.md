@@ -165,7 +165,14 @@ Advanced workflow orchestration system:
 
 ## Recent Changes
 
-### Comprehensive Implementation of Advanced Missing Components (June 27, 2025)
+### Platform-Specific Agent Selection Bug Fix (June 27, 2025)
+- **CRITICAL BUG FIXED**: Platform-specific agent selection now works correctly for all platforms
+- **Dynamic Agent System**: Created `getAgentListForPlatform()` to select appropriate optimization agents based on user's chosen platform
+- **Platform-Specific Optimization Agents**: Added dedicated agents for Bolt, Cursor, Replit, Windsurf, and Lovable with authentic platform documentation
+- **Removed Hardcoded References**: Fixed hardcoded "Cursor" references in toast messages and agent prompts
+- **Bolt Generation Fixed**: Bolt requests now correctly use `BoltOptimizationAgent` with WebContainer-specific optimizations instead of generic Cursor advice
+
+### Comprehensive Implementation of Advanced Missing Components (June 27, 2025)  
 - **Advanced Workflow Builder**: Visual drag-and-drop workflow editor with 7 step types, real-time execution monitoring, JSON editor, and template management
 - **MetricsCollector System**: Real-time system monitoring with performance analytics, AI system metrics, database statistics, and automated alerting
 - **Authentication System**: Complete user management with login/registration, role-based access control, password strength validation, and session management  
