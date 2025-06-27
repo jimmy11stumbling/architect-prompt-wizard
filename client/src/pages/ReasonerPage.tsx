@@ -91,7 +91,7 @@ const ReasonerPage: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <div className="font-medium">Max Output</div>
-                <div className="text-muted-foreground">8K tokens</div>
+                <div className="text-muted-foreground">15K tokens</div>
               </div>
             </div>
           </CardContent>
