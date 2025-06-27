@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Zap, Video, Palette, Dumbbell, ShoppingCart, Calendar, MessageSquare, Music, Camera, BookOpen, Heart, Gamepad2, Briefcase, Car, Home, Coffee, Plane, Utensils, Stethoscope, GraduationCap, DollarSign } from "lucide-react";
 import { ProjectSpec } from "@/types/ipa-types";
+import TemplateViewer from "./TemplateViewer";
 
 interface Template {
   id: string;
@@ -398,13 +399,19 @@ const TemplateDialog: React.FC<TemplateDialogProps> = ({ onSelectTemplate, child
                       </Badge>
                     ))}
                   </div>
-                  <Button
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => onSelectTemplate(template.spec)}
-                  >
-                    Use This Template
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      size="sm"
+                      className="w-full text-xs"
+                      onClick={() => onSelectTemplate(template.spec)}
+                    >
+                      Use This Template
+                    </Button>
+                    <TemplateViewer 
+                      template={template} 
+                      onSelectTemplate={onSelectTemplate}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}

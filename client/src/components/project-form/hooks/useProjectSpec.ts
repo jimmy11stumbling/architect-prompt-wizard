@@ -25,9 +25,9 @@ interface UseProjectSpecProps {
 }
 
 export const useProjectSpec = ({ externalSpec, onSpecChange }: UseProjectSpecProps) => {
-  const [internalSpec, setInternalSpec] = useState<ProjectSpec>(externalSpec || defaultSpec);
+  const [internalSpec, setInternalSpec] = useState<ProjectSpec>(defaultSpec);
   
-  // Use external spec if provided, otherwise use internal spec
+  // Always prioritize external spec if available
   const currentSpec = externalSpec || internalSpec;
   
   // Update internal spec when external spec changes
