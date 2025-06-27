@@ -1,10 +1,17 @@
 
 export interface ProjectSpec {
+  // Platform Selection
+  targetPlatform: PlatformType;
+  platformSpecificConfig: PlatformConfig;
+  
+  // Core Project Details
   projectDescription: string;
   frontendTechStack: TechStack[];
   backendTechStack: TechStack[];
   customFrontendTech: string[];
   customBackendTech: string[];
+  
+  // AI Features
   a2aIntegrationDetails: string;
   additionalFeatures: string;
   ragVectorDb: VectorDatabase;
@@ -12,8 +19,31 @@ export interface ProjectSpec {
   mcpType: MCPType;
   customMcpType: string;
   advancedPromptDetails: string;
+  
+  // Deployment & Auth
   deploymentPreference?: string;
   authenticationMethod?: string;
+}
+
+export type PlatformType = 
+  | "bolt"
+  | "cursor" 
+  | "lovable"
+  | "replit"
+  | "windsurf";
+
+export interface PlatformConfig {
+  // Platform-specific features and constraints
+  supportedFeatures: string[];
+  preferredTechStack: TechStack[];
+  deploymentOptions: string[];
+  limitations: string[];
+  bestPractices: string[];
+  
+  // Platform-specific prompt optimizations
+  promptStyle: "conversational" | "structured" | "code-focused" | "visual-first";
+  contextPreferences: string[];
+  outputFormat: "detailed" | "concise" | "step-by-step" | "visual";
 }
 
 export type TechStack = 

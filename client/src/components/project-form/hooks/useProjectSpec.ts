@@ -3,6 +3,17 @@ import { useState, useEffect, useCallback } from "react";
 import { ProjectSpec, TechStack, VectorDatabaseType, MCPType } from "@/types/ipa-types";
 
 const defaultSpec: ProjectSpec = {
+  targetPlatform: "cursor",
+  platformSpecificConfig: {
+    supportedFeatures: [],
+    preferredTechStack: ["React", "TypeScript"],
+    deploymentOptions: ["Vercel", "Netlify"],
+    limitations: [],
+    bestPractices: [],
+    promptStyle: "conversational",
+    contextPreferences: [],
+    outputFormat: "detailed"
+  },
   projectDescription: "",
   frontendTechStack: ["React"],
   backendTechStack: ["Express"],

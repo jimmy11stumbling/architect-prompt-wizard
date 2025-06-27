@@ -11,7 +11,9 @@ import MainLayout from "@/components/layout/MainLayout";
 import ProjectHeader from "@/components/project/ProjectHeader";
 import QuickCopyBar from "@/components/templates/QuickCopyBar";
 import TemplateApplicator from "@/components/templates/TemplateApplicator";
-import { ProjectSpec } from "@/types/ipa-types";
+import PlatformSelector from "@/components/platform/PlatformSelector";
+import PlatformTemplates from "@/components/platform/PlatformTemplates";
+import { ProjectSpec, PlatformType, PlatformConfig } from "@/types/ipa-types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectGeneration } from "@/hooks/useProjectGeneration";
@@ -19,12 +21,51 @@ import { realTimeResponseService } from "@/services/integration/realTimeResponse
 
 const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("create");
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("cursor");
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
+    supportedFeatures: [],
+    preferredTechStack: ["React", "TypeScript"],
+    deploymentOptions: ["Vercel", "Netlify"],
+    limitations: [],
+    bestPractices: [],
+    promptStyle: "conversational",
+    contextPreferences: [],
+    outputFormat: "detailed"
+  });
   const projectFormRef = useRef<ProjectSpecFormHandle>(null);
   const { toast } = useToast();
   const { generationStatus, isGenerating, handleSubmit, handleStreamingSubmit } = useProjectGeneration();
 
+  const handlePlatformChange = (platform: PlatformType, config: PlatformConfig) => {
+    setSelectedPlatform(platform);
+    setPlatformConfig(config);
+    
+    // Update the form with platform-specific defaults if needed
+    if (projectFormRef.current) {
+      const currentSpec = projectFormRef.current.getSpec();
+      const updatedSpec: ProjectSpec = {
+        ...currentSpec,
+        targetPlatform: platform,
+        platformSpecificConfig: config
+      };
+      projectFormRef.current.setSpec(updatedSpec);
+    }
+    
+    toast({
+      title: "Platform Selected",
+      description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} platform configuration applied`,
+    });
+  };
+
   const handleSelectTemplate = (spec: ProjectSpec) => {
     console.log("Index: Applying template from header", spec);
+    
+    // Update platform state if template has platform info
+    if (spec.targetPlatform) {
+      setSelectedPlatform(spec.targetPlatform);
+      setPlatformConfig(spec.platformSpecificConfig);
+    }
+    
     if (projectFormRef.current) {
       projectFormRef.current.setSpec(spec);
     }
@@ -36,6 +77,7 @@ const Index: React.FC = () => {
       message: "Comprehensive project template applied successfully",
       data: { 
         templateProject: spec.projectDescription.substring(0, 50),
+        platform: spec.targetPlatform,
         techStack: [...spec.frontendTechStack, ...spec.backendTechStack],
         hasRAG: spec.ragVectorDb !== "None",
         hasMCP: spec.mcpType !== "None",
@@ -61,23 +103,40 @@ const Index: React.FC = () => {
           <TabsTrigger value="monitor">Real-time Monitor</TabsTrigger>
         </TabsList>
         <TabsContent value="create">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex-1">
-              <QuickCopyBar />
+          <div className="space-y-6">
+            {/* Platform Selection */}
+            <PlatformSelector 
+              selectedPlatform={selectedPlatform}
+              onPlatformChange={handlePlatformChange}
+            />
+            
+            {/* Platform-Specific Templates */}
+            <PlatformTemplates
+              selectedPlatform={selectedPlatform}
+              onSelectTemplate={handleSelectTemplate}
+            />
+            
+            {/* Quick Copy Bar and Template Applicator */}
+            <div className="flex justify-between items-center">
+              <div className="flex-1">
+                <QuickCopyBar />
+              </div>
+              <TemplateApplicator onApplyTemplate={handleSelectTemplate} />
             </div>
-            <TemplateApplicator onApplyTemplate={handleSelectTemplate} />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-8">
-              <ProjectSpecForm ref={projectFormRef} onSubmit={handleStreamingSubmit} />
-              <ApiKeyForm />
-            </div>
-            <div className="space-y-8">
-              <AgentWorkflow 
-                agents={generationStatus?.agents || []} 
-                isGenerating={isGenerating}
-              />
-              <PromptOutput prompt={generationStatus?.result} />
+            
+            {/* Main Form */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-8">
+                <ProjectSpecForm ref={projectFormRef} onSubmit={handleStreamingSubmit} />
+                <ApiKeyForm />
+              </div>
+              <div className="space-y-8">
+                <AgentWorkflow 
+                  agents={generationStatus?.agents || []} 
+                  isGenerating={isGenerating}
+                />
+                <PromptOutput prompt={generationStatus?.result} />
+              </div>
             </div>
           </div>
         </TabsContent>

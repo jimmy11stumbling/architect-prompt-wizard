@@ -13,6 +13,17 @@ export interface ProjectSpecFormHandle {
 }
 
 const defaultSpec: ProjectSpec = {
+  targetPlatform: "cursor",
+  platformSpecificConfig: {
+    supportedFeatures: [],
+    preferredTechStack: ["React", "TypeScript"],
+    deploymentOptions: ["Vercel", "Netlify"],
+    limitations: [],
+    bestPractices: [],
+    promptStyle: "conversational",
+    contextPreferences: [],
+    outputFormat: "detailed"
+  },
   projectDescription: "",
   frontendTechStack: ["React"],
   backendTechStack: ["Express"],
