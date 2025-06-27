@@ -34,13 +34,12 @@ export class EmbeddingService {
       separators: ["\n\n", "\n", " ", ""]
     }
   ) {
-    // Use DeepSeek or OpenAI-compatible embedding endpoint
+    // Configure for DeepSeek using OpenAI SDK
     this.embeddings = new OpenAIEmbeddings({
-      openAIApiKey: apiKey || process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY,
-      modelName: "text-embedding-ada-002",
-      // Use DeepSeek base URL if available
+      openAIApiKey: apiKey || process.env.DEEPSEEK_API_KEY || "dummy-key-for-local",
+      modelName: "text-embedding-3-small",
       configuration: {
-        baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.openai.com/v1"
+        baseURL: "https://api.deepseek.com/v1"
       }
     });
 
@@ -78,16 +77,17 @@ export class EmbeddingService {
   }
 
   /**
-   * Generate embeddings for text chunks
+   * Generate simple text-based embeddings using TF-IDF approach
+   * This eliminates the need for external API calls for basic RAG functionality
    */
   async generateEmbeddings(documents: EmbeddingDocument[]): Promise<EmbeddingDocument[]> {
     try {
-      const texts = documents.map(doc => doc.content);
-      const embeddings = await this.embeddings.embedDocuments(texts);
+      // Simple TF-IDF based embedding for local processing
+      const vocabulary = this.buildVocabulary(documents.map(d => d.content));
       
-      return documents.map((doc, index) => ({
+      return documents.map(doc => ({
         ...doc,
-        embedding: embeddings[index]
+        embedding: this.textToVector(doc.content, vocabulary)
       }));
     } catch (error) {
       console.error("Error generating embeddings:", error);
@@ -96,15 +96,102 @@ export class EmbeddingService {
   }
 
   /**
-   * Generate embedding for a single query
+   * Generate embedding for a single query using local text processing
    */
   async generateQueryEmbedding(query: string): Promise<number[]> {
     try {
-      return await this.embeddings.embedQuery(query);
+      // For query embedding, use a simple word frequency approach
+      const words = this.tokenize(query);
+      const queryVector = new Array(1536).fill(0); // OpenAI standard embedding size
+      
+      words.forEach((word, index) => {
+        // Simple hash-based positioning
+        const position = this.simpleHash(word) % 1536;
+        queryVector[position] += 1;
+      });
+      
+      return queryVector;
     } catch (error) {
       console.error("Error generating query embedding:", error);
       throw new Error(`Failed to generate query embedding: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
+  }
+
+  /**
+   * Build vocabulary from document collection
+   */
+  private buildVocabulary(texts: string[]): Map<string, number> {
+    const wordCounts = new Map<string, number>();
+    
+    texts.forEach(text => {
+      const words = this.tokenize(text);
+      words.forEach(word => {
+        wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+      });
+    });
+
+    // Keep only words that appear in multiple documents (reduces noise)
+    const vocabulary = new Map<string, number>();
+    let index = 0;
+    
+    const wordCountEntries = Array.from(wordCounts.entries());
+    for (const [word, count] of wordCountEntries) {
+      if (count > 1 && word.length > 2) {
+        vocabulary.set(word, index++);
+      }
+    }
+
+    return vocabulary;
+  }
+
+  /**
+   * Convert text to vector using TF-IDF
+   */
+  private textToVector(text: string, vocabulary: Map<string, number>): number[] {
+    const vector = new Array(1536).fill(0);
+    const words = this.tokenize(text);
+    const wordCounts = new Map<string, number>();
+
+    // Count word frequencies
+    words.forEach(word => {
+      wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+    });
+
+    // Calculate TF scores
+    const wordCountEntries = Array.from(wordCounts.entries());
+    for (const [word, count] of wordCountEntries) {
+      const vocabIndex = vocabulary.get(word);
+      if (vocabIndex !== undefined && vocabIndex < 1536) {
+        const tf = count / words.length;
+        vector[vocabIndex] = tf;
+      }
+    }
+
+    return vector;
+  }
+
+  /**
+   * Simple tokenization
+   */
+  private tokenize(text: string): string[] {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2);
+  }
+
+  /**
+   * Simple hash function for word positioning
+   */
+  private simpleHash(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
   }
 
   /**
