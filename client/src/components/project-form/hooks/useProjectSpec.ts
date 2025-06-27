@@ -25,7 +25,7 @@ interface UseProjectSpecProps {
 }
 
 export const useProjectSpec = ({ externalSpec, onSpecChange }: UseProjectSpecProps) => {
-  const [internalSpec, setInternalSpec] = useState<ProjectSpec>(defaultSpec);
+  const [internalSpec, setInternalSpec] = useState<ProjectSpec>(externalSpec || defaultSpec);
   
   // Use external spec if provided, otherwise use internal spec
   const currentSpec = externalSpec || internalSpec;
@@ -33,13 +33,16 @@ export const useProjectSpec = ({ externalSpec, onSpecChange }: UseProjectSpecPro
   // Update internal spec when external spec changes
   useEffect(() => {
     if (externalSpec) {
+      console.log("useProjectSpec: Updating internal spec from external", externalSpec);
       setInternalSpec(externalSpec);
     }
   }, [externalSpec]);
 
   const updateSpec = useCallback((newSpec: ProjectSpec) => {
+    console.log("useProjectSpec: updateSpec called with", newSpec);
     setInternalSpec(newSpec);
     if (onSpecChange) {
+      console.log("useProjectSpec: calling onSpecChange");
       onSpecChange(newSpec);
     }
   }, [onSpecChange]);
