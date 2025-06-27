@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sidebar, SidebarContent, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 const NavigationSidebar: React.FC = () => {
-  const location = useLocation();
+  const [location] = useLocation();
 
   const navItems = [
     {
@@ -115,7 +115,7 @@ const NavigationSidebar: React.FC = () => {
       </div>
       <div className="space-y-2">
         {items.map(item => {
-          const isActive = location.pathname === item.path;
+          const isActive = location === item.path;
           const Icon = item.icon;
           return (
             <Link key={item.path} to={item.path} className="block px-4">

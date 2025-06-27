@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Router, Route, Switch } from "wouter";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import NavigationSidebar from "@/components/navigation/NavigationSidebar";
 import Index from "./pages/Index";
@@ -25,32 +25,32 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <BrowserRouter>
+      <Router>
         <SidebarProvider>
           <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
             <NavigationSidebar />
             <main className="flex-1 overflow-auto">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/reasoner" element={<ReasonerPage />} />
-                <Route path="/enhanced" element={<EnhancedPage />} />
-                <Route path="/rag" element={<RAGPage />} />
-                <Route path="/a2a" element={<A2APage />} />
-                <Route path="/mcp" element={<MCPPage />} />
-                <Route path="/workflow" element={<WorkflowPage />} />
-                <Route path="/saved-prompts" element={<SavedPromptsPage />} />
-                <Route path="/testing" element={<TestingPage />} />
-                <Route path="/settings" element={<AdvancedSettingsPage />} />
-                <Route path="/analytics" element={<AnalyticsDashboardPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Switch>
+                <Route path="/" component={Index} />
+                <Route path="/dashboard" component={Dashboard} />
+                <Route path="/reasoner" component={ReasonerPage} />
+                <Route path="/enhanced" component={EnhancedPage} />
+                <Route path="/rag" component={RAGPage} />
+                <Route path="/a2a" component={A2APage} />
+                <Route path="/mcp" component={MCPPage} />
+                <Route path="/workflow" component={WorkflowPage} />
+                <Route path="/saved-prompts" component={SavedPromptsPage} />
+                <Route path="/testing" component={TestingPage} />
+                <Route path="/settings" component={AdvancedSettingsPage} />
+                <Route path="/analytics" component={AnalyticsDashboardPage} />
+                <Route component={NotFound} />
+              </Switch>
             </main>
           </div>
         </SidebarProvider>
         <Toaster />
         <Sonner />
-      </BrowserRouter>
+      </Router>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Copy, Check, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface PromptOutputProps {
   prompt: string | undefined;
