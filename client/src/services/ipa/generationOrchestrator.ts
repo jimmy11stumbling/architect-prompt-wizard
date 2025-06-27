@@ -6,7 +6,7 @@ import { getAgentSystemPrompt, createUserMessageFromSpec } from "./agentPrompts"
 import { AgentProcessor } from "./agentProcessor";
 import { ConversationManager } from "./conversationManager";
 import { FinalPromptGenerator } from "./finalPromptGenerator";
-import { savePrompt } from "../db/promptDatabaseService";
+import { savePrompt } from "../db/promptApiService";
 import { toast } from "@/hooks/use-toast";
 import { DeepSeekClient } from "./api/deepseekClient";
 

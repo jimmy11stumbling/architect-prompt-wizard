@@ -200,6 +200,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/saved-prompts/public", async (req, res) => {
+    try {
+      const prompts = await storage.getPublicSavedPrompts();
+      res.json(prompts);
+    } catch (error) {
+      console.error("Error fetching public prompts:", error);
+      res.status(500).json({ error: "Failed to fetch public prompts" });
+    }
+  });
+
   // Workflow routes
   app.post("/api/workflows", async (req, res) => {
     try {

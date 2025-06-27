@@ -305,8 +305,8 @@ export const RAGSearchInterface: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="all">All Platforms</SelectItem>
                   {stats && Object.keys(stats.platformCounts).map(platform => (
-                    <SelectItem key={platform} value={platform}>
-                      {platform} ({stats.platformCounts[platform]})
+                    <SelectItem key={platform} value={platform || "unknown"}>
+                      {platform || "Unknown"} ({stats.platformCounts[platform]})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -319,8 +319,8 @@ export const RAGSearchInterface: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   {stats && Object.keys(stats.categoryCounts).map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category} ({stats.categoryCounts[category]})
+                    <SelectItem key={category} value={category || "unknown"}>
+                      {category || "Unknown"} ({stats.categoryCounts[category]})
                     </SelectItem>
                   ))}
                 </SelectContent>
