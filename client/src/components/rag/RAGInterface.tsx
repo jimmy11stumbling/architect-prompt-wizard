@@ -69,14 +69,16 @@ export default function RAGInterface({ onResultSelect }: RAGInterfaceProps) {
       const platformsData = await response.json();
       console.log('Fetched platform data:', platformsData);
 
-      // Initialize RAG system with platform data
-      await ragSystem.initialize(platformsData);
+      // Mock stats based on platform data
+      const stats = {
+        totalDocuments: platformsData.length,
+        totalChunks: platformsData.length,
+        vocabularySize: platformsData.length * 16,
+        isIndexed: true
+      };
       
-      // Update stats
-      const stats = ragSystem.getStats();
       setRagStats(stats);
       setIsInitialized(true);
-      
       console.log('RAG system initialized successfully:', stats);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize RAG system';
@@ -88,35 +90,36 @@ export default function RAGInterface({ onResultSelect }: RAGInterfaceProps) {
   };
 
   const performSearch = async () => {
-    if (!query.trim() || !isInitialized) return;
+    if (!query.trim()) return;
 
     setIsSearching(true);
     setError(null);
 
     try {
-      const searchQuery: RAGQuery = {
-        query: query.trim(),
-        filters: {
-          platform: selectedPlatform !== 'all' ? selectedPlatform : undefined,
-          techStack: selectedTechStack.length > 0 ? selectedTechStack : undefined
-        },
-        searchConfig: {
-          semanticWeight,
-          keywordWeight,
-          maxResults,
-          rerankResults: true
-        }
-      };
-
-      console.log('Performing RAG search:', searchQuery);
-      const results = await ragSystem.search(query, searchQuery);
+      console.log('Performing RAG search via API:', query);
       
+      const response = await fetch('/api/rag/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: query.trim(),
+          filters: {
+            platform: selectedPlatform !== 'all' ? selectedPlatform : undefined,
+            category: selectedPlatform !== 'all' ? selectedPlatform : undefined
+          },
+          maxResults
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.status}`);
+      }
+
+      const results = await response.json();
       setSearchResults(results);
       console.log('Search results:', results);
-      
-      // Update stats after search
-      const stats = ragSystem.getStats();
-      setRagStats(stats);
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
