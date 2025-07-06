@@ -45,6 +45,11 @@ export const useProjectGeneration = () => {
       const targetPlatform = spec.targetPlatform || 'cursor';
       console.log(`Using platform: ${targetPlatform} for target: ${spec.targetPlatform}`);
       
+      // Validate platform before proceeding
+      if (!targetPlatform || targetPlatform === 'undefined') {
+        throw new Error('Invalid platform selection. Please select a valid platform.');
+      }
+      
       // Prepare a complete spec with all tech stacks (standard + custom)
       const completeSpec: ProjectSpec = {
         ...spec,

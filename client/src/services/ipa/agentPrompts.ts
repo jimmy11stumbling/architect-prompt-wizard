@@ -59,7 +59,7 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
     
     // Add timeout protection and use platform name as primary search query
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+    const timeoutId = setTimeout(() => controller.abort("Timeout after 2 seconds"), 2000); // 2 second timeout
     
     const response = await fetch('/api/rag/search', {
       method: 'POST',

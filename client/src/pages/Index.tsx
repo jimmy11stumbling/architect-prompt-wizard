@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ProjectSpecForm, { ProjectSpecFormHandle } from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
 import RAGIntegratedAgentWorkflow from "@/components/enhanced-features/RAGIntegratedAgentWorkflow";
@@ -34,6 +34,31 @@ const Index: React.FC = () => {
     outputFormat: "detailed"
   });
   const [currentProjectSpec, setCurrentProjectSpec] = useState<ProjectSpec | undefined>();
+  
+  // Initialize project spec with selected platform
+  useEffect(() => {
+    if (!currentProjectSpec) {
+      const initialSpec: ProjectSpec = {
+        targetPlatform: selectedPlatform,
+        platformSpecificConfig: platformConfig,
+        projectDescription: "",
+        frontendTechStack: ["React"],
+        backendTechStack: ["Express"],
+        customFrontendTech: [],
+        customBackendTech: [],
+        a2aIntegrationDetails: "",
+        additionalFeatures: "",
+        ragVectorDb: "None",
+        customRagVectorDb: "",
+        mcpType: "None",
+        customMcpType: "",
+        advancedPromptDetails: "",
+        deploymentPreference: "Vercel",
+        authenticationMethod: "JWT"
+      };
+      setCurrentProjectSpec(initialSpec);
+    }
+  }, [selectedPlatform, platformConfig, currentProjectSpec]);
   const [ragEnhancedAgents, setRagEnhancedAgents] = useState<Record<string, any>>({});
   const projectFormRef = useRef<ProjectSpecFormHandle>(null);
   const agentWorkflowRef = useRef<HTMLDivElement>(null);
@@ -65,12 +90,19 @@ const Index: React.FC = () => {
 
   const handleFormSpecChange = (spec: ProjectSpec) => {
     console.log("Index: Form spec changed", spec);
-    setCurrentProjectSpec(spec);
+    
+    // Ensure the spec has a valid platform
+    const validSpec = {
+      ...spec,
+      targetPlatform: spec.targetPlatform || selectedPlatform || 'cursor'
+    };
+    
+    setCurrentProjectSpec(validSpec);
     
     // Update platform state if form changes platform
-    if (spec.targetPlatform && spec.targetPlatform !== selectedPlatform) {
-      console.log(`Platform changed in form from ${selectedPlatform} to ${spec.targetPlatform}`);
-      setSelectedPlatform(spec.targetPlatform);
+    if (validSpec.targetPlatform && validSpec.targetPlatform !== selectedPlatform) {
+      console.log(`Platform changed in form from ${selectedPlatform} to ${validSpec.targetPlatform}`);
+      setSelectedPlatform(validSpec.targetPlatform);
     }
   };
 
