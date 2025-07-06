@@ -165,6 +165,14 @@ Advanced workflow orchestration system:
 
 ## Recent Changes
 
+### **CRITICAL RUNTIME ERROR FIXES: Plugin Error Overlay Resolved (July 6, 2025)**
+- **✅ Fixed Vite Runtime Error Overlay**: Eliminated `plugin:runtime-error-plugin] (unknown runtime error)` messages
+- **✅ Enhanced Error Handling**: Added global unhandledrejection and error event handlers in main.tsx
+- **✅ MCP Request Validation**: Improved server-side request body validation and client-side error handling
+- **✅ Vector Search Timeouts**: Added 5-second timeout protection with AbortController for RAG searches
+- **✅ Platform Detection Fixed**: Resolved "Platform not found: lovable" warnings with proper fallback handling
+- **✅ Promise Rejection Handling**: Graceful handling of timeout errors, MCP failures, and AbortErrors
+
 ### **FIXED HYBRID SEARCH DEDUPLICATION: Diverse Document Results (July 6, 2025)**
 - **✅ Fixed Document-Level Deduplication**: Hybrid search now returns unique documents instead of multiple chunks from same document
 - **✅ Best Chunk Selection**: Algorithm now selects the highest-scoring chunk from each document for optimal relevance

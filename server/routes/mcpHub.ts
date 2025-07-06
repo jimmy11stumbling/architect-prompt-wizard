@@ -202,23 +202,43 @@ router.get('/mcp/resource', async (req: AuthenticatedRequest, res) => {
 router.post('/mcp/tool', async (req: AuthenticatedRequest, res) => {
   try {
     const { name, args } = req.body;
+    
+    // Validate request body
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ success: false, error: 'Invalid request body' });
+    }
+    
     if (!name) {
       return res.status(400).json({ success: false, error: 'Tool name required' });
     }
     
+    // Provide default args if missing
+    const toolArgs = args || {};
+    
     let result;
     switch (name) {
       case "search_assets":
-        result = await attachedAssetsMCPService.queryAssets(args);
+        result = await attachedAssetsMCPService.queryAssets({
+          query: toolArgs.query || '',
+          maxAssets: toolArgs.maxAssets || 5,
+          includeContent: toolArgs.includeContent || false,
+          relevanceThreshold: toolArgs.relevanceThreshold || 0.1
+        });
         break;
       
       case "get_asset_content":
-        const content = await attachedAssetsMCPService.getAssetContent(args.filename);
-        result = { content, filename: args.filename };
+        if (!toolArgs.filename) {
+          return res.status(400).json({ success: false, error: 'Filename required for get_asset_content' });
+        }
+        const content = await attachedAssetsMCPService.getAssetContent(toolArgs.filename);
+        result = { content, filename: toolArgs.filename };
         break;
       
       case "get_context_summary":
-        const summary = await attachedAssetsMCPService.getContextForPrompt(args.query, args.maxAssets);
+        const summary = await attachedAssetsMCPService.getContextForPrompt(
+          toolArgs.query || '', 
+          toolArgs.maxAssets || 5
+        );
         result = { summary };
         break;
       

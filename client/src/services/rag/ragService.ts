@@ -246,6 +246,10 @@ export class RAGService {
         data: { query, options }
       });
 
+      // Add timeout protection
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
       const response = await fetch('/api/rag/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -259,8 +263,11 @@ export class RAGService {
             includeMetadata: true,
             minSimilarity: 0.1
           }
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);
@@ -282,12 +289,17 @@ export class RAGService {
       return searchResponse;
 
     } catch (error) {
-      console.error("RAG 2.0 search failed:", error);
+      // Check if this is a timeout error
+      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+      const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
+      
+      console.warn("Vector search failed, using platform fallback:", errorMessage);
+      
       realTimeResponseService.addResponse({
         source: "rag-service",
         status: "error",
-        message: "RAG 2.0 search failed",
-        data: { error: error instanceof Error ? error.message : "Unknown error" }
+        message: isTimeout ? "Search timeout, using fallback" : "RAG 2.0 search failed",
+        data: { error: errorMessage }
       });
 
       // Fallback to basic search

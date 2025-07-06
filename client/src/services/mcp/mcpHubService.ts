@@ -33,20 +33,45 @@ export class MCPHubService {
   }
 
   async queryAssets(query: MCPAssetQuery): Promise<MCPAssetContext> {
-    await this.ensureInitialized();
+    try {
+      await this.ensureInitialized();
 
-    const response = await fetch(`${this.baseUrl}/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(query)
-    });
+      const response = await fetch(`${this.baseUrl}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(query)
+      });
 
-    if (!response.ok) {
-      throw new Error(`MCP query failed: ${response.statusText}`);
+      if (!response.ok) {
+        console.warn(`MCP query failed: ${response.statusText}`);
+        // Return empty context instead of throwing
+        return {
+          relevantAssets: [],
+          contextData: {},
+          metadata: {
+            totalAssets: 0,
+            categoriesFound: [],
+            searchQuery: query.query,
+            relevanceThreshold: query.relevanceThreshold || 0.1
+          }
+        };
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.warn('MCP query error, returning empty context:', error);
+      return {
+        relevantAssets: [],
+        contextData: {},
+        metadata: {
+          totalAssets: 0,
+          categoriesFound: [],
+          searchQuery: query.query,
+          relevanceThreshold: query.relevanceThreshold || 0.1
+        }
+      };
     }
-
-    const result = await response.json();
-    return result.data;
   }
 
   async getAssetsByCategory(category: string): Promise<AttachedAsset[]> {
@@ -151,20 +176,35 @@ export class MCPHubService {
   }
 
   async mcpCallTool(name: string, args: any): Promise<any> {
-    await this.ensureInitialized();
+    try {
+      await this.ensureInitialized();
 
-    const response = await fetch(`${this.baseUrl}/mcp/tool`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, args })
-    });
+      // Validate inputs
+      if (!name || typeof name !== 'string') {
+        console.warn('MCP tool call skipped: invalid name');
+        return { error: 'Invalid tool name' };
+      }
 
-    if (!response.ok) {
-      throw new Error(`MCP call tool failed: ${response.statusText}`);
+      const response = await fetch(`${this.baseUrl}/mcp/tool`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name, 
+          args: args || {} 
+        })
+      });
+
+      if (!response.ok) {
+        console.warn(`MCP tool call failed: ${response.statusText}`);
+        return { error: `Tool call failed: ${response.statusText}` };
+      }
+
+      const result = await response.json();
+      return result.data || {};
+    } catch (error) {
+      console.warn('MCP tool call error:', error);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
-
-    const result = await response.json();
-    return result.data;
   }
 
   async searchAssetsWithMCP(mcpQuery: {
