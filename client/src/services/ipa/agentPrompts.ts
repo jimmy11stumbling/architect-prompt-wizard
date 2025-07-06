@@ -6,7 +6,7 @@ let documentationCache: any = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-async function getDocumentation(): Promise<any> {
+async function getDocumentation(targetPlatform?: string): Promise<any> {
   const now = Date.now();
   
   // Return cached documentation if still valid
@@ -20,8 +20,8 @@ async function getDocumentation(): Promise<any> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        targetPlatform: spec?.targetPlatform,
-        platformFilter: spec?.targetPlatform,
+        targetPlatform: targetPlatform || 'cursor',
+        platformFilter: targetPlatform || 'cursor',
         includeTechnology: true, 
         includeAllPlatforms: false // Only get specific platform data
       })
@@ -35,7 +35,7 @@ async function getDocumentation(): Promise<any> {
     }
     
     // Fallback to legacy documentation endpoint with platform filter
-    const response = await fetch(`/api/agent-documentation?platform=${encodeURIComponent(spec?.targetPlatform || 'cursor')}`);
+    const response = await fetch(`/api/agent-documentation?platform=${encodeURIComponent(targetPlatform || 'cursor')}`);
     if (!response.ok) {
       throw new Error(`Documentation fetch failed: ${response.status}`);
     }
@@ -90,11 +90,13 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
       }
     }
     
-    // Fallback if no results or API issue
-    return getPlatformFallbackContext(validPlatform);
+    // Fallback if no results or API issue  
+    const fallbackPlatform = platform && platform !== 'undefined' ? platform.toLowerCase() : 'cursor';
+    return getPlatformFallbackContext(fallbackPlatform);
   } catch (error) {
     console.error('Vector search failed, using platform fallback:', error);
-    return getPlatformFallbackContext(validPlatform);
+    const fallbackPlatform = platform && platform !== 'undefined' ? platform.toLowerCase() : 'cursor';
+    return getPlatformFallbackContext(fallbackPlatform);
   }
 }
 
@@ -275,7 +277,7 @@ PLATFORM-SPECIFIC REQUIREMENTS:
 }
 
 export async function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec): Promise<string> {
-  const documentation = await getDocumentation();
+  const documentation = await getDocumentation(spec.targetPlatform);
   
   // Get platform-specific context from database and vector search
   const platformContext = buildPlatformContext(spec, documentation);
