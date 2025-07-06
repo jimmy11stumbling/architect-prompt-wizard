@@ -408,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rag/initialize", async (req, res) => {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
-      const ragOrchestrator = new RAGOrchestrator2();
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
       await ragOrchestrator.initialize();
       res.json({ message: "RAG 2.0 system initialized successfully" });
     } catch (error) {
@@ -420,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rag/index", async (req, res) => {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
-      const ragOrchestrator = new RAGOrchestrator2();
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
       
       // Setup progress tracking
       const progressUpdates: any[] = [];
@@ -448,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
-      const ragOrchestrator = new RAGOrchestrator2();
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
       
       const ragQuery = {
         query,
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
-      const ragOrchestrator = new RAGOrchestrator2();
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
       
       const suggestions = await ragOrchestrator.getSuggestions(
         query as string, 
@@ -491,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/rag/stats", async (req, res) => {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
-      const ragOrchestrator = new RAGOrchestrator2();
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
       
       const stats = await ragOrchestrator.getStats();
       res.json(stats);
@@ -505,7 +505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/rag/analytics/metrics", async (req, res) => {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
-      const ragOrchestrator = new RAGOrchestrator2();
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
       
       const stats = await ragOrchestrator.getStats();
       const metrics = {

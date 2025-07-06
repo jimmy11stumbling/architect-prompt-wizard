@@ -79,6 +79,7 @@ export interface IndexingProgress {
 }
 
 export class RAGOrchestrator2 {
+  private static instance: RAGOrchestrator2;
   private hybridSearchEngine: HybridSearchEngine;
   private documentProcessor: DocumentProcessor;
   private vectorStore: VectorStore;
@@ -86,7 +87,7 @@ export class RAGOrchestrator2 {
   private isInitialized = false;
   private indexedDocuments: ProcessedDocument[] = [];
 
-  constructor() {
+  private constructor() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error("DATABASE_URL environment variable is required");
@@ -96,6 +97,13 @@ export class RAGOrchestrator2 {
     this.documentProcessor = DocumentProcessor.getInstance();
     this.vectorStore = new VectorStore(connectionString);
     this.embeddingService = EmbeddingService.getInstance();
+  }
+
+  static getInstance(): RAGOrchestrator2 {
+    if (!RAGOrchestrator2.instance) {
+      RAGOrchestrator2.instance = new RAGOrchestrator2();
+    }
+    return RAGOrchestrator2.instance;
   }
 
   /**
