@@ -266,7 +266,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/knowledge-base", async (req, res) => {
     try {
-      const { query, category } = req.query;
+      const entries = await storage.getAllKnowledgeBase();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching knowledge base:", error);
+      res.status(500).json({ error: "Failed to fetch knowledge base" });
+    }
+  });
+
+  app.get("/api/knowledge-base/search", async (req, res) => {
+    try {
+      const { q: query, category } = req.query;
       const entries = await storage.searchKnowledgeBase(
         query as string, 
         category as string

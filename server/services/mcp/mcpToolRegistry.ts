@@ -96,12 +96,13 @@ export class MCPToolRegistry {
             throw new Error('Access denied: Path is outside project directory');
           }
           
-          const content = await fs.readFile(resolvedPath, args.encoding || 'utf8');
+          const encoding = (args.encoding && args.encoding !== "File encoding (default: utf8)") ? args.encoding : 'utf8';
+          const content = await fs.readFile(resolvedPath, encoding);
           return { 
             content, 
             size: content.length,
             path: resolvedPath,
-            encoding: args.encoding || 'utf8'
+            encoding: encoding
           };
         } catch (error) {
           throw new Error(`Failed to read file: ${error}`);
