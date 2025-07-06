@@ -35,30 +35,33 @@ const Index: React.FC = () => {
   });
   const [currentProjectSpec, setCurrentProjectSpec] = useState<ProjectSpec | undefined>();
   
-  // Initialize project spec with selected platform
+  // Initialize and update project spec with selected platform
   useEffect(() => {
-    if (!currentProjectSpec) {
-      const initialSpec: ProjectSpec = {
-        targetPlatform: selectedPlatform,
-        platformSpecificConfig: platformConfig,
-        projectDescription: "",
-        frontendTechStack: ["React"],
-        backendTechStack: ["Express"],
-        customFrontendTech: [],
-        customBackendTech: [],
-        a2aIntegrationDetails: "",
-        additionalFeatures: "",
-        ragVectorDb: "None",
-        customRagVectorDb: "",
-        mcpType: "None",
-        customMcpType: "",
-        advancedPromptDetails: "",
-        deploymentPreference: "Vercel",
-        authenticationMethod: "JWT"
-      };
-      setCurrentProjectSpec(initialSpec);
+    const initialSpec: ProjectSpec = {
+      targetPlatform: selectedPlatform,
+      platformSpecificConfig: platformConfig,
+      projectDescription: currentProjectSpec?.projectDescription || "",
+      frontendTechStack: currentProjectSpec?.frontendTechStack || ["React"],
+      backendTechStack: currentProjectSpec?.backendTechStack || ["Express"],
+      customFrontendTech: currentProjectSpec?.customFrontendTech || [],
+      customBackendTech: currentProjectSpec?.customBackendTech || [],
+      a2aIntegrationDetails: currentProjectSpec?.a2aIntegrationDetails || "",
+      additionalFeatures: currentProjectSpec?.additionalFeatures || "",
+      ragVectorDb: currentProjectSpec?.ragVectorDb || "None",
+      customRagVectorDb: currentProjectSpec?.customRagVectorDb || "",
+      mcpType: currentProjectSpec?.mcpType || "None",
+      customMcpType: currentProjectSpec?.customMcpType || "",
+      advancedPromptDetails: currentProjectSpec?.advancedPromptDetails || "",
+      deploymentPreference: currentProjectSpec?.deploymentPreference || "Vercel",
+      authenticationMethod: currentProjectSpec?.authenticationMethod || "JWT"
+    };
+    setCurrentProjectSpec(initialSpec);
+    
+    // Also update the form ref if it exists
+    if (projectFormRef.current) {
+      projectFormRef.current.setSpec(initialSpec);
     }
-  }, [selectedPlatform, platformConfig, currentProjectSpec]);
+  }, [selectedPlatform, platformConfig]);
   const [ragEnhancedAgents, setRagEnhancedAgents] = useState<Record<string, any>>({});
   const projectFormRef = useRef<ProjectSpecFormHandle>(null);
   const agentWorkflowRef = useRef<HTMLDivElement>(null);
@@ -78,6 +81,7 @@ const Index: React.FC = () => {
         targetPlatform: platform,
         platformSpecificConfig: config
       };
+      console.log(`Platform selector updating form with platform: ${platform}`);
       projectFormRef.current.setSpec(updatedSpec);
       setCurrentProjectSpec(updatedSpec); // Also update the local state
     }
@@ -125,8 +129,16 @@ const Index: React.FC = () => {
   };
 
   const handleGenerateBlueprint = (spec: ProjectSpec) => {
+    // Ensure the spec has the correct platform before submission
+    const finalSpec = {
+      ...spec,
+      targetPlatform: spec.targetPlatform || selectedPlatform || 'cursor'
+    };
+    
+    console.log(`Submitting spec with platform: ${finalSpec.targetPlatform}`);
+    
     // Start the generation process
-    handleStreamingSubmit(spec);
+    handleStreamingSubmit(finalSpec);
     
     // Scroll to the agent workflow section after a brief delay
     setTimeout(() => {
@@ -211,6 +223,7 @@ const Index: React.FC = () => {
                   ref={projectFormRef} 
                   onSubmit={handleGenerateBlueprint}
                   onSpecChange={handleFormSpecChange}
+                  key={selectedPlatform} // Force re-render when platform changes
                 />
                 <ApiKeyForm />
               </div>
