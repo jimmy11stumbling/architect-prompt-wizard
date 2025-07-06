@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { workflowValidationService } from "@/services/workflow/workflowValidationService";
 
 interface WorkflowStep {
   id: string;
@@ -83,10 +84,19 @@ const WorkflowBuilder: React.FC<{ onWorkflowCreated?: (workflow: any) => void }>
   };
 
   const saveWorkflow = async () => {
-    if (!workflow.name) {
+    // Validate workflow before saving
+    const validation = workflowValidationService.validateWorkflow(workflow);
+    
+    if (!validation.isValid) {
+      const errorMessages = validation.errors
+        .filter(e => e.severity === "error")
+        .map(e => e.message)
+        .slice(0, 3)
+        .join(", ");
+      
       toast({
-        title: "Validation Error",
-        description: "Workflow name is required",
+        title: "Validation Failed",
+        description: errorMessages,
         variant: "destructive"
       });
       return;
@@ -117,6 +127,37 @@ const WorkflowBuilder: React.FC<{ onWorkflowCreated?: (workflow: any) => void }>
   };
 
   const executeWorkflow = async () => {
+    // Validate workflow before execution
+    const validation = workflowValidationService.validateWorkflow(workflow);
+    
+    if (!validation.isValid) {
+      const errorMessages = validation.errors
+        .filter(e => e.severity === "error")
+        .map(e => e.message)
+        .slice(0, 3)
+        .join(", ");
+      
+      toast({
+        title: "Cannot Execute",
+        description: `Validation failed: ${errorMessages}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (validation.warnings.length > 0) {
+      const warningMessages = validation.warnings
+        .slice(0, 2)
+        .map(w => w.message)
+        .join(", ");
+      
+      toast({
+        title: "Validation Warnings",
+        description: `${warningMessages}${validation.warnings.length > 2 ? ` and ${validation.warnings.length - 2} more...` : ""}`,
+        variant: "default"
+      });
+    }
+
     try {
       const response = await fetch(`/api/workflows/${workflow.id}/execute`, {
         method: "POST",

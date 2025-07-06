@@ -20,6 +20,7 @@ import {
 import { workflowMonitoringService, SystemMetrics, WorkflowAlert } from "@/services/workflow/workflowMonitoringService";
 import { workflowPersistenceService, WorkflowRecord } from "@/services/workflow/workflowPersistenceService";
 import { workflowEngine } from "@/services/workflow/workflowEngine";
+import WorkflowExecutionMonitor from "./WorkflowExecutionMonitor";
 
 const WorkflowDashboard: React.FC = () => {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
@@ -266,6 +267,11 @@ const WorkflowDashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Live Monitor Tab */}
+        <TabsContent value="monitor" className="space-y-6">
+          <WorkflowExecutionMonitor showAllExecutions={true} />
         </TabsContent>
 
         <TabsContent value="alerts">

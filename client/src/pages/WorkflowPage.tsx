@@ -6,6 +6,8 @@ import { Workflow, Brain, Database, Network, Wrench, Zap, Settings, BarChart } f
 import IntegratedWorkflow from "@/components/enhanced-features/IntegratedWorkflow";
 import WorkflowBuilder from "@/components/workflow/WorkflowBuilder";
 import WorkflowDashboard from "@/components/workflow/WorkflowDashboard";
+import WorkflowExecutionTest from "@/components/workflow/WorkflowExecutionTest";
+import WorkflowNotifications from "@/components/workflow/WorkflowNotifications";
 import { WorkflowDefinition } from "@/types/workflow-types";
 
 const WorkflowPage: React.FC = () => {
@@ -85,7 +87,7 @@ const WorkflowPage: React.FC = () => {
 
         {/* Main Workflow Interface */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart className="h-4 w-4" />
               Dashboard
@@ -97,6 +99,10 @@ const WorkflowPage: React.FC = () => {
             <TabsTrigger value="execute" className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
               Execute
+            </TabsTrigger>
+            <TabsTrigger value="test" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Test
             </TabsTrigger>
             <TabsTrigger value="monitor" className="flex items-center gap-2">
               <BarChart className="h-4 w-4" />
@@ -116,8 +122,19 @@ const WorkflowPage: React.FC = () => {
             <IntegratedWorkflow />
           </TabsContent>
 
+          <TabsContent value="test" className="space-y-6">
+            <WorkflowExecutionTest />
+          </TabsContent>
+
           <TabsContent value="monitor" className="space-y-6">
-            <WorkflowDashboard />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <WorkflowDashboard />
+              </div>
+              <div>
+                <WorkflowNotifications />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 

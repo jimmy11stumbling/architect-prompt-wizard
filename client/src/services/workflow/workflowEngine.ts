@@ -5,6 +5,8 @@ import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
 import { deepseekReasonerService } from "../deepseek/deepseekReasonerService";
+import { workflowErrorHandler } from "./workflowErrorHandler";
+import { workflowNotificationService } from "./workflowNotificationService";
 
 export class WorkflowEngine {
   private static instance: WorkflowEngine;
@@ -137,18 +139,37 @@ export class WorkflowEngine {
         stepExecution.completedAt = Date.now();
         execution.metrics.failedSteps++;
 
-        realTimeResponseService.addResponse({
-          source: "workflow-engine",
-          status: "error",
-          message: `Step failed: ${step.name}`,
-          data: { stepId: step.id, error: stepExecution.error }
-        });
+        // Handle error with error handler
+        const recoveryStrategy = await workflowErrorHandler.handleError(
+          execution,
+          stepExecution,
+          error instanceof Error ? error : new Error(String(error)),
+          step.id
+        );
 
-        // Handle retry logic
+        if (recoveryStrategy) {
+          const recovered = await workflowErrorHandler.applyRecoveryStrategy(
+            recoveryStrategy,
+            execution,
+            stepExecution,
+            workflowErrorHandler.getErrorsForExecution(execution.id).slice(-1)[0]
+          );
+
+          if (recovered && recoveryStrategy.type === "retry") {
+            // Continue the loop to retry the step
+            continue;
+          } else if (recovered && recoveryStrategy.type === "skip") {
+            // Skip this step and continue
+            break;
+          }
+        }
+
+        // If no recovery or recovery failed, handle retry logic
         if (step.retryConfig && stepExecution.retryCount < step.retryConfig.maxAttempts) {
           stepExecution.retryCount++;
           await new Promise(resolve => setTimeout(resolve, step.retryConfig!.delayMs * Math.pow(step.retryConfig!.backoffMultiplier, stepExecution.retryCount - 1)));
-          // Retry the step (would need more sophisticated retry logic)
+          // Retry the step
+          continue;
         } else {
           throw error;
         }
@@ -315,6 +336,109 @@ export class WorkflowEngine {
 
   private generateExecutionId(): string {
     return `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Additional execution methods for enhanced functionality
+  async pauseExecution(executionId: string): Promise<void> {
+    const execution = this.executions.get(executionId);
+    if (execution && execution.status === "running") {
+      execution.status = "paused";
+      realTimeResponseService.addResponse({
+        source: "workflow-engine",
+        status: "info",
+        message: `Workflow execution paused: ${executionId}`,
+        data: { executionId }
+      });
+    }
+  }
+
+  async resumeExecution(executionId: string): Promise<void> {
+    const execution = this.executions.get(executionId);
+    if (execution && execution.status === "paused") {
+      execution.status = "running";
+      realTimeResponseService.addResponse({
+        source: "workflow-engine",
+        status: "info",
+        message: `Workflow execution resumed: ${executionId}`,
+        data: { executionId }
+      });
+    }
+  }
+
+  async cancelExecution(executionId: string): Promise<void> {
+    const execution = this.executions.get(executionId);
+    if (execution && (execution.status === "running" || execution.status === "paused")) {
+      execution.status = "cancelled";
+      execution.completedAt = Date.now();
+      realTimeResponseService.addResponse({
+        source: "workflow-engine",
+        status: "warning",
+        message: `Workflow execution cancelled: ${executionId}`,
+        data: { executionId }
+      });
+    }
+  }
+
+  private async executeParallelSteps(config: any, variables: Record<string, any>, stepResults: Map<string, any>): Promise<any> {
+    const parallelSteps = config.steps || [];
+    const promises = parallelSteps.map(async (stepConfig: any) => {
+      try {
+        return await this.executeStep({
+          id: stepConfig.id,
+          name: stepConfig.name,
+          type: stepConfig.type,
+          config: stepConfig.config
+        } as WorkflowStep, variables, stepResults);
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : String(error) };
+      }
+    });
+
+    const results = await Promise.allSettled(promises);
+    return {
+      results: results.map((result, index) => ({
+        stepId: parallelSteps[index].id,
+        status: result.status,
+        value: result.status === 'fulfilled' ? result.value : result.reason
+      }))
+    };
+  }
+
+  private async executeLoopStep(config: any, variables: Record<string, any>, stepResults: Map<string, any>): Promise<any> {
+    const results = [];
+    const loopVariable = config.loopVariable || 'item';
+    const loopData = variables[config.dataSource] || config.staticData || [];
+    const maxIterations = config.maxIterations || 100;
+
+    for (let i = 0; i < Math.min(loopData.length, maxIterations); i++) {
+      const loopVars = {
+        ...variables,
+        [loopVariable]: loopData[i],
+        loopIndex: i
+      };
+
+      try {
+        const result = await this.executeStep({
+          id: `loop_${i}`,
+          name: `Loop iteration ${i}`,
+          type: config.stepType,
+          config: config.stepConfig
+        } as WorkflowStep, loopVars, stepResults);
+
+        results.push({ index: i, result });
+      } catch (error) {
+        results.push({ 
+          index: i, 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+        
+        if (config.stopOnError) {
+          break;
+        }
+      }
+    }
+
+    return { iterations: results.length, results };
   }
 }
 
