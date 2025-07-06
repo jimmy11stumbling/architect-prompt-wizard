@@ -143,9 +143,7 @@ const NavigationSidebar: React.FC = () => {
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 text-left mt-1">
-                  {item.description}
-                </p>
+                
               </Button>
             </Link>
           );
