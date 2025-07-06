@@ -248,7 +248,7 @@ export class RAGService {
 
       // Add timeout protection
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       const response = await fetch('/api/rag/search', {
         method: 'POST',
@@ -291,7 +291,7 @@ export class RAGService {
     } catch (error) {
       // Check if this is a timeout error
       const isTimeout = error instanceof DOMException && error.name === 'AbortError';
-      const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
+      const errorMessage = isTimeout ? "Search timeout after 15 seconds" : (error instanceof Error ? error.message : "Unknown error");
       
       console.warn("Vector search failed, using platform fallback:", errorMessage);
       

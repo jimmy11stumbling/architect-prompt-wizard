@@ -434,6 +434,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Additional MCP request route (for compatibility)
+  app.post("/api/mcp/request", async (req, res) => {
+    try {
+      const mcpRequest: MCPRequest = req.body;
+      const response = await mcpServer.handleRequest(mcpRequest);
+      res.json(response);
+    } catch (error) {
+      console.error("Error handling MCP request:", error);
+      res.status(500).json({
+        jsonrpc: "2.0",
+        id: req.body?.id || null,
+        error: {
+          code: -1,
+          message: "Internal server error",
+          data: error
+        }
+      });
+    }
+  });
+
   app.get("/api/mcp/hub/status", async (req, res) => {
     try {
       const status = mcpHub.getCacheStatus();

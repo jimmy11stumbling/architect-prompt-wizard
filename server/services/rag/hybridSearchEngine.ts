@@ -187,53 +187,84 @@ export class HybridSearchEngine {
       rerankingEnabled = true
     } = options;
 
+    // Add timeout protection
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Search timeout after 10 seconds')), 10000);
+    });
+
     try {
-      // Perform semantic search
-      const semanticResults = await this.performSemanticSearch(query, { topK: topK * 2, minSimilarity });
+      // Perform searches with timeout protection
+      const searchPromise = this.performSearchWithTimeout(query, { topK, minSimilarity, hybridWeight, rerankingEnabled });
+      const result = await Promise.race([searchPromise, timeoutPromise]);
       
-      // Perform keyword search
-      const keywordResults = await this.performKeywordSearch(query, { topK: topK * 2 });
-      
-      // Combine and score results
-      const combinedResults = await this.combineResults(
-        semanticResults,
-        keywordResults,
-        hybridWeight,
-        searchQuery.filters
-      );
-
-      // Apply reranking if enabled
-      let finalResults = combinedResults;
-      if (rerankingEnabled && combinedResults.length > 0) {
-        finalResults = await this.rerankResults(query, combinedResults);
-      }
-
-      // Take top K results
-      finalResults = finalResults.slice(0, topK);
-
-      const searchTime = Date.now() - startTime;
-      
-      // Generate search suggestions
-      const suggestions = await this.generateSuggestions(query);
-
-      return {
-        results: finalResults,
-        query,
-        totalResults: finalResults.length,
-        searchStats: {
-          searchTime,
-          semanticResults: semanticResults.length,
-          keywordResults: keywordResults.length,
-          rerankingApplied: rerankingEnabled,
-          documentsSearched: this.documentIndex.size,
-          chunksSearched: this.chunkIndex.size
-        },
-        suggestions
-      };
+      return result;
     } catch (error) {
-      console.error('Search failed:', error);
-      throw error;
+      console.error('Hybrid search error:', error);
+      // Return empty results on timeout or error
+      return {
+        results: [],
+        query,
+        totalResults: 0,
+        searchStats: {
+          searchTime: Date.now() - startTime,
+          semanticResults: 0,
+          keywordResults: 0,
+          rerankingApplied: false,
+          documentsSearched: 0,
+          chunksSearched: 0
+        },
+        suggestions: []
+      };
     }
+  }
+
+  private async performSearchWithTimeout(query: string, options: any): Promise<SearchResponse> {
+    const startTime = Date.now();
+    const { topK, minSimilarity, hybridWeight, rerankingEnabled } = options;
+
+    // Perform semantic search
+    const semanticResults = await this.performSemanticSearch(query, { topK: topK * 2, minSimilarity });
+    
+    // Perform keyword search
+    const keywordResults = await this.performKeywordSearch(query, { topK: topK * 2 });
+    
+    // Combine and score results
+    const combinedResults = await this.combineResults(
+      semanticResults,
+      keywordResults,
+      hybridWeight,
+      { filters: searchQuery.filters }
+    );
+
+    // Apply reranking if enabled
+    let finalResults = combinedResults;
+    if (rerankingEnabled && combinedResults.length > 0) {
+      finalResults = await this.rerankResults(query, combinedResults);
+    }
+
+    // Take top K results
+    finalResults = finalResults.slice(0, topK);
+
+    const searchTime = Date.now() - startTime;
+    
+    // Generate search suggestions
+    const suggestions = await this.generateSuggestions(query);
+
+    return {
+      results: finalResults,
+      query,
+      totalResults: finalResults.length,
+      searchStats: {
+        searchTime,
+        semanticResults: semanticResults.length,
+        keywordResults: keywordResults.length,
+        rerankingApplied: rerankingEnabled,
+        documentsSearched: this.documentIndex.size,
+        chunksSearched: this.chunkIndex.size
+      },
+      suggestions
+    };
+  }
   }
 
   private async performSemanticSearch(query: string, options: { topK: number; minSimilarity: number }): Promise<VectorSearchResult[]> {
