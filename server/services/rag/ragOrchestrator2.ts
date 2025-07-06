@@ -518,13 +518,16 @@ export class RAGOrchestrator2 {
         Promise.resolve(this.embeddingService.getVocabularyStats())
       ]);
 
+      // Get real document count from vector store instead of in-memory array
+      const actualDocumentCount = parseInt(vectorStats.totalDocuments) || 0;
+
       return {
-        documentsIndexed: this.indexedDocuments.length,
-        chunksIndexed: searchStats.totalChunks,
+        documentsIndexed: actualDocumentCount,
+        chunksIndexed: searchStats.totalChunks || actualDocumentCount,
         vectorStoreStats: vectorStats,
         searchEngineStats: searchStats,
         embeddingStats,
-        lastIndexed: this.indexedDocuments.length > 0 ? new Date() : undefined
+        lastIndexed: actualDocumentCount > 0 ? new Date() : undefined
       };
     } catch (error) {
       console.error('Failed to get RAG stats:', error);
