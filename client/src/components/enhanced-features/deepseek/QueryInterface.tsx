@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Brain, Send, History, Database, Network, Wrench } from "lucide-react";
+import { Brain, Send, History, Database, Network, Wrench, Zap, Activity } from "lucide-react";
 
 interface QueryInterfaceProps {
   query: string;
@@ -16,16 +16,20 @@ interface QueryInterfaceProps {
     a2aEnabled: boolean;
     mcpEnabled: boolean;
   };
-  setIntegrationSettings: React.Dispatch<React.SetStateAction<{
+  onIntegrationSettingsChange: React.Dispatch<React.SetStateAction<{
     ragEnabled: boolean;
     a2aEnabled: boolean;
     mcpEnabled: boolean;
   }>>;
   onProcessQuery: () => void;
   onClearConversation: () => void;
-  currentConversationId: string | null;
+  onContinueConversation: (conversationId: string) => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
   sampleQueries: string[];
+  streamingMode?: boolean;
+  onStreamingModeChange?: (enabled: boolean) => void;
+  isStreaming?: boolean;
+  currentConversationId?: string | null;
 }
 
 const QueryInterface: React.FC<QueryInterfaceProps> = ({
@@ -33,12 +37,16 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
   setQuery,
   isProcessing,
   integrationSettings,
-  setIntegrationSettings,
+  onIntegrationSettingsChange,
   onProcessQuery,
   onClearConversation,
-  currentConversationId,
+  onContinueConversation,
   onKeyPress,
-  sampleQueries
+  sampleQueries,
+  streamingMode = false,
+  onStreamingModeChange,
+  isStreaming = false,
+  currentConversationId = null
 }) => {
   return (
     <Card>
@@ -64,6 +72,32 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
           </div>
         </div>
 
+        {/* Streaming Mode Toggle */}
+        {onStreamingModeChange && (
+          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {streamingMode ? (
+                  <Activity className="h-4 w-4 text-blue-500" />
+                ) : (
+                  <Zap className="h-4 w-4 text-purple-500" />
+                )}
+                <span className="font-medium text-sm">
+                  {streamingMode ? "Real-time Streaming" : "Batch Processing"}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {streamingMode ? "Live token-by-token response" : "Complete response at once"}
+              </div>
+            </div>
+            <Switch
+              checked={streamingMode}
+              onCheckedChange={onStreamingModeChange}
+              disabled={isStreaming}
+            />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -73,7 +107,7 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
             <Switch
               checked={integrationSettings.ragEnabled}
               onCheckedChange={(checked) => 
-                setIntegrationSettings(prev => ({ ...prev, ragEnabled: checked }))
+                onIntegrationSettingsChange(prev => ({ ...prev, ragEnabled: checked }))
               }
             />
           </div>
@@ -86,7 +120,7 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
             <Switch
               checked={integrationSettings.a2aEnabled}
               onCheckedChange={(checked) => 
-                setIntegrationSettings(prev => ({ ...prev, a2aEnabled: checked }))
+                onIntegrationSettingsChange(prev => ({ ...prev, a2aEnabled: checked }))
               }
             />
           </div>
@@ -99,7 +133,7 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
             <Switch
               checked={integrationSettings.mcpEnabled}
               onCheckedChange={(checked) => 
-                setIntegrationSettings(prev => ({ ...prev, mcpEnabled: checked }))
+                onIntegrationSettingsChange(prev => ({ ...prev, mcpEnabled: checked }))
               }
             />
           </div>
