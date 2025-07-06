@@ -61,43 +61,60 @@ export class WorkflowPersistenceService {
   }
 
   async saveWorkflow(definition: WorkflowDefinition): Promise<WorkflowRecord> {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) {
-      throw new Error('User must be authenticated to save workflows');
+    try {
+      const savedWorkflow = await workflowService.saveWorkflow({
+        name: definition.name,
+        definition: definition as any,
+        isTemplate: false
+      });
+
+      return convertWorkflowFromAPI(savedWorkflow);
+    } catch (error) {
+      console.error('Error saving workflow:', error);
+      throw error;
     }
-
-    const savedWorkflow = await workflowService.saveWorkflow({
-      name: definition.name,
-      definition: definition as any,
-      isTemplate: false
-    });
-
-    return convertWorkflowFromAPI(savedWorkflow);
   }
 
   async getWorkflows(): Promise<WorkflowRecord[]> {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) return [];
-
-    const workflows = await workflowService.getAllWorkflows();
-    return workflows.map(convertWorkflowFromAPI);
+    try {
+      const workflows = await workflowService.getAllWorkflows();
+      return workflows.map(convertWorkflowFromAPI);
+    } catch (error) {
+      console.error('Error fetching workflows:', error);
+      return [];
+    }
   }
 
   async saveExecution(execution: WorkflowExecution): Promise<WorkflowExecutionRecord> {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) {
-      throw new Error('User must be authenticated to save executions');
+    try {
+      const savedExecution = await workflowService.executeWorkflow(
+        parseInt(execution.workflowId),
+        execution.variables
+      );
+
+      return convertExecutionFromAPI(savedExecution);
+    } catch (error) {
+      console.error('Error saving execution:', error);
+      throw error;
     }
-
-    const savedExecution = await workflowService.executeWorkflow(
-      parseInt(execution.workflowId),
-      execution.variables
-    );
-
-    return convertExecutionFromAPI(savedExecution);
   }
 
-  async getExecutions(workflowId: string): Promise<WorkflowExecutionRecord[]> {
+  async getExecutions(workflowId?: string): Promise<WorkflowExecutionRecord[]> {
+    if (!workflowId) {
+      // Return all executions for all workflows
+      try {
+        const response = await fetch('/api/workflows/executions/all');
+        if (!response.ok) {
+          throw new Error('Failed to fetch all executions');
+        }
+        const executions = await response.json();
+        return executions.map(convertExecutionFromAPI);
+      } catch (error) {
+        console.error('Error fetching all executions:', error);
+        return [];
+      }
+    }
+    
     const executions = await workflowService.getWorkflowExecutions(parseInt(workflowId));
     return executions.map(convertExecutionFromAPI);
   }

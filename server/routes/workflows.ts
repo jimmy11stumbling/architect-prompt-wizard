@@ -172,6 +172,27 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Get all workflow executions for dashboard
+router.get('/executions/all', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const executions = await db
+      .select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.userId, req.user.id))
+      .orderBy(desc(workflowExecutions.startedAt))
+      .limit(50); // Limit to last 50 executions
+
+    res.json(executions);
+  } catch (error) {
+    console.error('Error fetching all workflow executions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get workflow executions
 router.get('/:id/executions', async (req, res) => {
   try {
@@ -181,12 +202,18 @@ router.get('/:id/executions', async (req, res) => {
 
     const { id } = req.params;
     
+    // Validate that id is a valid number
+    const workflowId = parseInt(id);
+    if (isNaN(workflowId)) {
+      return res.status(400).json({ error: "Invalid workflow ID" });
+    }
+    
     const executions = await db
       .select()
       .from(workflowExecutions)
       .where(
         and(
-          eq(workflowExecutions.workflowId, parseInt(id)),
+          eq(workflowExecutions.workflowId, workflowId),
           eq(workflowExecutions.userId, req.user.id)
         )
       )
