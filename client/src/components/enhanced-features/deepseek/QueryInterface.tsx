@@ -76,7 +76,7 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
 
         {/* Streaming Mode Toggle */}
         {onStreamingModeChange && (
-          <div className="flex items-center justify-between p-3 from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-lg border bg-[#2b3244] text-[#3c445c]">
+          <div className="flex items-center justify-between p-3 from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 rounded-lg border bg-[#2b3244] text-[#fcfcfc]">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 {streamingMode ? (
