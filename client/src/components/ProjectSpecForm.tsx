@@ -14,7 +14,7 @@ export interface ProjectSpecFormHandle {
 }
 
 const defaultSpec: ProjectSpec = {
-  targetPlatform: "windsurf",
+  targetPlatform: "cursor",
   platformSpecificConfig: {
     supportedFeatures: [],
     preferredTechStack: ["React", "TypeScript"],

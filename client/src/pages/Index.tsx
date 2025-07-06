@@ -22,7 +22,7 @@ import { realTimeResponseService } from "@/services/integration/realTimeResponse
 
 const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("create");
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("windsurf");
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("cursor");
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
     supportedFeatures: [],
     preferredTechStack: ["React", "TypeScript"],
@@ -45,7 +45,7 @@ const Index: React.FC = () => {
     setSelectedPlatform(platform);
     setPlatformConfig(config);
     
-    // Update the form with platform-specific defaults if needed
+    // Update the form with platform-specific defaults
     if (projectFormRef.current) {
       const currentSpec = projectFormRef.current.getSpec();
       const updatedSpec: ProjectSpec = {
@@ -54,12 +54,24 @@ const Index: React.FC = () => {
         platformSpecificConfig: config
       };
       projectFormRef.current.setSpec(updatedSpec);
+      setCurrentProjectSpec(updatedSpec); // Also update the local state
     }
     
     toast({
       title: "Platform Selected",
       description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} platform configuration applied`,
     });
+  };
+
+  const handleFormSpecChange = (spec: ProjectSpec) => {
+    console.log("Index: Form spec changed", spec);
+    setCurrentProjectSpec(spec);
+    
+    // Update platform state if form changes platform
+    if (spec.targetPlatform && spec.targetPlatform !== selectedPlatform) {
+      console.log(`Platform changed in form from ${selectedPlatform} to ${spec.targetPlatform}`);
+      setSelectedPlatform(spec.targetPlatform);
+    }
   };
 
   const handleRAGAgentUpdate = (agentName: string, ragContext: any) => {
@@ -78,10 +90,6 @@ const Index: React.FC = () => {
         platformContext: ragContext.platformContext?.length || 0
       }
     });
-  };
-
-  const handleFormSpecChange = (spec: ProjectSpec) => {
-    setCurrentProjectSpec(spec);
   };
 
   const handleGenerateBlueprint = (spec: ProjectSpec) => {
