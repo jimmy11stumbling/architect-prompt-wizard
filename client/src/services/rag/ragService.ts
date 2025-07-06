@@ -248,63 +248,68 @@ export class RAGService {
 
       // Add timeout protection
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => {
+        controller.abort(new Error("Search timeout after 5 seconds"));
+      }, 5000); // 5 second timeout
 
-      const response = await fetch('/api/rag/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          limit: options.limit || 10,
-          filters: options.filters,
-          options: {
-            hybridWeight: options.hybridWeight || { semantic: 0.7, keyword: 0.3 },
-            rerankingEnabled: options.rerankingEnabled !== false,
-            includeMetadata: true,
-            minSimilarity: 0.1
-          }
-        }),
-        signal: controller.signal
-      });
+      try {
+        const response = await fetch('/api/rag/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            limit: options.limit || 10,
+            filters: options.filters,
+            options: {
+              hybridWeight: options.hybridWeight || { semantic: 0.7, keyword: 0.3 },
+              rerankingEnabled: options.rerankingEnabled !== false,
+              includeMetadata: true,
+              minSimilarity: 0.1
+            }
+          }),
+          signal: controller.signal
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.statusText}`);
-      }
-
-      const searchResponse: RAG2SearchResponse = await response.json();
-
-      realTimeResponseService.addResponse({
-        source: "rag-service",
-        status: "success",
-        message: `Found ${searchResponse.totalResults} relevant results`,
-        data: { 
-          resultsCount: searchResponse.totalResults,
-          searchTime: searchResponse.searchTime,
-          searchStats: searchResponse.searchStats
+        if (!response.ok) {
+          throw new Error(`Search failed: ${response.statusText}`);
         }
-      });
 
-      return searchResponse;
+        const searchResponse: RAG2SearchResponse = await response.json();
 
-    } catch (error) {
-      // Check if this is a timeout error
-      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
-      const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
-      
-      console.warn("Vector search failed, using platform fallback:", errorMessage);
-      
-      realTimeResponseService.addResponse({
-        source: "rag-service",
-        status: "error",
-        message: isTimeout ? "Search timeout, using fallback" : "RAG 2.0 search failed",
-        data: { error: errorMessage }
-      });
+        realTimeResponseService.addResponse({
+          source: "rag-service",
+          status: "success",
+          message: `Found ${searchResponse.totalResults} relevant results`,
+          data: { 
+            resultsCount: searchResponse.totalResults,
+            searchTime: searchResponse.searchTime,
+            searchStats: searchResponse.searchStats
+          }
+        });
 
-      // Fallback to basic search
-      return this.fallbackToBasicSearch(query, options);
-    }
+        return searchResponse;
+
+      } catch (error) {
+        clearTimeout(timeoutId);
+        
+        // Check if this is a timeout/abort error
+        const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+        const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
+        
+        console.warn("Vector search failed, using platform fallback:", errorMessage);
+        
+        realTimeResponseService.addResponse({
+          source: "rag-service",
+          status: "error",
+          message: isTimeout ? "Search timeout, using fallback" : "RAG 2.0 search failed",
+          data: { error: errorMessage }
+        });
+
+        // Fallback to basic search
+        return this.fallbackToBasicSearch(query, options);
+      }
   }
 
   /**
