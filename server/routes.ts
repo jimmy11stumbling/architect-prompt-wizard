@@ -13,8 +13,15 @@ import {
   insertWorkflowSchema,
   insertKnowledgeBaseSchema
 } from "@shared/schema";
+import { authMiddleware, optionalAuthMiddleware } from "./middleware/auth";
+import promptsRouter from "./routes/prompts";
+import workflowsRouter from "./routes/workflows";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Add new API routes with authentication
+  app.use('/api/prompts', authMiddleware, promptsRouter);
+  app.use('/api/workflows', authMiddleware, workflowsRouter);
+
   // Platform management routes
   app.get("/api/platforms", async (req, res) => {
     try {
