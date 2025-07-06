@@ -53,36 +53,102 @@ export interface SearchResponse {
 export class HybridSearchEngine {
   private vectorStore: VectorStore;
   private embeddingService: EmbeddingService;
-  private documentIndex: Map<string, ProcessedDocument> = new Map();
-  private chunkIndex: Map<string, DocumentChunk> = new Map();
-  private keywordIndex: Map<string, Set<string>> = new Map();
+  private keywordIndex: Map<string, Set<string>> = new Map(); // term -> chunk IDs
+  private documentIndex: Map<string, ProcessedDocument> = new Map(); // chunk ID -> document
+  private chunkIndex: Map<string, DocumentChunk> = new Map(); // chunk ID -> chunk
   private initialized = false;
 
-  constructor(vectorStore: VectorStore, embeddingService: EmbeddingService) {
-    this.vectorStore = vectorStore;
-    this.embeddingService = embeddingService;
+  constructor(connectionString: string) {
+    this.vectorStore = new VectorStore(connectionString);
+    this.embeddingService = EmbeddingService.getInstance();
   }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    this.initialized = true;
+
+    try {
+      await this.vectorStore.initialize();
+      console.log('Hybrid search engine initialized');
+      this.initialized = true;
+    } catch (error) {
+      console.error('Failed to initialize hybrid search engine:', error);
+      throw error;
+    }
   }
 
-  async indexDocument(document: ProcessedDocument): Promise<void> {
-    this.documentIndex.set(document.id, document);
-    
-    for (const chunk of document.chunks) {
-      this.chunkIndex.set(chunk.id, chunk);
-      await this.indexChunkKeywords(chunk);
+  async indexDocuments(documents: ProcessedDocument[]): Promise<void> {
+    if (!this.initialized) await this.initialize();
+
+    try {
+      console.log(`Starting indexing of ${documents.length} documents...`);
+      
+      // Extract all text content for embedding initialization
+      const allTexts = documents.flatMap(doc => 
+        doc.chunks.map(chunk => chunk.content)
+      );
+      
+      // Initialize embedding service with all content
+      await this.embeddingService.initialize(allTexts);
+
+      // Process each document
+      for (const document of documents) {
+        await this.indexSingleDocument(document);
+      }
+
+      console.log(`Successfully indexed ${documents.length} documents with ${this.chunkIndex.size} chunks`);
+    } catch (error) {
+      console.error('Failed to index documents:', error);
+      throw error;
+    }
+  }
+
+  private async indexSingleDocument(document: ProcessedDocument): Promise<void> {
+    try {
+      const vectorDocuments: VectorDocument[] = [];
+      
+      // Process each chunk
+      for (const chunk of document.chunks) {
+        // Store in local indices
+        this.documentIndex.set(chunk.id, document);
+        this.chunkIndex.set(chunk.id, chunk);
+        
+        // Build keyword index
+        await this.indexChunkKeywords(chunk);
+        
+        // Generate embedding for vector store
+        const embeddingResult = await this.embeddingService.generateEmbedding(chunk.content);
+        
+        vectorDocuments.push({
+          id: chunk.id,
+          content: chunk.content,
+          metadata: {
+            ...chunk.metadata,
+            documentId: document.id,
+            documentTitle: document.title,
+            documentSource: document.metadata.source,
+            documentType: document.metadata.type || 'general'
+          },
+          embedding: embeddingResult.embedding
+        });
+      }
+
+      // Add to vector store
+      await this.vectorStore.addDocuments(vectorDocuments);
+      
+    } catch (error) {
+      console.error(`Failed to index document ${document.id}:`, error);
+      throw error;
     }
   }
 
   private async indexChunkKeywords(chunk: DocumentChunk): Promise<void> {
+    // Tokenize and process keywords
+    const tokenizer = new natural.WordTokenizer();
     const stemmer = natural.PorterStemmer;
-    const tokens = new natural.WordTokenizer().tokenize(chunk.content.toLowerCase());
     
-    if (!tokens) return;
+    const tokens = tokenizer.tokenize(chunk.content.toLowerCase()) || [];
     
+    // Process tokens
     const processedTokens = tokens
       .filter(token => 
         !natural.stopwords.includes(token) && 
@@ -91,11 +157,21 @@ export class HybridSearchEngine {
       )
       .map(token => stemmer.stem(token));
 
+    // Add to keyword index
     for (const token of processedTokens) {
       if (!this.keywordIndex.has(token)) {
         this.keywordIndex.set(token, new Set());
       }
       this.keywordIndex.get(token)!.add(chunk.id);
+    }
+
+    // Index bigrams for better phrase matching
+    for (let i = 0; i < processedTokens.length - 1; i++) {
+      const bigram = `${processedTokens[i]}_${processedTokens[i + 1]}`;
+      if (!this.keywordIndex.has(bigram)) {
+        this.keywordIndex.set(bigram, new Set());
+      }
+      this.keywordIndex.get(bigram)!.add(chunk.id);
     }
   }
 
@@ -112,145 +188,336 @@ export class HybridSearchEngine {
     } = options;
 
     try {
-      // Perform keyword search
-      const keywordResults = await this.performKeywordSearch(query, { topK, minSimilarity });
+      // Perform semantic search
+      const semanticResults = await this.performSemanticSearch(query, { topK: topK * 2, minSimilarity });
       
-      // Since we don't have vector search working yet, use keyword results as primary
-      const hybridResults = keywordResults.map(result => ({
-        document: this.documentIndex.get(result.documentId)!,
-        chunk: this.chunkIndex.get(result.chunkId)!,
-        score: result.score,
-        breakdown: {
-          semanticScore: 0,
-          keywordScore: result.score,
-          finalScore: result.score,
-          matchType: 'keyword' as const,
-          matchedTerms: result.matchedTerms || []
-        },
-        metadata: result.metadata || {}
-      })).filter(result => result.document && result.chunk);
+      // Perform keyword search
+      const keywordResults = await this.performKeywordSearch(query, { topK: topK * 2 });
+      
+      // Combine and score results
+      const combinedResults = await this.combineResults(
+        semanticResults,
+        keywordResults,
+        hybridWeight,
+        searchQuery.filters
+      );
+
+      // Apply reranking if enabled
+      let finalResults = combinedResults;
+      if (rerankingEnabled && combinedResults.length > 0) {
+        finalResults = await this.rerankResults(query, combinedResults);
+      }
+
+      // Take top K results
+      finalResults = finalResults.slice(0, topK);
 
       const searchTime = Date.now() - startTime;
       
+      // Generate search suggestions
+      const suggestions = await this.generateSuggestions(query);
+
       return {
-        results: hybridResults.slice(0, topK),
+        results: finalResults,
         query,
-        totalResults: hybridResults.length,
+        totalResults: finalResults.length,
         searchStats: {
           searchTime,
-          semanticResults: 0,
+          semanticResults: semanticResults.length,
           keywordResults: keywordResults.length,
-          rerankingApplied: false,
+          rerankingApplied: rerankingEnabled,
           documentsSearched: this.documentIndex.size,
           chunksSearched: this.chunkIndex.size
         },
-        suggestions: []
+        suggestions
       };
     } catch (error) {
-      console.error('Hybrid search error:', error);
-      return {
-        results: [],
-        query,
-        totalResults: 0,
-        searchStats: {
-          searchTime: Date.now() - startTime,
-          semanticResults: 0,
-          keywordResults: 0,
-          rerankingApplied: false,
-          documentsSearched: this.documentIndex.size,
-          chunksSearched: this.chunkIndex.size
-        },
-        suggestions: []
-      };
+      console.error('Search failed:', error);
+      throw error;
     }
   }
 
-  async indexDocuments(documents: ProcessedDocument[]): Promise<void> {
-    for (const document of documents) {
-      await this.indexDocument(document);
+  private async performSemanticSearch(query: string, options: { topK: number; minSimilarity: number }): Promise<VectorSearchResult[]> {
+    try {
+      // Generate embedding for query
+      const queryEmbedding = await this.embeddingService.generateEmbedding(query);
+      
+      // Search vector store
+      return await this.vectorStore.search(queryEmbedding.embedding, {
+        topK: options.topK,
+        minSimilarity: options.minSimilarity
+      });
+    } catch (error) {
+      console.error('Semantic search failed:', error);
+      return [];
     }
   }
 
-  private async performKeywordSearch(query: string, options: { topK: number; minSimilarity: number }): Promise<any[]> {
-    const stemmer = natural.PorterStemmer;
-    const tokens = new natural.WordTokenizer().tokenize(query.toLowerCase());
-    
-    if (!tokens) return [];
-    
-    const processedTokens = tokens
-      .filter(token => 
-        !natural.stopwords.includes(token) && 
-        token.length > 2 && 
-        /^[a-zA-Z]+$/.test(token)
-      )
-      .map(token => stemmer.stem(token));
+  private async performKeywordSearch(query: string, options: { topK: number }): Promise<Array<{ chunkId: string; score: number; matchedTerms: string[] }>> {
+    try {
+      // Tokenize query
+      const tokenizer = new natural.WordTokenizer();
+      const stemmer = natural.PorterStemmer;
+      
+      const queryTokens = (tokenizer.tokenize(query.toLowerCase()) || [])
+        .filter(token => 
+          !natural.stopwords.includes(token) && 
+          token.length > 2 && 
+          /^[a-zA-Z]+$/.test(token)
+        )
+        .map(token => stemmer.stem(token));
 
-    console.log(`Keyword search debug: query="${query}", processedTokens=${JSON.stringify(processedTokens)}`);
+      // Score chunks based on keyword matches
+      const chunkScores = new Map<string, { score: number; matchedTerms: string[] }>();
 
-    const chunkScores = new Map<string, { score: number; matchedTerms: string[] }>();
-    
-    for (const token of processedTokens) {
-      const matchingChunks = this.keywordIndex.get(token);
-      console.log(`Token "${token}" found ${matchingChunks ? matchingChunks.size : 0} chunks`);
-      if (matchingChunks) {
-        for (const chunkId of matchingChunks) {
-          const current = chunkScores.get(chunkId) || { score: 0, matchedTerms: [] };
-          current.score += 1;
-          current.matchedTerms.push(token);
-          chunkScores.set(chunkId, current);
+      for (const token of queryTokens) {
+        const matchingChunks = this.keywordIndex.get(token);
+        if (matchingChunks) {
+          for (const chunkId of matchingChunks) {
+            const current = chunkScores.get(chunkId) || { score: 0, matchedTerms: [] };
+            current.score += 1; // TF score (could be improved with TF-IDF)
+            current.matchedTerms.push(token);
+            chunkScores.set(chunkId, current);
+          }
         }
+      }
+
+      // Check for phrase matches (bigrams)
+      for (let i = 0; i < queryTokens.length - 1; i++) {
+        const bigram = `${queryTokens[i]}_${queryTokens[i + 1]}`;
+        const matchingChunks = this.keywordIndex.get(bigram);
+        if (matchingChunks) {
+          for (const chunkId of matchingChunks) {
+            const current = chunkScores.get(chunkId) || { score: 0, matchedTerms: [] };
+            current.score += 2; // Boost for phrase matches
+            current.matchedTerms.push(bigram);
+            chunkScores.set(chunkId, current);
+          }
+        }
+      }
+
+      // Convert to sorted results
+      const results = Array.from(chunkScores.entries())
+        .map(([chunkId, data]) => ({
+          chunkId,
+          score: data.score / queryTokens.length, // Normalize by query length
+          matchedTerms: [...new Set(data.matchedTerms)] // Remove duplicates
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, options.topK);
+
+      return results;
+    } catch (error) {
+      console.error('Keyword search failed:', error);
+      return [];
+    }
+  }
+
+  private async combineResults(
+    semanticResults: VectorSearchResult[],
+    keywordResults: Array<{ chunkId: string; score: number; matchedTerms: string[] }>,
+    weights: { semantic: number; keyword: number },
+    filters?: SearchQuery['filters']
+  ): Promise<SearchResult[]> {
+    const combinedScores = new Map<string, {
+      semanticScore: number;
+      keywordScore: number;
+      matchedTerms: string[];
+      matchType: 'semantic' | 'keyword' | 'hybrid';
+    }>();
+
+    // Process semantic results
+    for (const result of semanticResults) {
+      combinedScores.set(result.document.id, {
+        semanticScore: result.similarity,
+        keywordScore: 0,
+        matchedTerms: [],
+        matchType: 'semantic'
+      });
+    }
+
+    // Process keyword results
+    for (const result of keywordResults) {
+      const existing = combinedScores.get(result.chunkId);
+      if (existing) {
+        existing.keywordScore = result.score;
+        existing.matchedTerms = result.matchedTerms;
+        existing.matchType = 'hybrid';
+      } else {
+        combinedScores.set(result.chunkId, {
+          semanticScore: 0,
+          keywordScore: result.score,
+          matchedTerms: result.matchedTerms,
+          matchType: 'keyword'
+        });
       }
     }
 
-    console.log(`Found ${chunkScores.size} chunks with matches`);
+    // Group results by document and select best chunk per document
+    const documentResults = new Map<string, {
+      bestChunk: DocumentChunk;
+      bestDocument: ProcessedDocument;
+      bestScore: number;
+      bestScores: any;
+    }>();
+    
+    for (const [chunkId, scores] of combinedScores.entries()) {
+      const chunk = this.chunkIndex.get(chunkId);
+      const document = this.documentIndex.get(chunkId);
+      
+      if (!chunk || !document) continue;
 
-    // Convert to results array and sort by score
-    const results = Array.from(chunkScores.entries())
-      .map(([chunkId, { score, matchedTerms }]) => {
-        const chunk = this.chunkIndex.get(chunkId);
-        return {
-          chunkId,
-          documentId: chunk?.documentId || '',
-          score: score / processedTokens.length, // Normalize by query length
-          matchedTerms,
-          metadata: {}
-        };
-      })
-      .filter(result => result.score >= options.minSimilarity)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, options.topK);
+      // Apply filters
+      if (filters && !this.passesFilters(document, chunk, filters)) {
+        continue;
+      }
 
-    console.log(`Returning ${results.length} results after filtering by minSimilarity=${options.minSimilarity}`);
-    return results;
+      const finalScore = (scores.semanticScore * weights.semantic) + (scores.keywordScore * weights.keyword);
+      
+      // Check if this is the best chunk for this document
+      const existing = documentResults.get(document.id);
+      if (!existing || finalScore > existing.bestScore) {
+        documentResults.set(document.id, {
+          bestChunk: chunk,
+          bestDocument: document,
+          bestScore: finalScore,
+          bestScores: scores
+        });
+      }
+    }
+
+    // Convert to SearchResult objects
+    const searchResults: SearchResult[] = [];
+    for (const result of documentResults.values()) {
+      searchResults.push({
+        document: result.bestDocument,
+        chunk: result.bestChunk,
+        score: result.bestScore,
+        breakdown: {
+          semanticScore: result.bestScores.semanticScore,
+          keywordScore: result.bestScores.keywordScore,
+          finalScore: result.bestScore,
+          matchType: result.bestScores.matchType,
+          matchedTerms: result.bestScores.matchedTerms
+        },
+        metadata: {
+          ...result.bestChunk.metadata,
+          documentMetadata: result.bestDocument.metadata
+        }
+      });
+    }
+
+    // Sort by final score
+    return searchResults.sort((a, b) => b.score - a.score);
   }
 
-  async getStats(): Promise<any> {
-    const sampleKeywords = Array.from(this.keywordIndex.keys()).slice(0, 10);
-    const sampleDocuments = Array.from(this.documentIndex.keys()).slice(0, 5);
+  private passesFilters(document: ProcessedDocument, chunk: DocumentChunk, filters: SearchQuery['filters']): boolean {
+    if (filters.category && document.metadata.category !== filters.category) {
+      return false;
+    }
     
-    console.log("HybridSearchEngine Stats:", {
-      documentsIndexed: this.documentIndex.size,
-      chunksIndexed: this.chunkIndex.size,
-      keywordTerms: this.keywordIndex.size,
-      sampleKeywords,
-      sampleDocuments
-    });
+    if (filters.source && document.metadata.source !== filters.source) {
+      return false;
+    }
     
-    // Check if "agent" term exists in keyword index
-    const agentChunks = this.keywordIndex.get("agent");
-    console.log(`Keyword "agent" found in ${agentChunks ? agentChunks.size : 0} chunks`);
+    if (filters.documentType && document.metadata.type !== filters.documentType) {
+      return false;
+    }
+    
+    if (filters.platform && !document.metadata.source?.toLowerCase().includes(filters.platform.toLowerCase())) {
+      return false;
+    }
+    
+    if (filters.dateRange) {
+      const docDate = new Date(document.metadata.processedAt);
+      if (docDate < filters.dateRange.start || docDate > filters.dateRange.end) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  private async rerankResults(query: string, results: SearchResult[]): Promise<SearchResult[]> {
+    // Simple reranking based on query term density and position
+    const queryTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 2);
+    
+    return results.map(result => {
+      let rerankingBoost = 0;
+      const content = result.chunk.content.toLowerCase();
+      
+      // Boost for query terms in the beginning of chunk
+      const firstThird = content.substring(0, content.length / 3);
+      for (const term of queryTerms) {
+        if (firstThird.includes(term)) {
+          rerankingBoost += 0.1;
+        }
+      }
+      
+      // Boost for exact phrase matches
+      if (content.includes(query.toLowerCase())) {
+        rerankingBoost += 0.2;
+      }
+      
+      // Boost for document title matches
+      const title = result.document.title.toLowerCase();
+      for (const term of queryTerms) {
+        if (title.includes(term)) {
+          rerankingBoost += 0.15;
+        }
+      }
+      
+      return {
+        ...result,
+        score: result.score + rerankingBoost
+      };
+    }).sort((a, b) => b.score - a.score);
+  }
+
+  private async generateSuggestions(query: string, limit = 5): Promise<string[]> {
+    const suggestions: string[] = [];
+    
+    // Extract key terms from indexed vocabulary
+    const embeddingStats = this.embeddingService.getVocabularyStats();
+    const queryWords = query.toLowerCase().split(/\s+/);
+    
+    // Find related terms from vocabulary
+    for (const term of embeddingStats.topTerms) {
+      if (term.length > 3 && !queryWords.includes(term)) {
+        // Simple similarity check (could be improved)
+        for (const qWord of queryWords) {
+          if (qWord.length > 2 && (term.includes(qWord) || qWord.includes(term))) {
+            suggestions.push(`${query} ${term}`);
+            break;
+          }
+        }
+      }
+      
+      if (suggestions.length >= limit) break;
+    }
+    
+    return suggestions;
+  }
+
+  async getStats(): Promise<{
+    totalDocuments: number;
+    totalChunks: number;
+    keywordTerms: number;
+    vectorStoreStats: any;
+    embeddingStats: any;
+  }> {
+    const vectorStats = await this.vectorStore.getStats();
+    const embeddingStats = this.embeddingService.getVocabularyStats();
     
     return {
-      documentsIndexed: this.documentIndex.size,
-      chunksIndexed: this.chunkIndex.size,
+      totalDocuments: this.documentIndex.size,
+      totalChunks: this.chunkIndex.size,
       keywordTerms: this.keywordIndex.size,
-      vectorStoreStats: this.vectorStore.getStats ? await this.vectorStore.getStats() : {}
+      vectorStoreStats: vectorStats,
+      embeddingStats
     };
   }
 
-  clear(): void {
-    this.documentIndex.clear();
-    this.chunkIndex.clear();
-    this.keywordIndex.clear();
+  async close(): Promise<void> {
+    await this.vectorStore.close();
   }
 }
