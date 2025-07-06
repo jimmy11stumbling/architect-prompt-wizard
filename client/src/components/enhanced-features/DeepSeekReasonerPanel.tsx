@@ -21,6 +21,13 @@ const DeepSeekReasonerPanel: React.FC = () => {
     useAttachedAssets: true
   });
   
+  // RAG Statistics state
+  const [ragStats, setRagStats] = useState({
+    documentsIndexed: 0,
+    chunksIndexed: 0,
+    lastUpdated: null
+  });
+  
   // Streaming state
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
@@ -34,11 +41,37 @@ const DeepSeekReasonerPanel: React.FC = () => {
 
   const sampleQueries = [
     "Explain how RAG 2.0 improves upon traditional RAG systems",
-    "How does A2A protocol enable multi-agent coordination?",
+    "How does A2A protocol enable multi-agent coordination?", 
     "What are the key benefits of MCP integration?",
     "Compare different vector database solutions for RAG",
     "Design a multi-agent system for document analysis"
   ];
+
+  // Fetch RAG statistics on component mount and when RAG is enabled
+  useEffect(() => {
+    const fetchRagStats = async () => {
+      if (integrationSettings.ragEnabled) {
+        try {
+          const response = await fetch('/api/rag/stats');
+          if (response.ok) {
+            const stats = await response.json();
+            setRagStats({
+              documentsIndexed: stats.documentsIndexed || 0,
+              chunksIndexed: stats.chunksIndexed || 0,
+              lastUpdated: new Date()
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to fetch RAG stats:', error);
+        }
+      }
+    };
+
+    fetchRagStats();
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchRagStats, 30000);
+    return () => clearInterval(interval);
+  }, [integrationSettings.ragEnabled]);
 
   const processQuery = async () => {
     if (!query.trim()) {
@@ -275,6 +308,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
         streamingMode={streamingMode}
         onStreamingModeChange={setStreamingMode}
         isStreaming={isStreaming}
+        ragStats={ragStats}
       />
 
       {/* Streaming Response Display */}

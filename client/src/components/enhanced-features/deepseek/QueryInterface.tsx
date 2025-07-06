@@ -32,6 +32,11 @@ interface QueryInterfaceProps {
   onStreamingModeChange?: (enabled: boolean) => void;
   isStreaming?: boolean;
   currentConversationId?: string | null;
+  ragStats?: {
+    documentsIndexed: number;
+    chunksIndexed: number;
+    lastUpdated: Date | null;
+  };
 }
 
 const QueryInterface: React.FC<QueryInterfaceProps> = ({
@@ -48,7 +53,8 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
   streamingMode = false,
   onStreamingModeChange,
   isStreaming = false,
-  currentConversationId = null
+  currentConversationId = null,
+  ragStats
 }) => {
   return (
     <Card>
@@ -97,6 +103,29 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
               onCheckedChange={onStreamingModeChange}
               disabled={isStreaming}
             />
+          </div>
+        )}
+
+        {/* Comprehensive Document Access Indicator */}
+        {integrationSettings.ragEnabled && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-3 mb-2">
+              <Database className="h-5 w-5 text-blue-600" />
+              <span className="font-semibold text-blue-900 dark:text-blue-100">Full Document Database Access</span>
+              <div className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+                <Activity className="h-3 w-3" />
+                ACTIVE
+              </div>
+            </div>
+            <div className="text-sm text-blue-700 dark:text-blue-300 mb-1">
+              Access to <span className="font-bold">{ragStats?.documentsIndexed?.toLocaleString() || '6,800+'} indexed documents</span> across all platforms and attached assets
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {ragStats?.chunksIndexed && (
+                <span className="mr-2">{ragStats.chunksIndexed.toLocaleString()} searchable chunks •</span>
+              )}
+              Includes platform specifications, documentation, best practices, and implementation guides for Cursor, Bolt, Lovable, Replit, and Windsurf
+            </div>
           </div>
         )}
 
