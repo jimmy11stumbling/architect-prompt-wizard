@@ -1,4 +1,4 @@
-import { useAuth } from '@/hooks/useAuth';
+// Authentication removed - personal app
 
 export interface SavedPrompt {
   id: number;
@@ -14,10 +14,9 @@ export interface SavedPrompt {
 
 class PromptService {
   private getHeaders(): HeadersInit {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
     return {
       'Content-Type': 'application/json',
-      'X-User-Id': user.id?.toString() || '',
+      'X-User-Id': '1', // Default user ID for personal app
     };
   }
 

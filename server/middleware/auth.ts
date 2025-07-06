@@ -14,29 +14,10 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const userId = req.headers['x-user-id'];
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const user = await storage.getUser(parseInt(userId as string));
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid user' });
-    }
-
-    req.user = {
-      id: user.id,
-      username: user.username,
-      email: user.email || '',
-    };
-
-    next();
-  } catch (error) {
-    console.error('Authentication error:', error);
-    res.status(401).json({ error: 'Authentication failed' });
-  }
+  // No authentication required for personal app
+  // Set default user
+  req.user = { id: 1, username: 'personal_user', email: 'user@personal.app' };
+  next();
 };
 
 export const optionalAuthMiddleware = async (
@@ -44,23 +25,7 @@ export const optionalAuthMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const userId = req.headers['x-user-id'];
-    
-    if (userId) {
-      const user = await storage.getUser(parseInt(userId as string));
-      if (user) {
-        req.user = {
-          id: user.id,
-          username: user.username,
-          email: user.email || '',
-        };
-      }
-    }
-
-    next();
-  } catch (error) {
-    console.error('Optional auth error:', error);
-    next();
-  }
+  // Set default user for personal app
+  req.user = { id: 1, username: 'personal_user', email: 'user@personal.app' };
+  next();
 };
