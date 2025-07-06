@@ -310,6 +310,11 @@ export class RAGService {
         // Fallback to basic search
         return this.fallbackToBasicSearch(query, options);
       }
+    } catch (error) {
+      console.error("Outer search error:", error);
+      // Fallback to basic search on any outer error
+      return this.fallbackToBasicSearch(query, options);
+    }
   }
 
   /**
