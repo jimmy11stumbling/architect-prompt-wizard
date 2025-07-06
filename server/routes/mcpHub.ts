@@ -124,10 +124,24 @@ router.get('/stats', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// MCP Protocol Methods
+// MCP Protocol Methods - simplified implementations
 router.get('/mcp/resources', async (req: AuthenticatedRequest, res) => {
   try {
-    const resources = await attachedAssetsMCPHub.mcpListResources();
+    const stats = attachedAssetsMCPService.getAssetStatistics();
+    const resources = [
+      {
+        uri: "assets://all",
+        name: "All Attached Assets",
+        description: `Access to ${stats.totalAssets} attached assets`,
+        mimeType: "application/json"
+      },
+      ...Object.keys(stats.categories).map(category => ({
+        uri: `assets://category/${category}`,
+        name: `${category.charAt(0).toUpperCase() + category.slice(1)} Assets`,
+        description: `${stats.categories[category]} assets in ${category} category`,
+        mimeType: "application/json"
+      }))
+    ];
     res.json({ success: true, data: resources });
   } catch (error) {
     console.error('MCP list resources failed:', error);
@@ -145,8 +159,37 @@ router.get('/mcp/resource', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ success: false, error: 'URI parameter required' });
     }
     
-    const resource = await attachedAssetsMCPHub.mcpReadResource(uri);
-    res.json({ success: true, data: resource });
+    if (uri === "assets://all") {
+      const stats = attachedAssetsMCPService.getAssetStatistics();
+      return res.json({
+        success: true,
+        data: {
+          contents: [{
+            uri,
+            mimeType: "application/json",
+            text: JSON.stringify(stats, null, 2)
+          }]
+        }
+      });
+    }
+    
+    if (uri.startsWith("assets://category/")) {
+      const category = uri.replace("assets://category/", "");
+      const assets = await attachedAssetsMCPService.getAssetsByCategory(category);
+      
+      return res.json({
+        success: true,
+        data: {
+          contents: [{
+            uri,
+            mimeType: "application/json",
+            text: JSON.stringify(assets, null, 2)
+          }]
+        }
+      });
+    }
+    
+    res.status(404).json({ success: false, error: `Unknown resource URI: ${uri}` });
   } catch (error) {
     console.error('MCP read resource failed:', error);
     res.status(500).json({ 
@@ -163,7 +206,26 @@ router.post('/mcp/tool', async (req: AuthenticatedRequest, res) => {
       return res.status(400).json({ success: false, error: 'Tool name required' });
     }
     
-    const result = await attachedAssetsMCPHub.mcpCallTool(name, args || {});
+    let result;
+    switch (name) {
+      case "search_assets":
+        result = await attachedAssetsMCPService.queryAssets(args);
+        break;
+      
+      case "get_asset_content":
+        const content = await attachedAssetsMCPService.getAssetContent(args.filename);
+        result = { content, filename: args.filename };
+        break;
+      
+      case "get_context_summary":
+        const summary = await attachedAssetsMCPService.getContextForPrompt(args.query, args.maxAssets);
+        result = { summary };
+        break;
+      
+      default:
+        return res.status(404).json({ success: false, error: `Unknown tool: ${name}` });
+    }
+    
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('MCP call tool failed:', error);
@@ -177,9 +239,40 @@ router.post('/mcp/tool', async (req: AuthenticatedRequest, res) => {
 // Search assets using MCP context
 router.post('/search', async (req: AuthenticatedRequest, res) => {
   try {
-    const mcpQuery = req.body;
-    const context = await attachedAssetsMCPHub.searchAssetsWithMCP(mcpQuery);
-    res.json({ success: true, data: context });
+    const { tools, resources, context } = req.body;
+    
+    // Extract search terms from MCP context
+    let searchTerms: string[] = [];
+    
+    if (tools) {
+      searchTerms.push(...tools);
+    }
+    
+    if (resources) {
+      searchTerms.push(...resources);
+    }
+    
+    if (context) {
+      const contextText = JSON.stringify(context).toLowerCase();
+      const platforms = ['cursor', 'bolt', 'replit', 'windsurf', 'lovable'];
+      const technologies = ['mcp', 'rag', 'a2a', 'ai', 'agent'];
+      
+      searchTerms.push(
+        ...platforms.filter(p => contextText.includes(p)),
+        ...technologies.filter(t => contextText.includes(t))
+      );
+    }
+
+    const searchQuery = searchTerms.join(' ');
+    
+    const result = await attachedAssetsMCPService.queryAssets({
+      query: searchQuery,
+      maxAssets: 8,
+      includeContent: true,
+      relevanceThreshold: 0.05
+    });
+    
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('MCP search failed:', error);
     res.status(500).json({ 
@@ -192,7 +285,12 @@ router.post('/search', async (req: AuthenticatedRequest, res) => {
 // Preload critical assets
 router.post('/preload', async (req: AuthenticatedRequest, res) => {
   try {
-    await attachedAssetsMCPHub.preloadCriticalAssets();
+    // Simple preload - just load a few assets to warm the cache
+    const criticalCategories = ['mcp', 'cursor', 'bolt'];
+    for (const category of criticalCategories) {
+      await attachedAssetsMCPService.getAssetsByCategory(category);
+    }
+    
     res.json({ success: true, message: 'Critical assets preloaded successfully' });
   } catch (error) {
     console.error('Failed to preload critical assets:', error);

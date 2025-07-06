@@ -16,7 +16,55 @@ import {
   Code,
   Network
 } from "lucide-react";
-import { mcpHubService } from "@/services/mcp/mcpHubService";
+// API service functions
+const apiService = {
+  async getStats() {
+    const response = await fetch('/api/mcp-hub/stats');
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+  
+  async getCategories() {
+    const response = await fetch('/api/mcp-hub/categories');
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+  
+  async getResources() {
+    const response = await fetch('/api/mcp-hub/mcp/resources');
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+  
+  async getContextForPrompt(query: string, maxAssets: number) {
+    const response = await fetch('/api/mcp-hub/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, maxAssets, includeContent: true })
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+  
+  async getMCPContext() {
+    const response = await fetch('/api/mcp-hub/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        query: "MCP Model Context Protocol implementation guide",
+        maxAssets: 3,
+        includeContent: true
+      })
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  }
+};
 import { useToast } from "@/hooks/use-toast";
 
 const MCPHubDemo: React.FC = () => {
@@ -36,13 +84,11 @@ const MCPHubDemo: React.FC = () => {
   const initializeMCPHub = async () => {
     setIsLoading(true);
     try {
-      await mcpHubService.initialize();
-      
       // Load initial data
       const [statsData, categoriesData, resourcesData] = await Promise.all([
-        mcpHubService.getAssetStatistics(),
-        mcpHubService.getAvailableCategories(),
-        mcpHubService.mcpListResources()
+        apiService.getStats(),
+        apiService.getCategories(),
+        apiService.getResources()
       ]);
       
       setStats(statsData);
@@ -69,7 +115,7 @@ const MCPHubDemo: React.FC = () => {
     
     setIsLoading(true);
     try {
-      const context = await mcpHubService.getContextForPrompt(searchQuery, 5);
+      const context = await apiService.getContextForPrompt(searchQuery, 5);
       setContextResult(context);
       
       toast({
@@ -90,7 +136,7 @@ const MCPHubDemo: React.FC = () => {
   const handleMCPContextDemo = async () => {
     setIsLoading(true);
     try {
-      const mcpContext = await mcpHubService.getMCPContext();
+      const mcpContext = await apiService.getMCPContext();
       setContextResult(mcpContext);
       
       toast({
