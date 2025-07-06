@@ -69,9 +69,16 @@ const NavigationSidebar: React.FC = () => {
     },
     {
       path: "/mcp",
-      label: "MCP Hub",
+      label: "MCP Tools",
       icon: Wrench,
       description: "Model context protocol tools"
+    },
+    {
+      path: "/mcp-hub",
+      label: "MCP Assets Hub",
+      icon: Globe,
+      description: "Attached assets context retrieval",
+      badge: "New"
     },
     {
       path: "/workflow",

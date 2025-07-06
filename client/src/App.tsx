@@ -17,6 +17,7 @@ import RAGPage from "./pages/RAGPage";
 import A2APage from "./pages/A2APage";
 import MCPPage from "./pages/MCPPage";
 import WorkflowPage from "./pages/WorkflowPage";
+import MCPHubPage from "./pages/MCPHubPage";
 import SavedPromptsPage from "./pages/SavedPromptsPage";
 import TestingPage from "./pages/TestingPage";
 import AdvancedSettingsPage from "./pages/AdvancedSettingsPage";
@@ -42,6 +43,7 @@ const App = () => (
                   <Route path="/rag"><RAGPage /></Route>
                   <Route path="/a2a"><A2APage /></Route>
                   <Route path="/mcp"><MCPPage /></Route>
+                  <Route path="/mcp-hub"><MCPHubPage /></Route>
                   <Route path="/workflow"><WorkflowPage /></Route>
                   <Route path="/saved-prompts"><SavedPromptsPage /></Route>
                   <Route path="/testing"><TestingPage /></Route>

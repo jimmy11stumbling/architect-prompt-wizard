@@ -17,7 +17,8 @@ const DeepSeekReasonerPanel: React.FC = () => {
   const [integrationSettings, setIntegrationSettings] = useState({
     ragEnabled: true,
     a2aEnabled: true,
-    mcpEnabled: true
+    mcpEnabled: true,
+    useAttachedAssets: true
   });
   
   // Streaming state

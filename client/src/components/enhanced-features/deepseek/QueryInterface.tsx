@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Brain, Send, History, Database, Network, Wrench, Zap, Activity } from "lucide-react";
+import { Brain, Send, History, Database, Network, Wrench, Zap, Activity, FileText } from "lucide-react";
 
 interface QueryInterfaceProps {
   query: string;
@@ -15,11 +15,13 @@ interface QueryInterfaceProps {
     ragEnabled: boolean;
     a2aEnabled: boolean;
     mcpEnabled: boolean;
+    useAttachedAssets: boolean;
   };
   onIntegrationSettingsChange: React.Dispatch<React.SetStateAction<{
     ragEnabled: boolean;
     a2aEnabled: boolean;
     mcpEnabled: boolean;
+    useAttachedAssets: boolean;
   }>>;
   onProcessQuery: () => void;
   onClearConversation: () => void;
@@ -98,7 +100,7 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-blue-500" />
@@ -134,6 +136,19 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
               checked={integrationSettings.mcpEnabled}
               onCheckedChange={(checked) => 
                 onIntegrationSettingsChange(prev => ({ ...prev, mcpEnabled: checked }))
+              }
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-purple-500" />
+              <span className="text-sm">Attached Assets</span>
+            </div>
+            <Switch
+              checked={integrationSettings.useAttachedAssets}
+              onCheckedChange={(checked) => 
+                onIntegrationSettingsChange(prev => ({ ...prev, useAttachedAssets: checked }))
               }
             />
           </div>

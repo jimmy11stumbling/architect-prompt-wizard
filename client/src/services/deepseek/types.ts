@@ -6,6 +6,7 @@ export interface ReasonerQuery {
   ragEnabled?: boolean;
   a2aEnabled?: boolean;
   mcpEnabled?: boolean;
+  useAttachedAssets?: boolean;
 }
 
 export interface ReasonerResponse {
@@ -17,6 +18,10 @@ export interface ReasonerResponse {
     ragResults?: any;
     a2aMessages?: any[];
     mcpToolCalls?: any[];
+    attachedAssets?: {
+      count: number;
+      used: string[];
+    };
   };
 }
 
@@ -45,5 +50,9 @@ export interface DeepSeekResponse {
     ragResults?: any;
     a2aMessages?: any[];
     mcpToolCalls?: any[];
+    attachedAssets?: {
+      count: number;
+      used: string[];
+    };
   };
 }

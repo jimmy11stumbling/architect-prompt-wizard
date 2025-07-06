@@ -1,5 +1,6 @@
 
 import { realTimeResponseService } from "../integration/realTimeResponseService";
+import { attachedAssetsService } from "./attachedAssetsService";
 import { ReasonerQuery, DeepSeekResponse } from './types';
 import { ApiKeyManager } from './core/apiKeyManager';
 import { DeepSeekApiClient } from './core/apiClient';
@@ -7,6 +8,7 @@ import { MockResponseGenerator } from './core/mockResponseGenerator';
 import { ConversationManager } from './core/conversationManager';
 import { ResponseProcessor } from './core/responseProcessor';
 import { ragService } from '../rag/ragService';
+import { mcpHubService } from '../mcp/mcpHubService';
 
 export * from './types';
 
@@ -71,6 +73,53 @@ export class DeepSeekReasonerService {
       const messages = [];
       let ragContext = "";
       let integrationData: any = {};
+
+      // Load attached assets context if available
+      let attachedAssetsContext = "";
+      if (query.useAttachedAssets) {
+        try {
+          realTimeResponseService.addResponse({
+            source: "deepseek-reasoner",
+            status: "processing",
+            message: "Loading relevant attached assets...",
+            data: { query: query.prompt }
+          });
+
+          await attachedAssetsService.loadAvailableAssets();
+          const relevantAssets = await attachedAssetsService.getRelevantAssetsForPrompt(query.prompt);
+          
+          if (relevantAssets.length > 0) {
+            attachedAssetsContext = "\n\n=== ATTACHED ASSETS CONTEXT ===\n";
+            for (const asset of relevantAssets.slice(0, 3)) { // Top 3 most relevant
+              const content = await attachedAssetsService.getAssetContent(asset.filename);
+              if (content) {
+                attachedAssetsContext += `\n--- ${asset.filename} (${asset.metadata?.category || 'general'}) ---\n`;
+                attachedAssetsContext += content.substring(0, 1500) + "...\n"; // Limit content length
+              }
+            }
+            attachedAssetsContext += "\n=== END ATTACHED ASSETS ===\n";
+            
+            integrationData.attachedAssets = {
+              count: relevantAssets.length,
+              used: relevantAssets.slice(0, 3).map(a => a.filename)
+            };
+
+            realTimeResponseService.addResponse({
+              source: "deepseek-reasoner",
+              status: "success",
+              message: `Loaded ${relevantAssets.length} relevant assets`,
+              data: { assetFiles: relevantAssets.map(a => a.filename) }
+            });
+          }
+        } catch (error) {
+          realTimeResponseService.addResponse({
+            source: "deepseek-reasoner",
+            status: "warning",
+            message: "Failed to load attached assets, continuing without them",
+            data: { error: String(error) }
+          });
+        }
+      }
 
       // Fetch RAG context if enabled
       if (query.ragEnabled) {

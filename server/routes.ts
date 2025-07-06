@@ -16,11 +16,15 @@ import {
 import { authMiddleware, optionalAuthMiddleware } from "./middleware/auth";
 import promptsRouter from "./routes/prompts";
 import workflowsRouter from "./routes/workflows";
+import attachedAssetsRouter from "./routes/attachedAssets";
+import mcpHubRouter from "./routes/mcpHub";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Add new API routes with authentication
   app.use('/api/prompts', authMiddleware, promptsRouter);
+  app.use('/api/attached-assets', attachedAssetsRouter);
   app.use('/api/workflows', authMiddleware, workflowsRouter);
+  app.use('/api/mcp-hub', mcpHubRouter);
 
   // Platform management routes
   app.get("/api/platforms", async (req, res) => {
