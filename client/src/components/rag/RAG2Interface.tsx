@@ -46,10 +46,10 @@ export default function RAG2Interface({ onResultSelect }: RAG2InterfaceProps) {
   
   // Search options
   const [filters, setFilters] = useState({
-    category: '',
-    platform: '',
-    source: '',
-    documentType: ''
+    category: 'all',
+    platform: 'all',
+    source: 'all',
+    documentType: 'all'
   });
   const [searchOptions, setSearchOptions] = useState({
     limit: 10,

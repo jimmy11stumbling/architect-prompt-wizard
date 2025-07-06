@@ -15,6 +15,21 @@ async function getDocumentation(): Promise<any> {
   }
   
   try {
+    // First try to get from MCP hub with comprehensive context
+    const mcpResponse = await fetch('/api/mcp-hub/comprehensive-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ includeTechnology: true, includeAllPlatforms: true })
+    });
+    
+    if (mcpResponse.ok) {
+      const mcpData = await mcpResponse.json();
+      documentationCache = mcpData;
+      cacheTimestamp = now;
+      return documentationCache;
+    }
+    
+    // Fallback to legacy documentation endpoint
     const response = await fetch('/api/agent-documentation');
     if (!response.ok) {
       throw new Error(`Documentation fetch failed: ${response.status}`);
@@ -27,6 +42,39 @@ async function getDocumentation(): Promise<any> {
     console.error('Error fetching documentation:', error);
     return null;
   }
+}
+
+async function getVectorSearchContext(query: string, platform: string): Promise<string> {
+  try {
+    const response = await fetch('/api/rag/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        filters: {
+          platform: platform.toLowerCase(),
+          category: 'platform-specification'
+        },
+        limit: 5,
+        options: {
+          hybridWeight: { semantic: 0.7, keyword: 0.3 },
+          rerankingEnabled: true
+        }
+      })
+    });
+    
+    if (response.ok) {
+      const searchResults = await response.json();
+      if (searchResults.results && searchResults.results.length > 0) {
+        return searchResults.results.map((result: any, index: number) => 
+          `[VECTOR SEARCH RESULT ${index + 1}]\nTitle: ${result.title}\nContent: ${result.content}\nRelevance: ${Math.round(result.relevanceScore * 100)}%\n`
+        ).join('\n');
+      }
+    }
+  } catch (error) {
+    console.error('Vector search failed:', error);
+  }
+  return "";
 }
 
 function buildPlatformContext(spec: ProjectSpec, documentation: any): string {
@@ -196,9 +244,38 @@ PLATFORM-SPECIFIC REQUIREMENTS:
 export async function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec): Promise<string> {
   const documentation = await getDocumentation();
   
-  // Get platform-specific context from database
+  // Get platform-specific context from database and vector search
   const platformContext = buildPlatformContext(spec, documentation);
   const technologyContext = buildTechnologyContext(spec, documentation);
+  
+  // Get vector search context for enhanced agent knowledge
+  const searchQuery = `${spec.targetPlatform} ${spec.projectDescription} ${agent}`;
+  const vectorContext = await getVectorSearchContext(searchQuery, spec.targetPlatform || '');
+  
+  // Add vector search context and MCP tools integration
+  let enhancedContext = "";
+  if (vectorContext) {
+    enhancedContext = `
+
+VECTOR SEARCH ENHANCED CONTEXT:
+${vectorContext}
+
+This context was retrieved from our indexed knowledge base and provides specific, relevant information for your analysis.`;
+  }
+  
+  // Add MCP tools context for real-time data access
+  const mcpToolsContext = `
+
+MCP TOOLS AVAILABLE FOR REAL-TIME ANALYSIS:
+- Database queries: Use 'query_database' tool for live platform data
+- File analysis: Use 'read_file' and 'list_files' for code examination
+- Web research: Use 'web_search' for latest information
+- Code analysis: Use 'analyze_code' for quality assessment
+- Document processing: Use 'process_document' for content analysis
+
+These tools provide real-time access to our database, file system, and external resources to enhance your analysis with current data.`;
+  
+  enhancedContext += mcpToolsContext;
   
   const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system powered by DeepSeek AI. Your role is to provide expert, platform-specific analysis and recommendations for building applications on ${spec.targetPlatform?.toUpperCase()} with RAG 2.0, A2A Protocol, and MCP integration.
 
@@ -208,10 +285,13 @@ CRITICAL REQUIREMENTS:
 - Never provide generic advice - everything must be tailored to ${spec.targetPlatform?.toUpperCase()}'s actual capabilities
 - Reference specific platform features, tools, and limitations from the authentic data
 - Focus on platform-native workflows and deployment options
+- Utilize the vector search enhanced context below for specific technical details
 
 ${platformContext}
 
 ${technologyContext}
+
+${enhancedContext}
 
 TARGET PLATFORM: ${spec.targetPlatform?.toUpperCase()}
 PROJECT SPECIFICATION:
@@ -224,7 +304,7 @@ PROJECT SPECIFICATION:
 - Additional Features: ${spec.additionalFeatures || "Standard features"}
 - Advanced Prompt Details: ${spec.advancedPromptDetails || "None"}
 - Authentication Method: ${spec.authenticationMethod || "JWT"}
-- Deployment Preference: ${spec.deploymentPreference || "Platform-native"}${buildPlatformContext(spec, documentation)}${buildTechnologyContext(spec, documentation)}
+- Deployment Preference: ${spec.deploymentPreference || "Platform-native"}
 
 DEEPSEEK RAG 2.0 INTEGRATION:
 - Use real platform documentation from knowledge base
