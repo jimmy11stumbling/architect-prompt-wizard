@@ -36,6 +36,7 @@ const Index: React.FC = () => {
   const [currentProjectSpec, setCurrentProjectSpec] = useState<ProjectSpec | undefined>();
   const [ragEnhancedAgents, setRagEnhancedAgents] = useState<Record<string, any>>({});
   const projectFormRef = useRef<ProjectSpecFormHandle>(null);
+  const agentWorkflowRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { generationStatus, isGenerating, handleSubmit, handleStreamingSubmit } = useProjectGeneration();
 
@@ -80,6 +81,21 @@ const Index: React.FC = () => {
 
   const handleFormSpecChange = (spec: ProjectSpec) => {
     setCurrentProjectSpec(spec);
+  };
+
+  const handleGenerateBlueprint = (spec: ProjectSpec) => {
+    // Start the generation process
+    handleStreamingSubmit(spec);
+    
+    // Scroll to the agent workflow section after a brief delay
+    setTimeout(() => {
+      if (agentWorkflowRef.current) {
+        agentWorkflowRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }
+    }, 300);
   };
 
   const handleSelectTemplate = (spec: ProjectSpec) => {
@@ -152,12 +168,12 @@ const Index: React.FC = () => {
               <div className="space-y-8">
                 <ProjectSpecForm 
                   ref={projectFormRef} 
-                  onSubmit={handleStreamingSubmit}
+                  onSubmit={handleGenerateBlueprint}
                   onSpecChange={handleFormSpecChange}
                 />
                 <ApiKeyForm />
               </div>
-              <div className="space-y-8">
+              <div className="space-y-8" ref={agentWorkflowRef}>
                 <RAGIntegratedAgentWorkflow 
                   agents={generationStatus?.agents || []} 
                   isGenerating={isGenerating}
