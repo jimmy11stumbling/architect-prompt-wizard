@@ -6,6 +6,7 @@ import { DeepSeekApiClient } from './core/apiClient';
 import { MockResponseGenerator } from './core/mockResponseGenerator';
 import { ConversationManager } from './core/conversationManager';
 import { ResponseProcessor } from './core/responseProcessor';
+import { ragService } from '../rag/ragService';
 
 export * from './types';
 
@@ -68,6 +69,55 @@ export class DeepSeekReasonerService {
 
     try {
       const messages = [];
+      let ragContext = "";
+      let integrationData: any = {};
+
+      // Fetch RAG context if enabled
+      if (query.ragEnabled) {
+        try {
+          realTimeResponseService.addResponse({
+            source: "deepseek-reasoner",
+            status: "processing",
+            message: "Fetching relevant context from RAG database...",
+            data: { query: query.prompt }
+          });
+
+          const ragResults = await ragService.query({
+            query: query.prompt,
+            limit: 5,
+            threshold: 0.3
+          });
+
+          if (ragResults.results && ragResults.results.length > 0) {
+            ragContext = ragResults.results.map(result => 
+              `[${result.metadata?.title || 'Document'}]: ${result.content}`
+            ).join('\n\n');
+            
+            integrationData.ragResults = ragResults;
+            
+            realTimeResponseService.addResponse({
+              source: "deepseek-reasoner",
+              status: "success",
+              message: `Retrieved ${ragResults.results.length} relevant documents from RAG database`,
+              data: { resultsCount: ragResults.results.length }
+            });
+          } else {
+            realTimeResponseService.addResponse({
+              source: "deepseek-reasoner",
+              status: "info",
+              message: "No relevant documents found in RAG database",
+              data: { query: query.prompt }
+            });
+          }
+        } catch (ragError) {
+          realTimeResponseService.addResponse({
+            source: "deepseek-reasoner",
+            status: "error",
+            message: `RAG database connection failed: ${ragError instanceof Error ? ragError.message : 'Unknown error'}`,
+            data: { error: ragError }
+          });
+        }
+      }
       
       if (query.conversationHistory && query.conversationHistory.length > 0) {
         query.conversationHistory.forEach(msg => {
@@ -78,9 +128,14 @@ export class DeepSeekReasonerService {
         });
       }
 
+      // Enhanced prompt with RAG context
+      const enhancedPrompt = ragContext 
+        ? `Context from knowledge base:\n${ragContext}\n\nUser query: ${query.prompt}`
+        : query.prompt;
+
       messages.push({
         role: "user",
-        content: query.prompt
+        content: enhancedPrompt
       });
 
       const apiResponse = await this.makeDeepSeekCall(messages);
@@ -91,6 +146,9 @@ export class DeepSeekReasonerService {
         conversationId, 
         this.conversationManager
       );
+
+      // Add integration data to response
+      response.integrationData = integrationData;
 
       realTimeResponseService.addResponse({
         source: "deepseek-reasoner",
