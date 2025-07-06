@@ -55,7 +55,7 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
     const validPlatform = platform && platform !== 'undefined' ? platform.toLowerCase() : 'cursor';
     const validQuery = query && query !== 'undefined' ? query : `${validPlatform} platform features`;
     
-    console.log(`[Vector Search] Query: "${validPlatform}", Platform: "${validPlatform}"`);
+    console.log(`[Vector Search] Query: "${validQuery}", Platform: "${validPlatform}"`);
     
     // Add timeout protection and use platform name as primary search query
     const controller = new AbortController();
