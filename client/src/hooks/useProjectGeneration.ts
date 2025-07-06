@@ -41,9 +41,14 @@ export const useProjectGeneration = () => {
         }
       });
 
+      // Ensure we have a valid target platform
+      const targetPlatform = spec.targetPlatform || 'cursor';
+      console.log(`Using platform: ${targetPlatform} for target: ${spec.targetPlatform}`);
+      
       // Prepare a complete spec with all tech stacks (standard + custom)
       const completeSpec: ProjectSpec = {
         ...spec,
+        targetPlatform, // Ensure platform is set
         frontendTechStack: [
           ...spec.frontendTechStack,
           ...spec.customFrontendTech.filter(tech => !spec.frontendTechStack.includes(tech as TechStack)).map(tech => tech as TechStack)

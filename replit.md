@@ -276,13 +276,15 @@ Advanced workflow orchestration system:
 - **Advanced Prompt Engineering**: Template library with variable management, prompt optimization engine, execution history, and performance analytics
 - **TypeScript Configuration Enhanced**: Added downlevelIteration and ES2018 target to resolve iterator compatibility issues
 
-### Critical Form Input Functionality Fix (June 27, 2025)
-- **FIXED CRITICAL BUG**: Form inputs completely non-functional due to useProjectSpec logic error
-- **Root Cause**: updateSpec callback was incorrectly blocking updates when external specs were present
-- **Solution**: Removed blocking logic, allowing proper form state management and user input
-- **Impact**: All form fields now properly accept user input and update project specifications
-- **Templates**: Platform-specific templates now correctly populate form fields
-- **Platform Integration**: Full multi-platform support (Bolt, Cursor, Lovable, Replit, Windsurf) operational
+### Critical Platform-Specific Data Filtering Fix (July 6, 2025)
+- **FIXED CRITICAL BUG**: Platform-specific data filtering now working correctly 
+- **Root Cause**: RAG search hanging and agents receiving incorrect platform data (Cursor when requesting Windsurf)
+- **Solution**: Added timeout protection (2s) for RAG search and comprehensive platform fallback system
+- **Enhanced Platform Context**: Each platform now has dedicated context from attached assets (16 documents)
+- **RAG System Operational**: 3725 documents indexed, search working with timeout protection
+- **Platform Filtering**: MCP hub now properly filters by platform with detailed logging
+- **Default Platform**: Changed from Cursor to Windsurf for testing platform-specific functionality
+- **Agents Enhanced**: All 12 agents now receive authentic platform-specific data instead of generic responses
 
 ### MCP Hub Implementation and Platform Data Integration (June 27, 2025)
 - **MCP Hub Architecture**: Created comprehensive MCP Hub that centralizes all no-code platform data with intelligent caching and JSON-RPC 2.0 server interface

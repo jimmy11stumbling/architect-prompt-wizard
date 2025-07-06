@@ -22,7 +22,7 @@ import { realTimeResponseService } from "@/services/integration/realTimeResponse
 
 const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("create");
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("cursor");
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("windsurf");
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
     supportedFeatures: [],
     preferredTechStack: ["React", "TypeScript"],
@@ -41,6 +41,7 @@ const Index: React.FC = () => {
   const { generationStatus, isGenerating, handleSubmit, handleStreamingSubmit } = useProjectGeneration();
 
   const handlePlatformChange = (platform: PlatformType, config: PlatformConfig) => {
+    console.log(`Platform changed to: ${platform}`);
     setSelectedPlatform(platform);
     setPlatformConfig(config);
     

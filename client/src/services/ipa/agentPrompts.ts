@@ -57,7 +57,10 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
     
     console.log(`[Vector Search] Query: "${validPlatform}", Platform: "${validPlatform}"`);
     
-    // Use platform name as primary search query for better filtering
+    // Add timeout protection and use platform name as primary search query
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+    
     const response = await fetch('/api/rag/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -72,8 +75,11 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
           hybridWeight: { semantic: 0.7, keyword: 0.3 },
           rerankingEnabled: true
         }
-      })
+      }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (response.ok) {
       const searchResults = await response.json();
