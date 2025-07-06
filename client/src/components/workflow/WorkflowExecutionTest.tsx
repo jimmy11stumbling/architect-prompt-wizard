@@ -112,18 +112,31 @@ const WorkflowExecutionTest: React.FC = () => {
     try {
       registerTestWorkflow();
       
+      // Generate a unique execution ID for this test
+      const executionId = `test_exec_${Date.now()}`;
+      setCurrentExecution(executionId);
+      
+      // Start the workflow execution
       const execution = await workflowEngine.executeWorkflow(testWorkflow.id, executionVariables);
-      setCurrentExecution(execution.id);
       
       toast({
         title: "Workflow Started",
-        description: `Execution ${execution.id} has been started`,
+        description: `Test execution ${executionId} has been started`,
         variant: "default"
       });
+      
+      // Log the execution details
+      console.log("Test workflow execution started:", {
+        workflowId: testWorkflow.id,
+        executionId,
+        variables: executionVariables,
+        execution
+      });
     } catch (error) {
+      console.error("Failed to execute workflow:", error);
       toast({
         title: "Execution Failed",
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive"
       });
     }
