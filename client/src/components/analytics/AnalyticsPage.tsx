@@ -205,9 +205,24 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const pieChartData = [
-    { name: "Successful", value: analyticsData.systemMetrics.successRate, color: "#10B981" },
-    { name: "Failed", value: analyticsData.systemMetrics.errorRate, color: "#EF4444" },
-    { name: "Pending", value: 100 - analyticsData.systemMetrics.successRate - analyticsData.systemMetrics.errorRate, color: "#F59E0B" }
+    { 
+      name: "Successful", 
+      value: analyticsData.systemMetrics.successRate, 
+      color: "#10B981",
+      gradient: "from-green-400 to-green-600"
+    },
+    { 
+      name: "Failed", 
+      value: analyticsData.systemMetrics.errorRate, 
+      color: "#EF4444",
+      gradient: "from-red-400 to-red-600"
+    },
+    { 
+      name: "In Progress", 
+      value: 100 - analyticsData.systemMetrics.successRate - analyticsData.systemMetrics.errorRate, 
+      color: "#F59E0B",
+      gradient: "from-yellow-400 to-yellow-600"
+    }
   ];
 
   const performanceData = analyticsData.realtimeData.map(point => ({
@@ -298,90 +313,336 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Real-time Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Execution Trends */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Execution Trends (Real-time)</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Execution Trends (Real-time)
+              <Badge variant="secondary" className="text-xs animate-pulse">
+                Live {performanceData.length}/20 points
+              </Badge>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
+                <defs>
+                  <linearGradient id="executionGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                  </linearGradient>
+                  <linearGradient id="successGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#64748b"
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#f1f5f9'
+                  }}
+                  labelStyle={{ color: '#94a3b8' }}
+                />
                 <Area 
                   type="monotone" 
                   dataKey="executions" 
                   stroke="#3B82F6" 
-                  fill="#3B82F6" 
-                  fillOpacity={0.3}
+                  fill="url(#executionGradient)"
+                  strokeWidth={2}
+                  name="Total Executions"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="successRate" 
+                  stroke="#10B981" 
+                  fill="url(#successGradient)"
+                  strokeWidth={2}
+                  name="Success Rate (%)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Success Rate Distribution */}
+        {/* Advanced Execution Status */}
         <Card>
           <CardHeader>
-            <CardTitle>Execution Status</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Execution Status Distribution
+              <Badge variant="outline" className="text-xs">
+                {analyticsData.systemMetrics.totalExecutions} total
+              </Badge>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              {/* Enhanced 3D-Style Donut Chart */}
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <defs>
+                      <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000000" floodOpacity="0.3"/>
+                      </filter>
+                      <radialGradient id="successGrad" cx="50%" cy="30%">
+                        <stop offset="0%" stopColor="#34D399" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </radialGradient>
+                      <radialGradient id="errorGrad" cx="50%" cy="30%">
+                        <stop offset="0%" stopColor="#F87171" />
+                        <stop offset="100%" stopColor="#DC2626" />
+                      </radialGradient>
+                      <radialGradient id="pendingGrad" cx="50%" cy="30%">
+                        <stop offset="0%" stopColor="#FBBF24" />
+                        <stop offset="100%" stopColor="#D97706" />
+                      </radialGradient>
+                    </defs>
+                    <Pie
+                      data={pieChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={false}
+                      outerRadius={90}
+                      innerRadius={50}
+                      fill="#8884d8"
+                      dataKey="value"
+                      stroke="#1e293b"
+                      strokeWidth={3}
+                      filter="url(#shadow)"
+                      animationBegin={0}
+                      animationDuration={1500}
+                      animationEasing="ease-in-out"
+                    >
+                      {pieChartData.map((entry, index) => {
+                        let gradientId = entry.name === "Successful" ? "url(#successGrad)" : 
+                                       entry.name === "Failed" ? "url(#errorGrad)" : "url(#pendingGrad)";
+                        return (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={gradientId}
+                            className="drop-shadow-2xl hover:brightness-110 transition-all duration-300 cursor-pointer"
+                            style={{
+                              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+                              transformOrigin: 'center'
+                            }}
+                          />
+                        );
+                      })}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: any, name: string) => [
+                        `${value.toFixed(1)}%`, 
+                        name,
+                        `${Math.round((value / 100) * analyticsData.systemMetrics.totalExecutions)} executions`
+                      ]}
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid #334155',
+                        borderRadius: '12px',
+                        color: '#f1f5f9',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                        backdropFilter: 'blur(10px)'
+                      }}
+                      labelStyle={{ color: '#94a3b8', fontWeight: 'bold' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                {/* Center Label */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">
+                      {analyticsData.systemMetrics.totalExecutions}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Total Executions
+                    </div>
+                    <div className="text-xs text-green-400 animate-pulse">
+                      ● Live
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Status Breakdown */}
+              <div className="space-y-3">
+                {pieChartData.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg bg-gradient-to-r from-slate-50/5 to-transparent">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded-full shadow-lg" 
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {Math.round((item.value / 100) * analyticsData.systemMetrics.totalExecutions)} executions
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold" style={{ color: item.color }}>
+                        {item.value.toFixed(1)}%
+                      </div>
+                      <Progress 
+                        value={item.value} 
+                        className="w-20 h-2"
+                        style={{ 
+                          '--progress-background': item.color 
+                        } as any}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Real-time Status Indicator */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground border-t pt-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span>Live data updating every 2 seconds</span>
+                </div>
+                <span>
+                  Last execution: {analyticsData.systemMetrics.totalExecutions > 0 ? 'Active' : 'None'}
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Performance Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Resource Usage (Real-time)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Line 
-                type="monotone" 
-                dataKey="resourceUsage" 
-                stroke="#10B981" 
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="successRate" 
-                stroke="#3B82F6" 
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Enhanced Performance Dashboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Resource Usage (Real-time)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={performanceData}>
+                <defs>
+                  <linearGradient id="resourceGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#10B981"/>
+                    <stop offset="100%" stopColor="#3B82F6"/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="time" stroke="#64748b" tick={{ fontSize: 12 }} />
+                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#f1f5f9'
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="resourceUsage" 
+                  stroke="url(#resourceGradient)" 
+                  strokeWidth={3}
+                  dot={{ fill: '#10B981', r: 4 }}
+                  activeDot={{ r: 6, fill: '#10B981' }}
+                  name="Resource Usage (%)"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="successRate" 
+                  stroke="#3B82F6" 
+                  strokeWidth={2}
+                  dot={false}
+                  strokeDasharray="5 5"
+                  name="Success Rate (%)"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>System Health Matrix</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Health Indicators */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 border rounded-lg bg-gradient-to-br from-green-500/10 to-green-600/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">Database</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-500">99.9%</div>
+                  <p className="text-xs text-muted-foreground">Uptime</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">API</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-500">
+                    {Math.round(analyticsData.performanceMetrics.avgResponseTime)}ms
+                  </div>
+                  <p className="text-xs text-muted-foreground">Avg Response</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">AI Services</span>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-500">
+                    {analyticsData.performanceMetrics.activeConnections}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Active Connections</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium">Throughput</span>
+                  </div>
+                  <div className="text-2xl font-bold text-yellow-500">
+                    {analyticsData.performanceMetrics.throughput}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Requests/min</p>
+                </div>
+              </div>
+              
+              {/* System Load Gauge */}
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">System Load</span>
+                  <Badge variant={analyticsData.systemMetrics.resourceUsage > 80 ? "destructive" : analyticsData.systemMetrics.resourceUsage > 60 ? "default" : "secondary"}>
+                    {analyticsData.systemMetrics.resourceUsage}%
+                  </Badge>
+                </div>
+                <Progress 
+                  value={analyticsData.systemMetrics.resourceUsage} 
+                  className="h-3"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>Low</span>
+                  <span>High</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Top Workflows */}
       <Card>
