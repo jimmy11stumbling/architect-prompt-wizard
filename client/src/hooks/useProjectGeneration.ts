@@ -13,6 +13,7 @@ export const useProjectGeneration = () => {
   const [orchestrator] = useState(() => new GenerationOrchestrator());
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const lastUpdateRef = useRef<number>(0);
 
   // Cleanup polling timeout on unmount
   useEffect(() => {
@@ -89,21 +90,35 @@ export const useProjectGeneration = () => {
   const startPolling = useCallback(async (taskId: string) => {
     try {
       const status = await ipaService.getGenerationStatus(taskId);
-      setGenerationStatus(status);
       
-      // Add real-time response for polling updates
-      realTimeResponseService.addResponse({
-        source: "polling-service",
-        status: status.status === "completed" ? "success" : 
-                status.status === "failed" ? "error" : "processing",
-        message: `Status update: ${status.status} (Progress: ${status.progress})`,
-        data: { 
-          taskId, 
-          status: status.status, 
-          progress: status.progress,
-          agentCount: status.agents.length
-        }
-      });
+      // Debounce UI updates to prevent flickering
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastUpdateRef.current;
+      
+      // Only update UI if significant time has passed or status changed significantly
+      if (timeSinceLastUpdate > 3000 || 
+          status.status === "completed" || 
+          status.status === "failed" ||
+          !generationStatus ||
+          status.progress > generationStatus.progress + 10) {
+        
+        setGenerationStatus(status);
+        lastUpdateRef.current = now;
+        
+        // Add real-time response for polling updates (less frequent)
+        realTimeResponseService.addResponse({
+          source: "polling-service",
+          status: status.status === "completed" ? "success" : 
+                  status.status === "failed" ? "error" : "processing",
+          message: `Status update: ${status.status} (Progress: ${status.progress})`,
+          data: { 
+            taskId, 
+            status: status.status, 
+            progress: status.progress,
+            agentCount: status.agents.length
+          }
+        });
+      }
       
       if (status.status !== "completed" && status.status !== "failed") {
         // Clear any existing timeout and set a new one
@@ -116,7 +131,7 @@ export const useProjectGeneration = () => {
             console.error("Polling continuation error:", error);
             setIsGenerating(false);
           });
-        }, 2000);
+        }, 4000); // Increased from 2s to 4s to reduce UI flickering
       } else {
         // Generation complete or failed
         setIsGenerating(false);

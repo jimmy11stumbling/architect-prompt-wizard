@@ -46,13 +46,19 @@ async function getDocumentation(): Promise<any> {
 
 async function getVectorSearchContext(query: string, platform: string): Promise<string> {
   try {
+    // Ensure we have valid platform and query data
+    const validPlatform = platform && platform !== 'undefined' ? platform.toLowerCase() : 'cursor';
+    const validQuery = query && query !== 'undefined' ? query : `${validPlatform} platform features`;
+    
+    console.log(`[Vector Search] Query: "${validQuery}", Platform: "${validPlatform}"`);
+    
     const response = await fetch('/api/rag/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query,
+        query: validQuery,
         filters: {
-          platform: platform.toLowerCase(),
+          platform: validPlatform,
           category: 'platform-specification'
         },
         limit: 5,
@@ -233,10 +239,10 @@ RECOMMENDED IMPLEMENTATION APPROACH:
 - Deployment: ${spec.deploymentPreference || "Platform-native deployment"}
 
 PLATFORM-SPECIFIC REQUIREMENTS:
-- Must be optimized for ${spec.targetPlatform?.toUpperCase()} development environment
-- Follow ${spec.targetPlatform} best practices and limitations
-- Use ${spec.targetPlatform}-native features and integrations where possible
-- Ensure compatibility with ${spec.targetPlatform}'s deployment pipeline`;
+- Must be optimized for ${platformName.toUpperCase()} development environment
+- Follow ${platformName} best practices and limitations
+- Use ${platformName}-native features and integrations where possible
+- Ensure compatibility with ${platformName}'s deployment pipeline`;
   
   return context;
 }
@@ -249,8 +255,10 @@ export async function getAgentSystemPrompt(agent: AgentName, spec: ProjectSpec):
   const technologyContext = buildTechnologyContext(spec, documentation);
   
   // Get vector search context for enhanced agent knowledge
-  const searchQuery = `${spec.targetPlatform} ${spec.projectDescription} ${agent}`;
-  const vectorContext = await getVectorSearchContext(searchQuery, spec.targetPlatform || '');
+  const platformName = spec.targetPlatform || 'cursor';
+  const projectDesc = spec.projectDescription || 'AI-powered application';
+  const searchQuery = `${platformName} ${projectDesc} ${agent} features capabilities architecture`;
+  const vectorContext = await getVectorSearchContext(searchQuery, platformName);
   
   // Add vector search context and MCP tools integration
   let enhancedContext = "";
@@ -277,12 +285,12 @@ These tools provide real-time access to our database, file system, and external 
   
   enhancedContext += mcpToolsContext;
   
-  const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system powered by DeepSeek AI. Your role is to provide expert, platform-specific analysis and recommendations for building applications on ${spec.targetPlatform?.toUpperCase()} with RAG 2.0, A2A Protocol, and MCP integration.
+  const baseContext = `You are ${agent}, a specialized AI agent in the Intelligent Prompt Architect system powered by DeepSeek AI. Your role is to provide expert, platform-specific analysis and recommendations for building applications on ${platformName.toUpperCase()} with RAG 2.0, A2A Protocol, and MCP integration.
 
 CRITICAL REQUIREMENTS:
-- Generate ONLY ${spec.targetPlatform?.toUpperCase()}-specific recommendations and blueprints based on the authentic platform data below
+- Generate ONLY ${platformName.toUpperCase()}-specific recommendations and blueprints based on the authentic platform data below
 - Use ONLY the real platform documentation, features, integrations, and capabilities provided
-- Never provide generic advice - everything must be tailored to ${spec.targetPlatform?.toUpperCase()}'s actual capabilities
+- Never provide generic advice - everything must be tailored to ${platformName.toUpperCase()}'s actual capabilities
 - Reference specific platform features, tools, and limitations from the authentic data
 - Focus on platform-native workflows and deployment options
 - Utilize the vector search enhanced context below for specific technical details
@@ -293,7 +301,7 @@ ${technologyContext}
 
 ${enhancedContext}
 
-TARGET PLATFORM: ${spec.targetPlatform?.toUpperCase()}
+TARGET PLATFORM: ${platformName.toUpperCase()}
 PROJECT SPECIFICATION:
 - Description: ${spec.projectDescription || "Custom application development"}
 - Frontend Stack: ${spec.frontendTechStack?.join(", ") || "React, TypeScript"}
