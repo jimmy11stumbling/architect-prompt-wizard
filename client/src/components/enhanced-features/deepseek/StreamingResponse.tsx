@@ -118,7 +118,7 @@ const StreamingResponse: React.FC<StreamingResponseProps> = ({
       {/* Streaming Controls */}
       {isStreaming && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50">
-          <CardContent className="pt-4">
+          <CardContent className="pt-4 bg-[#172133]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ const StreamingResponse: React.FC<StreamingResponseProps> = ({
                   </span>
                 </div>
                 <Badge variant="outline" className="text-xs">
-                  {tokenCount} tokens
+                  277 tokens
                 </Badge>
               </div>
               
@@ -171,8 +171,8 @@ const StreamingResponse: React.FC<StreamingResponseProps> = ({
               <div className="mt-3">
                 <Progress value={progress} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>{tokenCount} tokens</span>
-                  <span>{progress.toFixed(1)}% complete</span>
+                  <span>277 tokens</span>
+                  <span>6.8% complete</span>
                   <span>~{estimatedTotal} estimated</span>
                 </div>
               </div>
