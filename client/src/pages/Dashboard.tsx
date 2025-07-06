@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Activity, 
   Zap, 
@@ -45,6 +46,7 @@ const Dashboard: React.FC = () => {
     a2a: 'healthy',
     deepseek: 'healthy'
   });
+  const { toast } = useToast();
 
   // Fetch real system statistics
   const { data: stats, isLoading: statsLoading } = useQuery<SystemStats>({
@@ -114,6 +116,64 @@ const Dashboard: React.FC = () => {
     }
   ];
 
+  // Handler functions for dashboard actions
+  const handleNewProject = () => {
+    window.location.href = '/'; // Navigate to main project form
+  };
+
+  const handleSearchKnowledgeBase = async () => {
+    try {
+      const response = await fetch('/api/knowledge-base');
+      const data = await response.json();
+      toast({
+        title: "Knowledge Base",
+        description: `Found ${data.length} entries in knowledge base`,
+      });
+      setActiveTab("analytics"); // Switch to analytics tab to show RAG interface
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to access knowledge base",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleTestMCPTools = async () => {
+    try {
+      const response = await fetch('/api/mcp/tools/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': '1' },
+        body: JSON.stringify({
+          toolName: 'list_files',
+          args: { path: '.' }
+        })
+      });
+      const data = await response.json();
+      toast({
+        title: "MCP Tools Test",
+        description: `Successfully called list_files tool`,
+      });
+    } catch (error) {
+      toast({
+        title: "MCP Tools Error",
+        description: "Failed to test MCP tools",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleQueryDeepSeek = () => {
+    window.location.href = '/reasoner'; // Navigate to DeepSeek Reasoner page
+  };
+
+  const handleConfigure = () => {
+    toast({
+      title: "Configuration",
+      description: "Configuration panel coming soon",
+    });
+  };
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       {/* Header */}
@@ -125,11 +185,11 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleConfigure}>
             <Settings className="h-4 w-4 mr-2" />
             Configure
           </Button>
-          <Button className="btn-nocodelos">
+          <Button className="btn-nocodelos" onClick={handleNewProject}>
             <Plus className="h-4 w-4 mr-2" />
             New Project
           </Button>
@@ -274,19 +334,19 @@ const Dashboard: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handleNewProject}>
                   <Plus className="h-4 w-4 mr-2" />
                   Generate New Prompt
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handleSearchKnowledgeBase}>
                   <Database className="h-4 w-4 mr-2" />
                   Search Knowledge Base
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handleTestMCPTools}>
                   <Network className="h-4 w-4 mr-2" />
                   Test MCP Tools
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={handleQueryDeepSeek}>
                   <Brain className="h-4 w-4 mr-2" />
                   Query DeepSeek Reasoner
                 </Button>
