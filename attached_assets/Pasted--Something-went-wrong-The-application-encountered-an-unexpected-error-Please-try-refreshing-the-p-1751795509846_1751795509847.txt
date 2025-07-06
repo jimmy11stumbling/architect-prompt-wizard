@@ -1,0 +1,19 @@
+
+Something went wrong
+The application encountered an unexpected error. Please try refreshing the page or resetting the component.
+Error Details (Development Mode)
+Error: useAuth must be used within an AuthProvider
+Stack:
+Error: useAuth must be used within an AuthProvider
+    at useAuth (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/src/components/auth/AuthWrapper.tsx:25:11)
+    at RequireAuth (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/src/components/auth/AuthWrapper.tsx:133:31)
+    at renderWithHooks (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:11548:26)
+    at mountIndeterminateComponent (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:14926:21)
+    at beginWork (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:15914:22)
+    at beginWork$1 (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:19753:22)
+    at performUnitOfWork (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:19198:20)
+    at workLoopSync (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:19137:13)
+    at renderRootSync (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:19116:15)
+    at recoverFromConcurrentError (https://e6247bae-b53b-4a50-a131-e964ee4eec2a-00-3twzsrb8ec5l9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=2b43f723:18736:28)
+Try Again
+Reload Page

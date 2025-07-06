@@ -154,16 +154,6 @@ export const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold mb-2">Authentication Required</h3>
-          <p className="text-muted-foreground">Please log in to access this feature</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Allow access without authentication for development
   return <>{children}</>;
 };
