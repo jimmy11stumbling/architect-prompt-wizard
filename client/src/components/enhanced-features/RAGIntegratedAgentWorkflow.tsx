@@ -174,7 +174,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
             )}
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="p-6 pt-0 bg-[#182134]">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Search className="h-4 w-4" />
