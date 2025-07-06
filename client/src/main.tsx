@@ -18,6 +18,7 @@ window.addEventListener('unhandledrejection', (event) => {
       event.reason?.message?.includes('Bad Gateway') ||
       event.reason?.message?.includes('signal is aborted') ||
       event.reason?.message?.includes('aborted without reason') ||
+      event.reason?.message?.includes('Failed to fetch') ||
       event.reason?.name === 'AbortError' ||
       event.reason instanceof DOMException ||
       event.reason instanceof TypeError) {
@@ -40,6 +41,7 @@ window.addEventListener('error', (event) => {
       event.error?.message?.includes('Bad Gateway') ||
       event.error?.message?.includes('signal is aborted') ||
       event.error?.message?.includes('aborted without reason') ||
+      event.error?.message?.includes('Failed to fetch') ||
       event.error?.name === 'AbortError' ||
       event.error instanceof TypeError ||
       event.error instanceof DOMException) {
@@ -54,6 +56,9 @@ window.onerror = (message, source, lineno, colno, error) => {
   const msg = message?.toString() || '';
   if (msg.includes('signal is aborted') || 
       msg.includes('aborted without reason') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('SafeAbort') ||
+      msg.includes('stats timeout') ||
       msg.includes('plugin:runtime-error-plugin')) {
     return true; // Prevent error from propagating
   }

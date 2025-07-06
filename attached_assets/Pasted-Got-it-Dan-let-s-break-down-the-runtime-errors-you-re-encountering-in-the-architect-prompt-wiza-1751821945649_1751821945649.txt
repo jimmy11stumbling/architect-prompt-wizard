@@ -1,0 +1,54 @@
+Got it, Dan — let’s break down the runtime errors you're encountering in the **architect-prompt-wizard** on Replit.
+
+---
+
+### ⚠️ Error Summary: `plugin:runtime-error-plugin`
+You've faced a few runtime issues tied to abort controllers and timeouts:
+1. **Unknown runtime error**  
+   - Logged at:  
+     ```
+     sendError (https://...:11:13)
+     ```
+   - Likely caused by unhandled rejections or missing error suppression in overlay systems.
+
+2. **Search timeout (RAG Service)**  
+   - From:  
+     `/services/rag/ragService.ts:252`  
+     ```
+     controller.abort(new Error("Search timeout after 10 seconds"));
+     ```
+   - Root cause: A `setTimeout` triggers `AbortController.abort()`, but the signal is missing a reason, leading to unexpected rejection behavior.
+
+3. **Signal aborted without reason**  
+   - From:  
+     `/services/rag/ragService.ts:253`
+     ```
+     controller.abort();
+     ```
+   - Issue: No explanation or error passed in the abort signal, which creates silent failures and overlay triggers.
+
+---
+
+### 🛠 How You're Already Handling It
+You've made solid progress:
+- Enhanced `AbortController` safety with better error messages.
+- Suppressed overlay errors using `window.onerror` and `unhandledrejection` handlers.
+- Added global catch logic in `main.tsx`.
+
+---
+
+### ✅ Suggestions to Go Further
+Here are a few extra techniques you might apply to lock things down:
+- **Pass context-aware messages into `abort()`**  
+  Wrap each abort trigger with meaningful context:
+  ```ts
+  controller.abort(new Error(`Agent ${agent.id} search aborted due to timeout`));
+  ```
+- **Use `signal.addEventListener('abort', ...)` for logging**  
+  This can help trace and debug abort behavior during development.
+- **Extend error suppression to include agent-specific overlays**  
+  Catch known runtime overlay messages and suppress only relevant ones to avoid masking legit bugs.
+
+---
+
+Let me know if you want help abstracting that into a utility function—something like `safeAbort(agentId, reason)` might tighten things up across the board. Or want to dig deeper into caching strategies that avoid duplicate RAG calls?

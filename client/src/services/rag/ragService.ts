@@ -1,5 +1,6 @@
 import { RAGResult, RAGQuery, RAGResponse, RAGDocument } from "@/types/rag-types";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
+import { createSafeAbortController } from "@/utils/safeAbort";
 
 // Re-export types for components to use
 export type { RAGQuery, RAGResponse, RAGDocument, RAGResult } from "@/types/rag-types";
@@ -180,10 +181,25 @@ export class RAGService {
         data: { stage: "indexing-start" }
       });
 
+      // Add timeout protection for indexing operations
+      const { controller, safeAbort } = createSafeAbortController({
+        agentId: 'rag-service',
+        operation: 'data-indexing',
+        timeout: 30000,
+        reason: 'indexing timeout'
+      });
+      
+      const timeoutId = setTimeout(() => {
+        safeAbort();
+      }, 30000); // 30 second timeout for indexing
+
       const response = await fetch('/api/rag/index', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Failed to index data: ${response.statusText}`);
@@ -208,12 +224,16 @@ export class RAGService {
       };
 
     } catch (error) {
-      console.error("Failed to index data:", error);
+      // Check if this is a timeout/abort error and handle gracefully
+      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+      const errorMessage = isTimeout ? "Indexing timeout after 30 seconds" : (error instanceof Error ? error.message : "Unknown error");
+      
+      console.warn("[SafeAbort] Data indexing failed:", errorMessage);
       realTimeResponseService.addResponse({
         source: "rag-service",
         status: "error",
-        message: "Failed to index data",
-        data: { error: error instanceof Error ? error.message : "Unknown error" }
+        message: isTimeout ? "Indexing timeout - data may be partially indexed" : "Failed to index data",
+        data: { error: errorMessage }
       });
 
       return {
@@ -246,18 +266,17 @@ export class RAGService {
         data: { query, options }
       });
 
-      // Add timeout protection
-      const controller = new AbortController();
+      // Add timeout protection with safe abort
+      const { controller, safeAbort } = createSafeAbortController({
+        agentId: 'rag-service',
+        operation: 'hybrid-search',
+        timeout: 5000,
+        reason: 'timeout'
+      });
+      
       const timeoutId = setTimeout(() => {
-        if (!controller.signal.aborted) {
-          try {
-            controller.abort();
-          } catch (error) {
-            // Silently handle abort errors
-            console.warn('Search timeout - request aborted gracefully');
-          }
-        }
-      }, 10000); // 10 second timeout
+        safeAbort();
+      }, 5000); // 5 second timeout
 
       try {
         const response = await fetch('/api/rag/search', {
@@ -305,7 +324,7 @@ export class RAGService {
         const isTimeout = error instanceof DOMException && error.name === 'AbortError';
         const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
         
-        console.warn("Vector search failed, using platform fallback:", errorMessage);
+        console.warn("[SafeAbort] Vector search failed, using platform fallback:", errorMessage);
         
         realTimeResponseService.addResponse({
           source: "rag-service",
@@ -348,7 +367,23 @@ export class RAGService {
    */
   async getRAGStats(): Promise<RAGStats | null> {
     try {
-      const response = await fetch('/api/rag/stats');
+      // Add timeout protection for stats requests
+      const { controller, safeAbort } = createSafeAbortController({
+        agentId: 'rag-service',
+        operation: 'stats-fetch',
+        timeout: 3000,
+        reason: 'stats timeout'
+      });
+      
+      const timeoutId = setTimeout(() => {
+        safeAbort();
+      }, 3000); // 3 second timeout for stats
+
+      const response = await fetch('/api/rag/stats', {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         return null;
@@ -356,7 +391,15 @@ export class RAGService {
 
       return await response.json();
     } catch (error) {
-      console.error("Failed to get RAG stats:", error);
+      // Check if this is a timeout/abort error and handle gracefully
+      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+      const isFetchError = error instanceof TypeError && error.message === 'Failed to fetch';
+      
+      if (isTimeout || isFetchError) {
+        console.warn("[SafeAbort] RAG stats fetch failed gracefully:", error instanceof Error ? error.message : "Unknown error");
+      } else {
+        console.error("Failed to get RAG stats:", error);
+      }
       return null;
     }
   }
