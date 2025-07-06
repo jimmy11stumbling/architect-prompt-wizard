@@ -161,7 +161,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
     <div className="space-y-4">
       {/* RAG Integration Status */}
       <Card className="border-blue-200 bg-blue-50/50">
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-col space-y-1.5 p-6 pb-3 bg-[#182134]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-blue-600" />
