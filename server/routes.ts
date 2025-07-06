@@ -563,14 +563,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/mcp/tools/call", async (req, res) => {
     try {
-      const { clientName, toolName, arguments: toolArgs } = req.body;
+      const { clientName, toolName, arguments: toolArgs, args } = req.body;
       
       if (!toolName) {
         return res.status(400).json({ error: "toolName is required" });
       }
 
       const { mcpToolRegistry } = await import("./services/mcp/mcpToolRegistry");
-      const result = await mcpToolRegistry.executeTool(toolName, toolArgs || {});
+      // Support both 'arguments' and 'args' for flexibility
+      const parameters = toolArgs || args || {};
+      
+      const result = await mcpToolRegistry.executeTool(toolName, parameters);
       
       res.json({ result });
     } catch (error) {

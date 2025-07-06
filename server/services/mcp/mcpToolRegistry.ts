@@ -47,12 +47,26 @@ export class MCPToolRegistry {
       },
       handler: async (args) => {
         try {
-          const files = await fs.readdir(args.path);
+          // Handle default path or validate provided path
+          const targetPath = args.path || './';
+          
+          // Resolve relative paths safely
+          const resolvedPath = path.resolve(targetPath);
+          
+          // Security check: ensure path is within project bounds
+          const projectRoot = process.cwd();
+          if (!resolvedPath.startsWith(projectRoot)) {
+            throw new Error('Access denied: Path is outside project directory');
+          }
+          
+          const files = await fs.readdir(resolvedPath);
+          
           if (args.pattern) {
             // Simple pattern matching
             const regex = new RegExp(args.pattern.replace(/\*/g, '.*'));
             return files.filter(f => regex.test(f));
           }
+          
           return files;
         } catch (error) {
           throw new Error(`Failed to list files: ${error}`);
@@ -73,8 +87,22 @@ export class MCPToolRegistry {
       },
       handler: async (args) => {
         try {
-          const content = await fs.readFile(args.path, args.encoding || 'utf8');
-          return content;
+          // Resolve relative paths safely
+          const resolvedPath = path.resolve(args.path);
+          
+          // Security check: ensure path is within project bounds
+          const projectRoot = process.cwd();
+          if (!resolvedPath.startsWith(projectRoot)) {
+            throw new Error('Access denied: Path is outside project directory');
+          }
+          
+          const content = await fs.readFile(resolvedPath, args.encoding || 'utf8');
+          return { 
+            content, 
+            size: content.length,
+            path: resolvedPath,
+            encoding: args.encoding || 'utf8'
+          };
         } catch (error) {
           throw new Error(`Failed to read file: ${error}`);
         }
@@ -95,8 +123,26 @@ export class MCPToolRegistry {
       },
       handler: async (args) => {
         try {
-          await fs.writeFile(args.path, args.content, args.encoding || 'utf8');
-          return { success: true, path: args.path };
+          // Resolve relative paths safely
+          const resolvedPath = path.resolve(args.path);
+          
+          // Security check: ensure path is within project bounds
+          const projectRoot = process.cwd();
+          if (!resolvedPath.startsWith(projectRoot)) {
+            throw new Error('Access denied: Path is outside project directory');
+          }
+          
+          // Ensure directory exists
+          const dir = path.dirname(resolvedPath);
+          await fs.mkdir(dir, { recursive: true });
+          
+          await fs.writeFile(resolvedPath, args.content, args.encoding || 'utf8');
+          return { 
+            success: true, 
+            path: resolvedPath,
+            size: args.content.length,
+            encoding: args.encoding || 'utf8'
+          };
         } catch (error) {
           throw new Error(`Failed to write file: ${error}`);
         }
