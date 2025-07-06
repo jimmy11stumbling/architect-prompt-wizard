@@ -79,7 +79,7 @@ export class HybridSearchEngine {
 
   private async indexChunkKeywords(chunk: DocumentChunk): Promise<void> {
     const stemmer = natural.PorterStemmer;
-    const tokens = natural.WordTokenizer().tokenize(chunk.content.toLowerCase());
+    const tokens = new natural.WordTokenizer().tokenize(chunk.content.toLowerCase());
     
     if (!tokens) return;
     
@@ -112,18 +112,34 @@ export class HybridSearchEngine {
     } = options;
 
     try {
-      // For now, return empty results to prevent interface issues
-      // This is a temporary fix until the hybrid search is properly implemented
+      // Perform keyword search
+      const keywordResults = await this.performKeywordSearch(query, { topK, minSimilarity });
+      
+      // Since we don't have vector search working yet, use keyword results as primary
+      const hybridResults = keywordResults.map(result => ({
+        document: this.documentIndex.get(result.documentId)!,
+        chunk: this.chunkIndex.get(result.chunkId)!,
+        score: result.score,
+        breakdown: {
+          semanticScore: 0,
+          keywordScore: result.score,
+          finalScore: result.score,
+          matchType: 'keyword' as const,
+          matchedTerms: result.matchedTerms || []
+        },
+        metadata: result.metadata || {}
+      })).filter(result => result.document && result.chunk);
+
       const searchTime = Date.now() - startTime;
       
       return {
-        results: [],
+        results: hybridResults.slice(0, topK),
         query,
-        totalResults: 0,
+        totalResults: hybridResults.length,
         searchStats: {
           searchTime,
           semanticResults: 0,
-          keywordResults: 0,
+          keywordResults: keywordResults.length,
           rerankingApplied: false,
           documentsSearched: this.documentIndex.size,
           chunksSearched: this.chunkIndex.size
@@ -141,8 +157,8 @@ export class HybridSearchEngine {
           semanticResults: 0,
           keywordResults: 0,
           rerankingApplied: false,
-          documentsSearched: 0,
-          chunksSearched: 0
+          documentsSearched: this.documentIndex.size,
+          chunksSearched: this.chunkIndex.size
         },
         suggestions: []
       };
@@ -155,7 +171,75 @@ export class HybridSearchEngine {
     }
   }
 
+  private async performKeywordSearch(query: string, options: { topK: number; minSimilarity: number }): Promise<any[]> {
+    const stemmer = natural.PorterStemmer;
+    const tokens = new natural.WordTokenizer().tokenize(query.toLowerCase());
+    
+    if (!tokens) return [];
+    
+    const processedTokens = tokens
+      .filter(token => 
+        !natural.stopwords.includes(token) && 
+        token.length > 2 && 
+        /^[a-zA-Z]+$/.test(token)
+      )
+      .map(token => stemmer.stem(token));
+
+    console.log(`Keyword search debug: query="${query}", processedTokens=${JSON.stringify(processedTokens)}`);
+
+    const chunkScores = new Map<string, { score: number; matchedTerms: string[] }>();
+    
+    for (const token of processedTokens) {
+      const matchingChunks = this.keywordIndex.get(token);
+      console.log(`Token "${token}" found ${matchingChunks ? matchingChunks.size : 0} chunks`);
+      if (matchingChunks) {
+        for (const chunkId of matchingChunks) {
+          const current = chunkScores.get(chunkId) || { score: 0, matchedTerms: [] };
+          current.score += 1;
+          current.matchedTerms.push(token);
+          chunkScores.set(chunkId, current);
+        }
+      }
+    }
+
+    console.log(`Found ${chunkScores.size} chunks with matches`);
+
+    // Convert to results array and sort by score
+    const results = Array.from(chunkScores.entries())
+      .map(([chunkId, { score, matchedTerms }]) => {
+        const chunk = this.chunkIndex.get(chunkId);
+        return {
+          chunkId,
+          documentId: chunk?.documentId || '',
+          score: score / processedTokens.length, // Normalize by query length
+          matchedTerms,
+          metadata: {}
+        };
+      })
+      .filter(result => result.score >= options.minSimilarity)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, options.topK);
+
+    console.log(`Returning ${results.length} results after filtering by minSimilarity=${options.minSimilarity}`);
+    return results;
+  }
+
   async getStats(): Promise<any> {
+    const sampleKeywords = Array.from(this.keywordIndex.keys()).slice(0, 10);
+    const sampleDocuments = Array.from(this.documentIndex.keys()).slice(0, 5);
+    
+    console.log("HybridSearchEngine Stats:", {
+      documentsIndexed: this.documentIndex.size,
+      chunksIndexed: this.chunkIndex.size,
+      keywordTerms: this.keywordIndex.size,
+      sampleKeywords,
+      sampleDocuments
+    });
+    
+    // Check if "agent" term exists in keyword index
+    const agentChunks = this.keywordIndex.get("agent");
+    console.log(`Keyword "agent" found in ${agentChunks ? agentChunks.size : 0} chunks`);
+    
     return {
       documentsIndexed: this.documentIndex.size,
       chunksIndexed: this.chunkIndex.size,
