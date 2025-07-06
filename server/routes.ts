@@ -407,20 +407,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // RAG 2.0 Vector Search Routes
   app.post("/api/rag/initialize", async (req, res) => {
     try {
-      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
-      const ragOrchestrator = new RAGOrchestrator();
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = new RAGOrchestrator2();
       await ragOrchestrator.initialize();
-      res.json({ message: "RAG system initialized successfully" });
+      res.json({ message: "RAG 2.0 system initialized successfully" });
     } catch (error) {
-      console.error("Error initializing RAG:", error);
-      res.status(500).json({ error: "Failed to initialize RAG system" });
+      console.error("Error initializing RAG 2.0:", error);
+      res.status(500).json({ error: "Failed to initialize RAG 2.0 system" });
     }
   });
 
   app.post("/api/rag/index", async (req, res) => {
     try {
-      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
-      const ragOrchestrator = new RAGOrchestrator();
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = new RAGOrchestrator2();
       
       // Setup progress tracking
       const progressUpdates: any[] = [];
@@ -429,8 +429,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json({ 
-        message: "Indexing completed successfully",
-        progress: progressUpdates 
+        message: "RAG 2.0 indexing completed successfully",
+        progress: progressUpdates,
+        documentsProcessed: progressUpdates[progressUpdates.length - 1]?.documentsProcessed || 0
       });
     } catch (error) {
       console.error("Error indexing data:", error);
@@ -440,41 +441,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/rag/search", async (req, res) => {
     try {
-      const { query, filters, maxResults } = req.body;
+      const { query, filters, limit, options } = req.body;
       
       if (!query) {
         return res.status(400).json({ error: "Query is required" });
       }
 
-      // Use the storage layer to search knowledge base
-      const results = await storage.searchKnowledgeBase(query, filters?.category);
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = new RAGOrchestrator2();
       
-      // Format results to match expected RAG response format
-      const ragResponse = {
+      const ragQuery = {
         query,
-        results: results.map(result => ({
-          id: result.id.toString(),
-          title: result.title,
-          content: result.content,
-          category: result.category,
-          relevanceScore: 0.8, // Mock relevance score
-          metadata: {
-            source: result.source,
-            lastUpdated: result.lastUpdated,
-            matchType: 'hybrid'
-          }
-        })),
-        totalResults: results.length,
-        searchStats: {
-          searchTime: 50,
-          semanticResults: Math.floor(results.length * 0.7),
-          keywordResults: Math.ceil(results.length * 0.3),
-          rerankingApplied: true
-        },
-        searchTime: 50,
-        suggestions: []
+        filters,
+        limit: limit || 10,
+        options: options || {}
       };
 
+      const ragResponse = await ragOrchestrator.query(ragQuery);
       res.json(ragResponse);
     } catch (error) {
       console.error("Error performing RAG search:", error);
@@ -490,8 +473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Query parameter 'q' is required" });
       }
 
-      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
-      const ragOrchestrator = new RAGOrchestrator();
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = new RAGOrchestrator2();
       
       const suggestions = await ragOrchestrator.getSuggestions(
         query as string, 
@@ -507,8 +490,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/rag/stats", async (req, res) => {
     try {
-      const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
-      const ragOrchestrator = new RAGOrchestrator();
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = new RAGOrchestrator2();
       
       const stats = await ragOrchestrator.getStats();
       res.json(stats);
@@ -518,14 +501,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // RAG 2.0 Advanced Analytics Routes
   app.get("/api/rag/analytics/metrics", async (req, res) => {
     try {
-      const { ragMonitor } = await import("./services/rag/ragMonitor");
-      const metrics = await ragMonitor.getPerformanceMetrics();
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = new RAGOrchestrator2();
+      
+      const stats = await ragOrchestrator.getStats();
+      const metrics = {
+        performance: {
+          documentsIndexed: stats.documentsIndexed,
+          chunksProcessed: stats.chunksIndexed,
+          vectorStoreSize: stats.vectorStoreStats.indexSize,
+          vocabularySize: stats.embeddingStats.size,
+          lastIndexed: stats.lastIndexed
+        },
+        usage: {
+          totalSearches: 0, // Could be tracked in future
+          avgSearchTime: 0, // Could be tracked in future
+          popularQueries: [] // Could be tracked in future
+        },
+        health: {
+          systemStatus: stats.documentsIndexed > 0 ? 'healthy' : 'needs-indexing',
+          vectorStoreHealth: stats.vectorStoreStats.totalDocuments > 0 ? 'operational' : 'empty',
+          embeddingServiceHealth: stats.embeddingStats.size > 0 ? 'operational' : 'not-ready'
+        }
+      };
+      
       res.json(metrics);
     } catch (error) {
       console.error("Error getting RAG metrics:", error);
       res.status(500).json({ error: "Failed to get metrics" });
+    }
+  });
+
+  // RAG 2.0 Context Compression Endpoint
+  app.post("/api/rag/compress-context", async (req, res) => {
+    try {
+      const { context, maxTokens = 2000 } = req.body;
+      
+      if (!context) {
+        return res.status(400).json({ error: "Context is required" });
+      }
+
+      // Simple context compression (could be enhanced with more sophisticated methods)
+      const words = context.split(/\s+/);
+      let compressed = context;
+      
+      if (words.length > maxTokens) {
+        compressed = words.slice(0, maxTokens).join(' ') + '...\n\n[Context truncated for length]';
+      }
+      
+      res.json({ 
+        originalLength: words.length,
+        compressedLength: compressed.split(/\s+/).length,
+        compressionRatio: compressed.split(/\s+/).length / words.length,
+        compressedContext: compressed
+      });
+    } catch (error) {
+      console.error("Error compressing context:", error);
+      res.status(500).json({ error: "Failed to compress context" });
     }
   });
 

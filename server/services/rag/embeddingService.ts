@@ -1,285 +1,262 @@
-import { OpenAIEmbeddings } from "@langchain/openai";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { Document as LangChainDocument } from "@langchain/core/documents";
+import { encode } from 'js-tiktoken';
+import natural from 'natural';
+import stringSimilarity from 'string-similarity';
 
-export interface EmbeddingDocument {
-  id: string;
-  content: string;
-  metadata: {
-    source: string;
-    platform?: string;
-    category?: string;
-    timestamp?: number;
-    chunkIndex?: number;
-    totalChunks?: number;
-  };
-  embedding?: number[];
+export interface EmbeddingOptions {
+  model?: 'local-tfidf' | 'openai' | 'cohere';
+  dimensions?: number;
+  maxTokens?: number;
 }
 
-export interface ChunkingStrategy {
-  chunkSize: number;
-  chunkOverlap: number;
-  separators?: string[];
+export interface EmbeddingResult {
+  embedding: number[];
+  tokens: number;
+  model: string;
 }
 
 export class EmbeddingService {
-  private embeddings: OpenAIEmbeddings;
-  private textSplitter: RecursiveCharacterTextSplitter;
+  private static instance: EmbeddingService;
+  private tfidfVectorizer: natural.TfIdf;
+  private vocabulary: Map<string, number> = new Map();
+  private initialized = false;
 
-  constructor(
-    apiKey?: string,
-    chunkingStrategy: ChunkingStrategy = {
-      chunkSize: 1000,
-      chunkOverlap: 200,
-      separators: ["\n\n", "\n", " ", ""]
+  static getInstance(): EmbeddingService {
+    if (!EmbeddingService.instance) {
+      EmbeddingService.instance = new EmbeddingService();
     }
-  ) {
-    // Configure for DeepSeek using OpenAI SDK
-    this.embeddings = new OpenAIEmbeddings({
-      openAIApiKey: apiKey || process.env.DEEPSEEK_API_KEY || "dummy-key-for-local",
-      modelName: "text-embedding-3-small",
-      configuration: {
-        baseURL: "https://api.deepseek.com/v1"
-      }
-    });
-
-    this.textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: chunkingStrategy.chunkSize,
-      chunkOverlap: chunkingStrategy.chunkOverlap,
-      separators: chunkingStrategy.separators
-    });
+    return EmbeddingService.instance;
   }
 
-  /**
-   * Process and chunk text documents for embedding
-   */
-  async chunkDocument(
-    content: string,
-    metadata: Omit<EmbeddingDocument["metadata"], "chunkIndex" | "totalChunks">
-  ): Promise<EmbeddingDocument[]> {
+  constructor() {
+    this.tfidfVectorizer = new natural.TfIdf();
+  }
+
+  async initialize(documents: string[] = []): Promise<void> {
+    if (this.initialized) return;
+
     try {
-      const docs = await this.textSplitter.createDocuments([content]);
+      // Build vocabulary from all documents
+      for (const doc of documents) {
+        const tokens = this.tokenizeText(doc);
+        this.tfidfVectorizer.addDocument(tokens);
+        
+        // Build vocabulary mapping
+        tokens.forEach(token => {
+          if (!this.vocabulary.has(token)) {
+            this.vocabulary.set(token, this.vocabulary.size);
+          }
+        });
+      }
+
+      this.initialized = true;
+      console.log(`Embedding service initialized with vocabulary size: ${this.vocabulary.size}`);
+    } catch (error) {
+      console.error('Failed to initialize embedding service:', error);
+      throw error;
+    }
+  }
+
+  async generateEmbedding(text: string, options: EmbeddingOptions = {}): Promise<EmbeddingResult> {
+    const { model = 'local-tfidf', dimensions = 1536 } = options;
+
+    switch (model) {
+      case 'local-tfidf':
+        return this.generateTFIDFEmbedding(text, dimensions);
+      case 'openai':
+        return this.generateOpenAIEmbedding(text);
+      case 'cohere':
+        return this.generateCohereEmbedding(text);
+      default:
+        throw new Error(`Unsupported embedding model: ${model}`);
+    }
+  }
+
+  private async generateTFIDFEmbedding(text: string, targetDimensions: number): Promise<EmbeddingResult> {
+    try {
+      const tokens = this.tokenizeText(text);
+      const tokenCount = this.countTokens(text);
+
+      // Calculate TF-IDF scores
+      const tfidfScores = new Map<string, number>();
       
-      return docs.map((doc, index) => ({
-        id: `${metadata.source}_chunk_${index}`,
-        content: doc.pageContent,
-        metadata: {
-          ...metadata,
-          chunkIndex: index,
-          totalChunks: docs.length,
-          timestamp: Date.now()
+      // Add document to vectorizer temporarily to get TF-IDF scores
+      const docIndex = this.tfidfVectorizer.documents.length;
+      this.tfidfVectorizer.addDocument(tokens);
+
+      // Get TF-IDF values for each term
+      tokens.forEach(token => {
+        const tfidf = this.tfidfVectorizer.tfidf(token, docIndex);
+        if (tfidf > 0) {
+          tfidfScores.set(token, tfidf);
         }
-      }));
-    } catch (error) {
-      console.error("Error chunking document:", error);
-      throw new Error(`Failed to chunk document: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
-  }
-
-  /**
-   * Generate simple text-based embeddings using TF-IDF approach
-   * This eliminates the need for external API calls for basic RAG functionality
-   */
-  async generateEmbeddings(documents: EmbeddingDocument[]): Promise<EmbeddingDocument[]> {
-    try {
-      // Simple TF-IDF based embedding for local processing
-      const vocabulary = this.buildVocabulary(documents.map(d => d.content));
-      
-      return documents.map(doc => ({
-        ...doc,
-        embedding: this.textToVector(doc.content, vocabulary)
-      }));
-    } catch (error) {
-      console.error("Error generating embeddings:", error);
-      throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
-  }
-
-  /**
-   * Generate embedding for a single query using local text processing
-   */
-  async generateQueryEmbedding(query: string): Promise<number[]> {
-    try {
-      // For query embedding, use a simple word frequency approach
-      const words = this.tokenize(query);
-      const queryVector = new Array(1536).fill(0); // OpenAI standard embedding size
-      
-      words.forEach((word, index) => {
-        // Simple hash-based positioning
-        const position = this.simpleHash(word) % 1536;
-        queryVector[position] += 1;
       });
-      
-      return queryVector;
+
+      // Remove the temporary document
+      this.tfidfVectorizer.documents.pop();
+
+      // Create sparse vector from TF-IDF scores
+      const sparseVector = new Array(this.vocabulary.size).fill(0);
+      tfidfScores.forEach((score, token) => {
+        const index = this.vocabulary.get(token);
+        if (index !== undefined) {
+          sparseVector[index] = score;
+        }
+      });
+
+      // Pad or truncate to target dimensions
+      let embedding: number[];
+      if (sparseVector.length < targetDimensions) {
+        // Pad with zeros and add some randomness to reach target dimensions
+        embedding = [...sparseVector];
+        while (embedding.length < targetDimensions) {
+          embedding.push(Math.random() * 0.1 - 0.05); // Small random values
+        }
+      } else {
+        // Use PCA-like dimension reduction (simplified)
+        embedding = this.reduceDimensions(sparseVector, targetDimensions);
+      }
+
+      // Normalize the vector
+      embedding = this.normalizeVector(embedding);
+
+      return {
+        embedding,
+        tokens: tokenCount,
+        model: 'local-tfidf'
+      };
     } catch (error) {
-      console.error("Error generating query embedding:", error);
-      throw new Error(`Failed to generate query embedding: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error('Failed to generate TF-IDF embedding:', error);
+      throw error;
     }
   }
 
-  /**
-   * Build vocabulary from document collection
-   */
-  private buildVocabulary(texts: string[]): Map<string, number> {
-    const wordCounts = new Map<string, number>();
-    
-    texts.forEach(text => {
-      const words = this.tokenize(text);
-      words.forEach(word => {
-        wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
-      });
-    });
+  private async generateOpenAIEmbedding(text: string): Promise<EmbeddingResult> {
+    // This would integrate with OpenAI API if available
+    // For now, fall back to TF-IDF
+    console.log('OpenAI embeddings not configured, falling back to TF-IDF');
+    return this.generateTFIDFEmbedding(text, 1536);
+  }
 
-    // Keep only words that appear in multiple documents (reduces noise)
-    const vocabulary = new Map<string, number>();
-    let index = 0;
+  private async generateCohereEmbedding(text: string): Promise<EmbeddingResult> {
+    // This would integrate with Cohere API if available
+    // For now, fall back to TF-IDF
+    console.log('Cohere embeddings not configured, falling back to TF-IDF');
+    return this.generateTFIDFEmbedding(text, 1536);
+  }
+
+  private tokenizeText(text: string): string[] {
+    // Advanced tokenization with stemming and stopword removal
+    const tokenizer = new natural.WordTokenizer();
+    const stemmer = natural.PorterStemmer;
     
-    const wordCountEntries = Array.from(wordCounts.entries());
-    for (const [word, count] of wordCountEntries) {
-      if (count > 1 && word.length > 2) {
-        vocabulary.set(word, index++);
+    let tokens = tokenizer.tokenize(text.toLowerCase()) || [];
+    
+    // Remove stopwords
+    tokens = tokens.filter(token => 
+      !natural.stopwords.includes(token) && 
+      token.length > 2 && 
+      /^[a-zA-Z]+$/.test(token)
+    );
+    
+    // Apply stemming
+    tokens = tokens.map(token => stemmer.stem(token));
+    
+    return tokens;
+  }
+
+  private countTokens(text: string): number {
+    try {
+      return encode(text).length;
+    } catch (error) {
+      // Fallback to word count if tiktoken fails
+      return text.split(/\s+/).length;
+    }
+  }
+
+  private reduceDimensions(vector: number[], targetDim: number): number[] {
+    // Simplified dimension reduction using random projection
+    const chunkSize = Math.ceil(vector.length / targetDim);
+    const reduced: number[] = [];
+
+    for (let i = 0; i < targetDim; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, vector.length);
+      const chunk = vector.slice(start, end);
+      const avg = chunk.reduce((sum, val) => sum + val, 0) / chunk.length;
+      reduced.push(avg || 0);
+    }
+
+    return reduced;
+  }
+
+  private normalizeVector(vector: number[]): number[] {
+    const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    if (magnitude === 0) return vector;
+    return vector.map(val => val / magnitude);
+  }
+
+  async generateBatchEmbeddings(texts: string[], options: EmbeddingOptions = {}): Promise<EmbeddingResult[]> {
+    const embeddings: EmbeddingResult[] = [];
+    
+    for (const text of texts) {
+      try {
+        const embedding = await this.generateEmbedding(text, options);
+        embeddings.push(embedding);
+      } catch (error) {
+        console.error(`Failed to generate embedding for text: ${text.substring(0, 100)}...`, error);
+        // Generate a zero vector as fallback
+        embeddings.push({
+          embedding: new Array(options.dimensions || 1536).fill(0),
+          tokens: 0,
+          model: 'fallback'
+        });
       }
     }
 
-    return vocabulary;
+    return embeddings;
   }
 
-  /**
-   * Convert text to vector using TF-IDF
-   */
-  private textToVector(text: string, vocabulary: Map<string, number>): number[] {
-    const vector = new Array(1536).fill(0);
-    const words = this.tokenize(text);
-    const wordCounts = new Map<string, number>();
-
-    // Count word frequencies
-    words.forEach(word => {
-      wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
-    });
-
-    // Calculate TF scores
-    const wordCountEntries = Array.from(wordCounts.entries());
-    for (const [word, count] of wordCountEntries) {
-      const vocabIndex = vocabulary.get(word);
-      if (vocabIndex !== undefined && vocabIndex < 1536) {
-        const tf = count / words.length;
-        vector[vocabIndex] = tf;
-      }
+  calculateSimilarity(embedding1: number[], embedding2: number[]): number {
+    if (embedding1.length !== embedding2.length) {
+      throw new Error('Embeddings must have the same dimensions');
     }
 
-    return vector;
-  }
-
-  /**
-   * Simple tokenization
-   */
-  private tokenize(text: string): string[] {
-    return text
-      .toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(word => word.length > 2);
-  }
-
-  /**
-   * Simple hash function for word positioning
-   */
-  private simpleHash(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash);
-  }
-
-  /**
-   * Process platform data for vector storage
-   */
-  async processPlatformData(platforms: any[]): Promise<EmbeddingDocument[]> {
-    const documents: EmbeddingDocument[] = [];
-
-    for (const platform of platforms) {
-      // Create comprehensive text representation of platform
-      const platformText = this.createPlatformText(platform);
-      
-      const chunks = await this.chunkDocument(platformText, {
-        source: `platform_${platform.id}`,
-        platform: platform.name,
-        category: "platform_overview"
-      });
-      
-      documents.push(...chunks);
-    }
-
-    return documents;
-  }
-
-  /**
-   * Process knowledge base entries for vector storage
-   */
-  async processKnowledgeBase(entries: any[]): Promise<EmbeddingDocument[]> {
-    const documents: EmbeddingDocument[] = [];
-
-    for (const entry of entries) {
-      const chunks = await this.chunkDocument(entry.content, {
-        source: `kb_${entry.id}`,
-        category: entry.category,
-        platform: entry.platform
-      });
-      
-      documents.push(...chunks);
-    }
-
-    return documents;
-  }
-
-  private createPlatformText(platform: any): string {
-    return `
-Platform: ${platform.name}
-Description: ${platform.description}
-Category: ${platform.category}
-Homepage: ${platform.homepage}
-Pricing Model: ${platform.pricingModel}
-User Base: ${platform.userBase}
-Founded: ${platform.founded}
-Key Features: ${platform.keyFeatures}
-Primary Use Cases: ${platform.primaryUseCases}
-Integration Capabilities: ${platform.integrationCapabilities}
-AI Capabilities: ${platform.aiCapabilities}
-Development Tools: ${platform.developmentTools}
-Supported Languages: ${platform.supportedLanguages}
-Deployment Options: ${platform.deploymentOptions}
-Documentation Quality: ${platform.documentationQuality}
-Community Size: ${platform.communitySize}
-Learning Curve: ${platform.learningCurve}
-Performance Rating: ${platform.performanceRating}
-`.trim();
-  }
-
-  /**
-   * Calculate cosine similarity between two vectors
-   */
-  static cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) {
-      throw new Error("Vectors must have the same length");
-    }
-
+    // Calculate cosine similarity
     let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
+    let norm1 = 0;
+    let norm2 = 0;
 
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
+    for (let i = 0; i < embedding1.length; i++) {
+      dotProduct += embedding1[i] * embedding2[i];
+      norm1 += embedding1[i] * embedding1[i];
+      norm2 += embedding2[i] * embedding2[i];
     }
 
-    if (normA === 0 || normB === 0) {
-      return 0;
+    if (norm1 === 0 || norm2 === 0) return 0;
+    return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+  }
+
+  async updateVocabulary(newDocuments: string[]): Promise<void> {
+    // Update vocabulary with new documents
+    for (const doc of newDocuments) {
+      const tokens = this.tokenizeText(doc);
+      this.tfidfVectorizer.addDocument(tokens);
+      
+      tokens.forEach(token => {
+        if (!this.vocabulary.has(token)) {
+          this.vocabulary.set(token, this.vocabulary.size);
+        }
+      });
     }
 
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    console.log(`Updated vocabulary to size: ${this.vocabulary.size}`);
+  }
+
+  getVocabularyStats(): { size: number; topTerms: string[] } {
+    const topTerms = Array.from(this.vocabulary.keys()).slice(0, 50);
+    return {
+      size: this.vocabulary.size,
+      topTerms
+    };
   }
 }

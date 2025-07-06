@@ -75,6 +75,11 @@ export class RealTimeResponseService {
     };
   }
 
+  // Alias for subscribe to maintain compatibility
+  onUpdate(listener: (response: RealTimeResponse) => void): () => void {
+    return this.subscribe(listener);
+  }
+
   getStats(): {
     totalResponses: number;
     responsesByStatus: Record<string, number>;

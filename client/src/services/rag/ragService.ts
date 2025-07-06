@@ -4,9 +4,54 @@ import { realTimeResponseService } from "../integration/realTimeResponseService"
 // Re-export types for components to use
 export type { RAGQuery, RAGResponse, RAGDocument, RAGResult } from "@/types/rag-types";
 
+export interface RAG2SearchResponse {
+  results: RAG2Result[];
+  query: string;
+  totalResults: number;
+  searchTime: number;
+  sources: string[];
+  searchStats?: {
+    semanticResults: number;
+    keywordResults: number;
+    rerankingApplied: boolean;
+    documentsSearched: number;
+    chunksSearched: number;
+  };
+  compressedContext?: string;
+  suggestions?: string[];
+}
+
+export interface RAG2Result {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  relevanceScore: number;
+  metadata: {
+    source: string;
+    lastUpdated: Date;
+    matchType: 'hybrid' | 'semantic' | 'keyword';
+    chunkIndex?: number;
+    documentType?: string;
+    platform?: string;
+    wordCount?: number;
+    matchedTerms?: string[];
+  };
+}
+
+export interface RAGStats {
+  documentsIndexed: number;
+  chunksIndexed: number;
+  vectorStoreStats: any;
+  searchEngineStats: any;
+  embeddingStats: any;
+  lastIndexed?: Date;
+}
+
 export class RAGService {
   private documents: RAGDocument[] = [];
   private initialized = false;
+  private ragSystemInitialized = false;
 
   constructor() {
     this.initializeWithSampleData();
@@ -68,13 +113,282 @@ export class RAGService {
     if (this.initialized) return;
     
     try {
-      // Initialize vector database connection, load embeddings, etc.
+      // Initialize the basic service
       await this.initializeWithSampleData();
       this.initialized = true;
+      
+      // Initialize RAG 2.0 system
+      await this.initializeRAG2System();
     } catch (error) {
       console.error("Failed to initialize RAG service:", error);
       throw error;
     }
+  }
+
+  /**
+   * Initialize the RAG 2.0 system with vector database and hybrid search
+   */
+  async initializeRAG2System(): Promise<void> {
+    if (this.ragSystemInitialized) return;
+
+    try {
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "processing",
+        message: "Initializing RAG 2.0 system with vector database...",
+        data: { stage: "initialization" }
+      });
+
+      const response = await fetch('/api/rag/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to initialize RAG 2.0: ${response.statusText}`);
+      }
+
+      this.ragSystemInitialized = true;
+
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "success",
+        message: "RAG 2.0 system initialized successfully",
+        data: { stage: "complete" }
+      });
+
+    } catch (error) {
+      console.error("Failed to initialize RAG 2.0 system:", error);
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "error",
+        message: "Failed to initialize RAG 2.0 system",
+        data: { error: error instanceof Error ? error.message : "Unknown error" }
+      });
+    }
+  }
+
+  /**
+   * Index all data sources including attached assets and platform data
+   */
+  async indexAllData(): Promise<{ success: boolean; documentsProcessed: number; message: string }> {
+    try {
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "processing",
+        message: "Starting comprehensive data indexing...",
+        data: { stage: "indexing-start" }
+      });
+
+      const response = await fetch('/api/rag/index', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to index data: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "success",
+        message: result.message,
+        data: { 
+          documentsProcessed: result.documentsProcessed,
+          stage: "indexing-complete"
+        }
+      });
+
+      return {
+        success: true,
+        documentsProcessed: result.documentsProcessed || 0,
+        message: result.message
+      };
+
+    } catch (error) {
+      console.error("Failed to index data:", error);
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "error",
+        message: "Failed to index data",
+        data: { error: error instanceof Error ? error.message : "Unknown error" }
+      });
+
+      return {
+        success: false,
+        documentsProcessed: 0,
+        message: "Indexing failed"
+      };
+    }
+  }
+
+  /**
+   * Perform advanced RAG 2.0 search with hybrid vector and keyword search
+   */
+  async searchRAG2(query: string, options: {
+    limit?: number;
+    filters?: {
+      category?: string;
+      platform?: string;
+      source?: string;
+      documentType?: string;
+    };
+    hybridWeight?: { semantic: number; keyword: number };
+    rerankingEnabled?: boolean;
+  } = {}): Promise<RAG2SearchResponse> {
+    try {
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "processing",
+        message: "Executing RAG 2.0 hybrid search...",
+        data: { query, options }
+      });
+
+      const response = await fetch('/api/rag/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          limit: options.limit || 10,
+          filters: options.filters,
+          options: {
+            hybridWeight: options.hybridWeight || { semantic: 0.7, keyword: 0.3 },
+            rerankingEnabled: options.rerankingEnabled !== false,
+            includeMetadata: true,
+            minSimilarity: 0.1
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`);
+      }
+
+      const searchResponse: RAG2SearchResponse = await response.json();
+
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "success",
+        message: `Found ${searchResponse.totalResults} relevant results`,
+        data: { 
+          resultsCount: searchResponse.totalResults,
+          searchTime: searchResponse.searchTime,
+          searchStats: searchResponse.searchStats
+        }
+      });
+
+      return searchResponse;
+
+    } catch (error) {
+      console.error("RAG 2.0 search failed:", error);
+      realTimeResponseService.addResponse({
+        source: "rag-service",
+        status: "error",
+        message: "RAG 2.0 search failed",
+        data: { error: error instanceof Error ? error.message : "Unknown error" }
+      });
+
+      // Fallback to basic search
+      return this.fallbackToBasicSearch(query, options);
+    }
+  }
+
+  /**
+   * Get search suggestions for query completion
+   */
+  async getSuggestions(partialQuery: string, limit = 5): Promise<string[]> {
+    try {
+      const response = await fetch(`/api/rag/suggestions?q=${encodeURIComponent(partialQuery)}&limit=${limit}`);
+      
+      if (!response.ok) {
+        return [];
+      }
+
+      const result = await response.json();
+      return result.suggestions || [];
+    } catch (error) {
+      console.error("Failed to get suggestions:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get comprehensive RAG system statistics
+   */
+  async getRAGStats(): Promise<RAGStats | null> {
+    try {
+      const response = await fetch('/api/rag/stats');
+      
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to get RAG stats:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get RAG system performance metrics
+   */
+  async getPerformanceMetrics(): Promise<any> {
+    try {
+      const response = await fetch('/api/rag/analytics/metrics');
+      
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Failed to get performance metrics:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Fallback to basic search when RAG 2.0 is not available
+   */
+  private async fallbackToBasicSearch(query: string, options: any): Promise<RAG2SearchResponse> {
+    console.log("Falling back to basic RAG search");
+    
+    const basicResponse = await this.query({
+      query,
+      limit: options.limit || 10,
+      filters: options.filters
+    });
+
+    // Convert basic response to RAG 2.0 format
+    return {
+      results: basicResponse.results.map(result => ({
+        id: result.id,
+        title: result.title,
+        content: result.content,
+        category: result.category,
+        relevanceScore: result.relevanceScore,
+        metadata: {
+          source: result.metadata.source,
+          lastUpdated: new Date(result.metadata.lastUpdated),
+          matchType: 'keyword' as const,
+          documentType: 'legacy'
+        }
+      })),
+      query,
+      totalResults: basicResponse.totalResults,
+      searchTime: basicResponse.searchTime,
+      sources: basicResponse.sources || [],
+      searchStats: {
+        semanticResults: 0,
+        keywordResults: basicResponse.totalResults,
+        rerankingApplied: false,
+        documentsSearched: this.documents.length,
+        chunksSearched: basicResponse.totalResults
+      }
+    };
   }
 
   async query(ragQuery: RAGQuery): Promise<RAGResponse> {
