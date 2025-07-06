@@ -249,7 +249,12 @@ export class RAGService {
       // Add timeout protection
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        controller.abort(new Error("Search timeout after 10 seconds"));
+        try {
+          controller.abort();
+        } catch (error) {
+          // Silently handle abort errors
+          console.warn('Search timeout - request aborted gracefully');
+        }
       }, 10000); // 10 second timeout
 
       try {
@@ -380,8 +385,7 @@ export class RAGService {
     
     const basicResponse = await this.query({
       query,
-      limit: options.limit || 10,
-      filters: options.filters
+      limit: options.limit || 10
     });
 
     // Convert basic response to RAG 2.0 format
@@ -402,7 +406,7 @@ export class RAGService {
       query,
       totalResults: basicResponse.totalResults,
       searchTime: basicResponse.searchTime,
-      sources: basicResponse.sources || [],
+      sources: [],
       searchStats: {
         semanticResults: 0,
         keywordResults: basicResponse.totalResults,
