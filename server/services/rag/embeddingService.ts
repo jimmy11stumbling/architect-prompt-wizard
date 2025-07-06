@@ -1,4 +1,4 @@
-import { encode } from 'js-tiktoken';
+import { get_encoding } from 'tiktoken';
 import natural from 'natural';
 import stringSimilarity from 'string-similarity';
 
@@ -166,7 +166,10 @@ export class EmbeddingService {
 
   private countTokens(text: string): number {
     try {
-      return encode(text).length;
+      const encoding = get_encoding('cl100k_base');
+      const tokens = encoding.encode(text);
+      encoding.free();
+      return tokens.length;
     } catch (error) {
       // Fallback to word count if tiktoken fails
       return text.split(/\s+/).length;

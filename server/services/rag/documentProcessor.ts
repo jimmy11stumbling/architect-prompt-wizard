@@ -285,9 +285,7 @@ export class DocumentProcessor {
       ));
     }
 
-    return this.finalizeCh
-
-nks(chunks);
+    return this.finalizeChunks(chunks);
   }
 
   private generateSlidingWindowChunks(content: string, options: ChunkingOptions): DocumentChunk[] {
@@ -352,7 +350,7 @@ nks(chunks);
       ));
     }
 
-    return this.finalizeChu ks(chunks);
+    return this.finalizeChunks(chunks);
   }
 
   private generateParagraphChunks(content: string, options: ChunkingOptions): DocumentChunk[] {
@@ -391,7 +389,7 @@ nks(chunks);
       ));
     }
 
-    return this.finalizeChu ks(chunks);
+    return this.finalizeChunks(chunks);
   }
 
   private generateHybridChunks(content: string, options: ChunkingOptions, analysis: any): DocumentChunk[] {
@@ -424,7 +422,7 @@ nks(chunks);
       content,
       metadata: {
         chunkIndex: index,
-        totalChunks: 0, // Will be set in finalizeChu ks
+        totalChunks: 0, // Will be set in finalizeChunks
         startOffset,
         endOffset: startOffset + content.length,
         wordCount: words.length,
