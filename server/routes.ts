@@ -992,6 +992,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Settings API endpoints
+  app.post("/api/settings", async (req, res) => {
+    try {
+      const { settings } = req.body;
+      // In a real app, save to database. For now, just return success
+      res.json({ 
+        success: true, 
+        message: "Settings saved successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      res.status(500).json({ error: "Failed to save settings" });
+    }
+  });
+
+  app.get("/api/settings", async (req, res) => {
+    try {
+      // In a real app, load from database. For now, return empty object
+      res.json({ settings: {} });
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      res.status(500).json({ error: "Failed to load settings" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import {
   RotateCcw,
   AlertTriangle
 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 const AdvancedSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState({
@@ -69,6 +69,22 @@ const AdvancedSettingsPage: React.FC = () => {
   });
 
   const [hasChanges, setHasChanges] = useState(false);
+  const [savedSettings, setSavedSettings] = useState(settings);
+  const { toast } = useToast();
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem('advancedSettings');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setSettings(parsed);
+        setSavedSettings(parsed);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    }
+  }, []);
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({
@@ -78,18 +94,40 @@ const AdvancedSettingsPage: React.FC = () => {
     setHasChanges(true);
   };
 
-  const saveSettings = () => {
-    // Save settings logic here
-    localStorage.setItem('nocodelos_settings', JSON.stringify(settings));
-    setHasChanges(false);
-    toast({
-      title: "Settings Saved",
-      description: "Your configuration has been saved successfully.",
-    });
+  const saveSettings = async () => {
+    try {
+      localStorage.setItem('advancedSettings', JSON.stringify(settings));
+      
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': '1'
+        },
+        body: JSON.stringify({ settings })
+      });
+
+      if (response.ok) {
+        setSavedSettings(settings);
+        setHasChanges(false);
+        toast({
+          title: "Settings Saved",
+          description: "Your advanced settings have been saved successfully",
+        });
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: "Settings cached locally but server sync failed",
+        variant: "destructive"
+      });
+    }
   };
 
-  const resetSettings = () => {
-    setSettings({
+  const resetToDefaults = () => {
+    const defaultSettings = {
       defaultModel: "deepseek-v3",
       maxTokens: 4096,
       temperature: 0.7,
@@ -118,9 +156,26 @@ const AdvancedSettingsPage: React.FC = () => {
       autoBackup: true,
       backupInterval: 24,
       syncSettings: true
-    });
+    };
+    
+    setSettings(defaultSettings);
     setHasChanges(true);
+    toast({
+      title: "Settings Reset",
+      description: "All settings have been reset to default values",
+    });
   };
+
+  // Apply dark mode immediately when changed
+  useEffect(() => {
+    if (settings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.darkMode]);
+
+
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -139,9 +194,9 @@ const AdvancedSettingsPage: React.FC = () => {
               Unsaved Changes
             </Badge>
           )}
-          <Button variant="outline" onClick={resetSettings}>
+          <Button variant="outline" onClick={resetToDefaults}>
             <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
+            Reset to Defaults
           </Button>
           <Button 
             onClick={saveSettings} 

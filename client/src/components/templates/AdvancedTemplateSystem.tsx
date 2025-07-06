@@ -25,6 +25,8 @@ import {
   Clock
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import { ProjectSpec } from "@/types/ipa-types";
 
 interface ProjectTemplate {
   id: string;
@@ -74,6 +76,7 @@ const AdvancedTemplateSystem: React.FC = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Initialize with comprehensive template library
