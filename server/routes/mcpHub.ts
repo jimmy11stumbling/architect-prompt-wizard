@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { attachedAssetsMCPHub } from '../../client/src/services/mcp/attachedAssetsMcpHub';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { attachedAssetsMCPService } from '../services/attachedAssetsMcpService';
 
 const router = Router();
 
 // Initialize MCP Hub
 router.post('/initialize', async (req: AuthenticatedRequest, res) => {
   try {
-    await attachedAssetsMCPHub.initialize();
+    await attachedAssetsMCPService.loadAvailableAssets();
     res.json({ success: true, message: 'MCP Hub initialized successfully' });
   } catch (error) {
     console.error('Failed to initialize MCP Hub:', error);
@@ -23,7 +23,7 @@ router.post('/query', async (req: AuthenticatedRequest, res) => {
   try {
     const { query, categories, maxAssets, includeContent, relevanceThreshold } = req.body;
     
-    const context = await attachedAssetsMCPHub.queryAssets({
+    const context = await attachedAssetsMCPService.queryAssets({
       query,
       categories,
       maxAssets,
@@ -45,7 +45,7 @@ router.post('/query', async (req: AuthenticatedRequest, res) => {
 router.get('/category/:category', async (req: AuthenticatedRequest, res) => {
   try {
     const { category } = req.params;
-    const assets = await attachedAssetsMCPHub.getAssetsByCategory(category);
+    const assets = await attachedAssetsMCPService.getAssetsByCategory(category);
     res.json({ success: true, data: assets });
   } catch (error) {
     console.error('Failed to get assets by category:', error);
@@ -60,7 +60,7 @@ router.get('/category/:category', async (req: AuthenticatedRequest, res) => {
 router.get('/content/:filename', async (req: AuthenticatedRequest, res) => {
   try {
     const { filename } = req.params;
-    const content = await attachedAssetsMCPHub.getAssetContent(filename);
+    const content = await attachedAssetsMCPService.getAssetContent(filename);
     res.json({ success: true, data: { filename, content } });
   } catch (error) {
     console.error('Failed to get asset content:', error);
@@ -76,14 +76,14 @@ router.post('/summary', async (req: AuthenticatedRequest, res) => {
   try {
     const { query, categories, maxAssets } = req.body;
     
-    const context = await attachedAssetsMCPHub.queryAssets({
+    const context = await attachedAssetsMCPService.queryAssets({
       query,
       categories,
       maxAssets,
       includeContent: true
     });
     
-    const summary = await attachedAssetsMCPHub.generateContextSummary(context.relevantAssets);
+    const summary = await attachedAssetsMCPService.getContextForPrompt(query, maxAssets);
     
     res.json({ success: true, data: { summary, context } });
   } catch (error) {
@@ -98,7 +98,8 @@ router.post('/summary', async (req: AuthenticatedRequest, res) => {
 // Get available categories
 router.get('/categories', async (req: AuthenticatedRequest, res) => {
   try {
-    const categories = attachedAssetsMCPHub.getAvailableCategories();
+    const stats = attachedAssetsMCPService.getAssetStatistics();
+    const categories = Object.keys(stats.categories);
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('Failed to get categories:', error);
@@ -112,7 +113,7 @@ router.get('/categories', async (req: AuthenticatedRequest, res) => {
 // Get asset statistics
 router.get('/stats', async (req: AuthenticatedRequest, res) => {
   try {
-    const stats = attachedAssetsMCPHub.getAssetStatistics();
+    const stats = attachedAssetsMCPService.getAssetStatistics();
     res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Failed to get asset statistics:', error);
@@ -205,7 +206,7 @@ router.post('/preload', async (req: AuthenticatedRequest, res) => {
 // Clear cache
 router.post('/clear-cache', async (req: AuthenticatedRequest, res) => {
   try {
-    attachedAssetsMCPHub.clearCache();
+    attachedAssetsMCPService.clearCache();
     res.json({ success: true, message: 'Cache cleared successfully' });
   } catch (error) {
     console.error('Failed to clear cache:', error);
