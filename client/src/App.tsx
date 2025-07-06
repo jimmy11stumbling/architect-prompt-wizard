@@ -34,19 +34,19 @@ const App = () => (
               <NavigationSidebar />
               <main className="flex-1 overflow-auto">
                 <Switch>
-                  <Route path="/" component={Index} />
-                  <Route path="/dashboard" component={Dashboard} />
-                  <Route path="/reasoner" component={ReasonerPage} />
-                  <Route path="/enhanced" component={EnhancedPage} />
-                  <Route path="/rag" component={RAGPage} />
-                  <Route path="/a2a" component={A2APage} />
-                  <Route path="/mcp" component={MCPPage} />
-                  <Route path="/workflow" component={WorkflowPage} />
-                  <Route path="/saved-prompts" component={SavedPromptsPage} />
-                  <Route path="/testing" component={TestingPage} />
-                  <Route path="/settings" component={AdvancedSettingsPage} />
-                  <Route path="/analytics" component={AnalyticsDashboardPage} />
-                  <Route component={NotFound} />
+                  <Route path="/"><Index /></Route>
+                  <Route path="/dashboard"><Dashboard /></Route>
+                  <Route path="/reasoner"><ReasonerPage /></Route>
+                  <Route path="/enhanced"><EnhancedPage /></Route>
+                  <Route path="/rag"><RAGPage /></Route>
+                  <Route path="/a2a"><A2APage /></Route>
+                  <Route path="/mcp"><MCPPage /></Route>
+                  <Route path="/workflow"><WorkflowPage /></Route>
+                  <Route path="/saved-prompts"><SavedPromptsPage /></Route>
+                  <Route path="/testing"><TestingPage /></Route>
+                  <Route path="/settings"><AdvancedSettingsPage /></Route>
+                  <Route path="/analytics"><AnalyticsDashboardPage /></Route>
+                  <Route><NotFound /></Route>
                 </Switch>
               </main>
             </div>
