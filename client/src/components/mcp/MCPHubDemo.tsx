@@ -16,6 +16,8 @@ import {
   Code,
   Network
 } from "lucide-react";
+import { mcpHubService } from "@/services/mcp/mcpHubService";
+import { useToast } from "@/hooks/use-toast";
 // API service functions
 const apiService = {
   async getStats() {
@@ -65,7 +67,6 @@ const apiService = {
     return result.data;
   }
 };
-import { useToast } from "@/hooks/use-toast";
 
 const MCPHubDemo: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
