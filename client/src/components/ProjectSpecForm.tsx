@@ -5,6 +5,7 @@ import { ProjectSpec } from "@/types/ipa-types";
 
 interface ProjectSpecFormProps {
   onSubmit: (spec: ProjectSpec) => void;
+  onSpecChange?: (spec: ProjectSpec) => void;
 }
 
 export interface ProjectSpecFormHandle {
@@ -41,13 +42,16 @@ const defaultSpec: ProjectSpec = {
 };
 
 const ProjectSpecForm = forwardRef<ProjectSpecFormHandle, ProjectSpecFormProps>(
-  ({ onSubmit }, ref) => {
+  ({ onSubmit, onSpecChange }, ref) => {
     const [spec, setSpec] = useState<ProjectSpec>(defaultSpec);
 
     useImperativeHandle(ref, () => ({
       setSpec: (newSpec: ProjectSpec) => {
         console.log("ProjectSpecForm: Setting spec via ref", newSpec);
         setSpec(newSpec);
+        if (onSpecChange) {
+          onSpecChange(newSpec);
+        }
       },
       getSpec: () => spec
     }));
@@ -55,6 +59,9 @@ const ProjectSpecForm = forwardRef<ProjectSpecFormHandle, ProjectSpecFormProps>(
     const handleSpecChange = (newSpec: ProjectSpec) => {
       console.log("ProjectSpecForm: Spec changed", newSpec);
       setSpec(newSpec);
+      if (onSpecChange) {
+        onSpecChange(newSpec);
+      }
     };
 
     const handleSubmit = (submittedSpec: ProjectSpec) => {

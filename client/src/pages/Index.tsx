@@ -2,6 +2,7 @@
 import React, { useState, useRef } from "react";
 import ProjectSpecForm, { ProjectSpecFormHandle } from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
+import RAGIntegratedAgentWorkflow from "@/components/enhanced-features/RAGIntegratedAgentWorkflow";
 import PromptOutput from "@/components/PromptOutput";
 import SavedPrompts from "@/components/SavedPrompts";
 import { ApiKeyForm } from "@/components/ApiKeyForm";
@@ -32,6 +33,8 @@ const Index: React.FC = () => {
     contextPreferences: [],
     outputFormat: "detailed"
   });
+  const [currentProjectSpec, setCurrentProjectSpec] = useState<ProjectSpec | undefined>();
+  const [ragEnhancedAgents, setRagEnhancedAgents] = useState<Record<string, any>>({});
   const projectFormRef = useRef<ProjectSpecFormHandle>(null);
   const { toast } = useToast();
   const { generationStatus, isGenerating, handleSubmit, handleStreamingSubmit } = useProjectGeneration();
@@ -57,6 +60,28 @@ const Index: React.FC = () => {
     });
   };
 
+  const handleRAGAgentUpdate = (agentName: string, ragContext: any) => {
+    setRagEnhancedAgents(prev => ({
+      ...prev,
+      [agentName]: ragContext
+    }));
+    
+    realTimeResponseService.addResponse({
+      source: "rag-integration",
+      status: "success",
+      message: `Agent ${agentName} enhanced with RAG database context`,
+      data: {
+        documents: ragContext.relevantDocuments?.length || 0,
+        bestPractices: ragContext.bestPractices?.length || 0,
+        platformContext: ragContext.platformContext?.length || 0
+      }
+    });
+  };
+
+  const handleFormSpecChange = (spec: ProjectSpec) => {
+    setCurrentProjectSpec(spec);
+  };
+
   const handleSelectTemplate = (spec: ProjectSpec) => {
     console.log("Index: Applying template from header", spec);
     
@@ -69,12 +94,13 @@ const Index: React.FC = () => {
     if (projectFormRef.current) {
       projectFormRef.current.setSpec(spec);
     }
+    setCurrentProjectSpec(spec);
     setActiveTab("create");
     
     realTimeResponseService.addResponse({
       source: "template-selection",
       status: "success",
-      message: "Comprehensive project template applied successfully",
+      message: "Comprehensive project template applied with RAG integration",
       data: { 
         templateProject: spec.projectDescription.substring(0, 50),
         platform: spec.targetPlatform,
@@ -86,8 +112,8 @@ const Index: React.FC = () => {
     });
     
     toast({
-      title: "Template Applied Successfully",
-      description: "Comprehensive project template has been loaded into the form with all features",
+      title: "Template Applied with RAG Integration",
+      description: "Comprehensive project template loaded with seamless RAG database access",
     });
   };
 
@@ -124,13 +150,19 @@ const Index: React.FC = () => {
             {/* Main Form */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-8">
-                <ProjectSpecForm ref={projectFormRef} onSubmit={handleStreamingSubmit} />
+                <ProjectSpecForm 
+                  ref={projectFormRef} 
+                  onSubmit={handleStreamingSubmit}
+                  onSpecChange={handleFormSpecChange}
+                />
                 <ApiKeyForm />
               </div>
               <div className="space-y-8">
-                <AgentWorkflow 
+                <RAGIntegratedAgentWorkflow 
                   agents={generationStatus?.agents || []} 
                   isGenerating={isGenerating}
+                  projectSpec={currentProjectSpec}
+                  onAgentUpdate={handleRAGAgentUpdate}
                 />
                 <PromptOutput prompt={generationStatus?.result} />
               </div>
