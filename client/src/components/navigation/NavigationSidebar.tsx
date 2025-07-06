@@ -109,7 +109,7 @@ const NavigationSidebar: React.FC = () => {
     },
     {
       path: "/settings",
-      label: "Advanced Settings",
+      label: "Settings",
       icon: Settings,
       description: "System configuration and preferences"
     }

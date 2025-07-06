@@ -371,13 +371,13 @@ export class RAGService {
       const { controller, safeAbort } = createSafeAbortController({
         agentId: 'rag-service',
         operation: 'stats-fetch',
-        timeout: 3000,
+        timeout: 10000,
         reason: 'stats timeout'
       });
       
       const timeoutId = setTimeout(() => {
         safeAbort();
-      }, 3000); // 3 second timeout for stats
+      }, 10000); // 10 second timeout for stats
 
       const response = await fetch('/api/rag/stats', {
         signal: controller.signal

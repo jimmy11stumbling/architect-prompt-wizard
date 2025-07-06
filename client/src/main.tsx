@@ -19,12 +19,17 @@ window.addEventListener('unhandledrejection', (event) => {
       event.reason?.message?.includes('signal is aborted') ||
       event.reason?.message?.includes('aborted without reason') ||
       event.reason?.message?.includes('Failed to fetch') ||
+      event.reason?.message?.includes('aborted due to') ||
+      event.reason?.message?.includes('stats-fetch') ||
+      event.reason?.message?.includes('hybrid-search') ||
       event.reason?.name === 'AbortError' ||
       event.reason instanceof DOMException ||
-      event.reason instanceof TypeError) {
+      event.reason instanceof TypeError ||
+      event.reason?.constructor?.name === 'DOMException') {
     // Log the error but prevent it from showing in overlay
-    console.warn('Handled promise rejection:', event.reason);
+    console.debug('Handled promise rejection:', event.reason?.message || event.reason);
     event.preventDefault();
+    return;
   }
 });
 

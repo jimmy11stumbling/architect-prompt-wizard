@@ -68,17 +68,15 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
       try {
         platformCache = await ragService.searchRAG2(`${projectSpec.targetPlatform} specific features capabilities`, {
           limit: 5,
-          semanticWeight: 0.8,
-          categories: ['platform']
+          hybridWeight: { semantic: 0.8, keyword: 0.2 },
+          filters: { category: 'platform' }
         });
         
         // Get best practices once (shared by all agents)
         bestPracticesCache = await ragService.searchRAG2(`architecture patterns best practices ${projectSpec.targetPlatform}`, {
           limit: 5,
-          semanticWeight: 0.7,
-          keywordWeight: 0.3,
-          enableReranking: true,
-          categories: ['all']
+          hybridWeight: { semantic: 0.7, keyword: 0.3 },
+          rerankingEnabled: true
         });
         
         console.log(`✅ [rag-optimization] Cached shared context: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices`);
@@ -113,10 +111,8 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
             // Only make agent-specific search (platform context is cached)
             const searchResults = await ragService.searchRAG2(searchQuery, {
               limit: 5,
-              semanticWeight: 0.7,
-              keywordWeight: 0.3,
-              enableReranking: true,
-              categories: ['all']
+              hybridWeight: { semantic: 0.7, keyword: 0.3 },
+              rerankingEnabled: true
             });
 
             newContexts[agent.name] = {
@@ -294,7 +290,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                           {enhancementStatus.documents} docs
                         </Badge>
                       )}
-                      {enhancementStatus.bestPractices > 0 && (
+                      {enhancementStatus.bestPractices && enhancementStatus.bestPractices > 0 && (
                         <Badge 
                           variant="secondary" 
                           className="text-xs bg-blue-100 text-blue-800"
@@ -305,10 +301,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                     </div>
 
                     <AgentContent 
-                      agent={{
-                        ...agent,
-                        ragContext: ragContexts[agent.name]
-                      }} 
+                      agent={agent} 
                       isOpen={!!openAgents[agent.name]} 
                       onToggle={() => toggleAgent(agent.name)} 
                     />

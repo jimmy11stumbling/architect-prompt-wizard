@@ -23,6 +23,7 @@ import MCPHubPage from "./pages/MCPHubPage";
 import SavedPromptsPage from "./pages/SavedPromptsPage";
 import TestingPage from "./pages/TestingPage";
 import AdvancedSettingsPage from "./pages/AdvancedSettingsPage";
+import SettingsPage from "./pages/SettingsPage";
 import AnalyticsDashboardPage from "./pages/AnalyticsDashboardPage";
 import NotFound from "./pages/NotFound";
 
@@ -64,7 +65,7 @@ const App = () => (
                     <Route path="/workflow"><WorkflowPage /></Route>
                     <Route path="/saved-prompts"><SavedPromptsPage /></Route>
                     <Route path="/testing"><TestingPage /></Route>
-                    <Route path="/settings"><AdvancedSettingsPage /></Route>
+                    <Route path="/settings"><SettingsPage /></Route>
                     <Route path="/analytics"><AnalyticsDashboardPage /></Route>
                     <Route><NotFound /></Route>
                   </Switch>

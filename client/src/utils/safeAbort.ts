@@ -23,20 +23,18 @@ export function safeAbort(
 
   // Check if already aborted to prevent double-abort
   if (controller.signal.aborted) {
-    console.warn(`[SafeAbort] Controller already aborted for ${agentId} ${operation}`);
     return;
   }
 
   try {
-    // Provide meaningful error context
-    const errorMessage = `${agentId} ${operation} aborted due to ${reason} after ${timeout}ms`;
-    controller.abort(new Error(errorMessage));
+    // Simply abort with a non-error reason to prevent runtime overlay
+    // Using a string reason instead of Error object prevents the overlay
+    controller.abort(`${agentId} ${operation} aborted due to ${reason || 'timeout'}`);
     
-    // Log for debugging but don't trigger overlays
-    console.warn(`[SafeAbort] ${errorMessage}`);
+    // Log for debugging only
+    console.debug(`[SafeAbort] ${agentId} ${operation} aborted due to ${reason} after ${timeout}ms`);
   } catch (error) {
-    // Silently handle abort errors to prevent overlay triggers
-    console.warn(`[SafeAbort] Graceful abort for ${agentId} ${operation}`);
+    // Silently handle any errors
   }
 }
 

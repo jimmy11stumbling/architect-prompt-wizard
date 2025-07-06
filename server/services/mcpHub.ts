@@ -234,11 +234,11 @@ export class MCPHub {
     
     // Try partial matching for known platforms
     const platformMappings: { [key: string]: string } = {
-      'windsurf': 'Windsurf',
+      'windsurf': 'Windsurf (Codeium)',
       'cursor': 'Cursor', 
-      'bolt': 'Bolt',
+      'bolt': 'Bolt (StackBlitz)',
       'replit': 'Replit',
-      'lovable': 'Lovable'
+      'lovable': 'Lovable 2.0'
     };
     
     const targetName = platformMappings[normalizedName];
