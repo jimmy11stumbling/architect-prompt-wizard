@@ -249,11 +249,13 @@ export class RAGService {
       // Add timeout protection
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        try {
-          controller.abort();
-        } catch (error) {
-          // Silently handle abort errors
-          console.warn('Search timeout - request aborted gracefully');
+        if (!controller.signal.aborted) {
+          try {
+            controller.abort();
+          } catch (error) {
+            // Silently handle abort errors
+            console.warn('Search timeout - request aborted gracefully');
+          }
         }
       }, 10000); // 10 second timeout
 

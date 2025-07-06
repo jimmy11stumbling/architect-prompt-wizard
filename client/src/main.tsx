@@ -16,6 +16,8 @@ window.addEventListener('unhandledrejection', (event) => {
       event.reason?.message?.includes('unknown runtime error') ||
       event.reason?.message?.includes('Platform not found') ||
       event.reason?.message?.includes('Bad Gateway') ||
+      event.reason?.message?.includes('signal is aborted') ||
+      event.reason?.message?.includes('aborted without reason') ||
       event.reason?.name === 'AbortError' ||
       event.reason instanceof DOMException ||
       event.reason instanceof TypeError) {
@@ -36,6 +38,8 @@ window.addEventListener('error', (event) => {
       event.error?.message?.includes('unknown runtime error') ||
       event.error?.message?.includes('Platform not found') ||
       event.error?.message?.includes('Bad Gateway') ||
+      event.error?.message?.includes('signal is aborted') ||
+      event.error?.message?.includes('aborted without reason') ||
       event.error?.name === 'AbortError' ||
       event.error instanceof TypeError ||
       event.error instanceof DOMException) {
@@ -43,5 +47,17 @@ window.addEventListener('error', (event) => {
     event.preventDefault();
   }
 });
+
+// Suppress runtime error plugin overlays
+const originalError = window.onerror;
+window.onerror = (message, source, lineno, colno, error) => {
+  const msg = message?.toString() || '';
+  if (msg.includes('signal is aborted') || 
+      msg.includes('aborted without reason') ||
+      msg.includes('plugin:runtime-error-plugin')) {
+    return true; // Prevent error from propagating
+  }
+  return originalError ? originalError(message, source, lineno, colno, error) : false;
+};
 
 createRoot(document.getElementById("root")!).render(<App />);
