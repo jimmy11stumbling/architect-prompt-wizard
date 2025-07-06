@@ -219,17 +219,50 @@ export class MCPHub {
     const data = await this.getAllPlatformData();
     const normalizedName = platformName.toLowerCase();
     
-    // Try direct mapping first
-    const mappedName = data.platformMappings[normalizedName];
-    if (mappedName) {
-      return data.platforms.find(p => p.platform.name === mappedName) || null;
+    console.log(`[MCP Hub] Looking for platform: "${normalizedName}"`);
+    console.log(`[MCP Hub] Available platforms:`, data.platforms.map(p => p.platform.name));
+    
+    // Try direct name match first
+    let platform = data.platforms.find(p => 
+      p.platform.name.toLowerCase() === normalizedName
+    );
+    
+    if (platform) {
+      console.log(`[MCP Hub] Found exact match: ${platform.platform.name}`);
+      return platform;
     }
     
-    // Try partial matching
-    return data.platforms.find(p => 
+    // Try partial matching for known platforms
+    const platformMappings: { [key: string]: string } = {
+      'windsurf': 'Windsurf',
+      'cursor': 'Cursor', 
+      'bolt': 'Bolt',
+      'replit': 'Replit',
+      'lovable': 'Lovable'
+    };
+    
+    const targetName = platformMappings[normalizedName];
+    if (targetName) {
+      platform = data.platforms.find(p => p.platform.name === targetName);
+      if (platform) {
+        console.log(`[MCP Hub] Found mapped platform: ${platform.platform.name}`);
+        return platform;
+      }
+    }
+    
+    // Try partial matching as fallback
+    platform = data.platforms.find(p => 
       p.platform.name.toLowerCase().includes(normalizedName) ||
       normalizedName.includes(p.platform.name.toLowerCase().split(' ')[0])
-    ) || null;
+    );
+    
+    if (platform) {
+      console.log(`[MCP Hub] Found partial match: ${platform.platform.name}`);
+    } else {
+      console.warn(`[MCP Hub] No platform found for: ${normalizedName}`);
+    }
+    
+    return platform || null;
   }
 
   async getTechnologyData(): Promise<MCPTechnologyData> {

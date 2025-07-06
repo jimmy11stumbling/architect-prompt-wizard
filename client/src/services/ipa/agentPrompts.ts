@@ -15,11 +15,16 @@ async function getDocumentation(): Promise<any> {
   }
   
   try {
-    // First try to get from MCP hub with comprehensive context
+    // First try to get from MCP hub with comprehensive context and platform filtering
     const mcpResponse = await fetch('/api/mcp-hub/comprehensive-context', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ includeTechnology: true, includeAllPlatforms: true })
+      body: JSON.stringify({ 
+        targetPlatform: spec?.targetPlatform,
+        platformFilter: spec?.targetPlatform,
+        includeTechnology: true, 
+        includeAllPlatforms: false // Only get specific platform data
+      })
     });
     
     if (mcpResponse.ok) {
@@ -29,8 +34,8 @@ async function getDocumentation(): Promise<any> {
       return documentationCache;
     }
     
-    // Fallback to legacy documentation endpoint
-    const response = await fetch('/api/agent-documentation');
+    // Fallback to legacy documentation endpoint with platform filter
+    const response = await fetch(`/api/agent-documentation?platform=${encodeURIComponent(spec?.targetPlatform || 'cursor')}`);
     if (!response.ok) {
       throw new Error(`Documentation fetch failed: ${response.status}`);
     }
@@ -50,13 +55,14 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
     const validPlatform = platform && platform !== 'undefined' ? platform.toLowerCase() : 'cursor';
     const validQuery = query && query !== 'undefined' ? query : `${validPlatform} platform features`;
     
-    console.log(`[Vector Search] Query: "${validQuery}", Platform: "${validPlatform}"`);
+    console.log(`[Vector Search] Query: "${validPlatform}", Platform: "${validPlatform}"`);
     
+    // Use platform name as primary search query for better filtering
     const response = await fetch('/api/rag/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: validQuery,
+        query: validPlatform, // Use platform name as primary search term
         filters: {
           platform: validPlatform,
           category: 'platform-specification'
@@ -77,10 +83,25 @@ async function getVectorSearchContext(query: string, platform: string): Promise<
         ).join('\n');
       }
     }
+    
+    // Fallback if no results or API issue
+    return getPlatformFallbackContext(validPlatform);
   } catch (error) {
-    console.error('Vector search failed:', error);
+    console.error('Vector search failed, using platform fallback:', error);
+    return getPlatformFallbackContext(validPlatform);
   }
-  return "";
+}
+
+function getPlatformFallbackContext(platform: string): string {
+  const platformContexts: Record<string, string> = {
+    'cursor': `[CURSOR PLATFORM CONTEXT]\nCursor AI-first code editor: VS Code fork with deep AI integration, intelligent code completion, chat interface, codebase-wide AI assistance, and seamless GitHub Copilot integration. Features include advanced AI-powered code suggestions, natural language to code conversion, and comprehensive development tools.`,
+    'bolt': `[BOLT PLATFORM CONTEXT]\nBolt.new AI web development: WebContainer technology, instant full-stack app creation, browser-based development environment, and real-time collaboration features. Supports React, Vue, Angular, and modern web frameworks with instant deployment.`,
+    'replit': `[REPLIT PLATFORM CONTEXT]\nReplit cloud IDE: Collaborative coding environment, AI agent integration, instant deployment, multiplayer coding, and comprehensive language support. Features include real-time collaboration, integrated AI assistance, and seamless project sharing.`,
+    'windsurf': `[WINDSURF PLATFORM CONTEXT]\nWindsurf agentic IDE: Advanced AI capabilities, MCP protocol native support, agent workflows, database tools, and AI coordination features. Designed for agent-driven development with sophisticated AI integration. Features include AI-assisted database migrations, ORM support for Prisma and TypeORM, comprehensive MCP server integration, and real-time AI collaboration capabilities.`,
+    'lovable': `[LOVABLE PLATFORM CONTEXT]\nLovable no-code platform: Natural language app building, AI-powered development, visual interface creation, and rapid prototyping capabilities. Enables users to build applications through conversational AI.`
+  };
+  
+  return platformContexts[platform.toLowerCase()] || `[${platform.toUpperCase()} PLATFORM CONTEXT]\n${platform} platform: AI-powered development environment with modern tooling and collaboration features.`;
 }
 
 function buildPlatformContext(spec: ProjectSpec, documentation: any): string {

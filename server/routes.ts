@@ -357,7 +357,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MCP Hub routes - comprehensive platform data management
   app.get("/api/agent-documentation", async (req, res) => {
     try {
-      const comprehensiveData = await mcpHub.getComprehensiveContext();
+      const { platform } = req.query;
+      const comprehensiveData = await mcpHub.getComprehensiveContext(platform as string);
       
       // Convert to the format expected by existing agents
       const documentation = {
@@ -376,6 +377,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching agent documentation:", error);
       res.status(500).json({ error: "Failed to fetch documentation" });
+    }
+  });
+
+  // Platform-specific MCP comprehensive context endpoint
+  app.post("/api/mcp-hub/comprehensive-context", async (req, res) => {
+    try {
+      const { query, targetPlatform, platformFilter, includeTechnologies, includeFeatures, includeIntegrations, includePricing, includeKnowledgeBase } = req.body;
+      
+      // Use platformFilter if provided, otherwise use targetPlatform
+      const effectivePlatform = platformFilter || targetPlatform;
+      console.log(`[MCP Hub] Comprehensive context for platform: ${effectivePlatform}`);
+      
+      const context = await mcpHub.getComprehensiveContext(effectivePlatform);
+      
+      // If a specific platform is requested, only return that platform's data
+      if (effectivePlatform && context.platform) {
+        res.json({ 
+          success: true, 
+          data: {
+            platform: context.platform,
+            technologies: context.technologies,
+            // Filter platforms to only include the requested one
+            allPlatforms: [context.platform]
+          }
+        });
+      } else {
+        res.json({ success: true, data: context });
+      }
+    } catch (error) {
+      console.error('MCP Hub comprehensive context failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 
