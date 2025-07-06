@@ -20,10 +20,62 @@ import attachedAssetsRouter from "./routes/attachedAssets";
 import mcpHubRouter from "./routes/mcpHub";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes (no auth middleware)
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password required" });
+      }
+      
+      // For development, accept any login
+      const user = { id: 1, username, email: `${username}@example.com` };
+      res.json({ user, token: "development-token" });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password, email } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: "Username and password required" });
+      }
+      
+      // For development, accept any registration
+      const user = { id: 1, username, email: email || `${username}@example.com` };
+      res.json({ user, token: "development-token" });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    try {
+      // For development, return a default user if no auth required
+      res.json({ user: null });
+    } catch (error) {
+      console.error("Auth check error:", error);
+      res.status(500).json({ error: "Auth check failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
   // Add new API routes with authentication
-  app.use('/api/prompts', authMiddleware, promptsRouter);
+  app.use('/api/prompts', optionalAuthMiddleware, promptsRouter);
   app.use('/api/attached-assets', attachedAssetsRouter);
-  app.use('/api/workflows', authMiddleware, workflowsRouter);
+  app.use('/api/workflows', optionalAuthMiddleware, workflowsRouter);
   app.use('/api/mcp-hub', mcpHubRouter);
 
   // Platform management routes

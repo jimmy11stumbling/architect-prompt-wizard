@@ -239,7 +239,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
               const enhancementStatus = getAgentEnhancementStatus(agent.name);
               
               return (
-                <React.Fragment key={key}>
+                <div key={key} className="mb-4">
                   <motion.div
                     className={`relative flex flex-col p-3 rounded-md border ${
                       agent.status === "processing"
@@ -321,7 +321,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                       </div>
                     </div>
                   )}
-                </React.Fragment>
+                </div>
               );
             })}
           </div>

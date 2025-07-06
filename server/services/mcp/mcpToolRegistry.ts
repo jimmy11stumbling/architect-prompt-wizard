@@ -47,8 +47,11 @@ export class MCPToolRegistry {
       },
       handler: async (args) => {
         try {
-          // Handle default path or validate provided path
-          const targetPath = args.path || './';
+          // Clean up path parameter - handle placeholder text
+          let targetPath = args.path || './';
+          if (targetPath === "Directory path to list" || targetPath === '"Directory path to list"') {
+            targetPath = './';
+          }
           
           // Resolve relative paths safely
           const resolvedPath = path.resolve(targetPath);
@@ -96,7 +99,15 @@ export class MCPToolRegistry {
             throw new Error('Access denied: Path is outside project directory');
           }
           
-          const encoding = (args.encoding && args.encoding !== "File encoding (default: utf8)") ? args.encoding : 'utf8';
+          // Clean up encoding parameter - handle placeholder text
+          let encoding = 'utf8';
+          if (args.encoding && 
+              args.encoding !== "File encoding (default: utf8)" && 
+              args.encoding !== "encoding" &&
+              typeof args.encoding === 'string' &&
+              args.encoding.trim() !== '') {
+            encoding = args.encoding;
+          }
           const content = await fs.readFile(resolvedPath, encoding);
           return { 
             content, 
@@ -137,7 +148,17 @@ export class MCPToolRegistry {
           const dir = path.dirname(resolvedPath);
           await fs.mkdir(dir, { recursive: true });
           
-          await fs.writeFile(resolvedPath, args.content, args.encoding || 'utf8');
+          // Clean up encoding parameter - handle placeholder text
+          let encoding = 'utf8';
+          if (args.encoding && 
+              args.encoding !== "File encoding (default: utf8)" && 
+              args.encoding !== "encoding" &&
+              typeof args.encoding === 'string' &&
+              args.encoding.trim() !== '') {
+            encoding = args.encoding;
+          }
+          
+          await fs.writeFile(resolvedPath, args.content, encoding);
           return { 
             success: true, 
             path: resolvedPath,
@@ -189,12 +210,18 @@ export class MCPToolRegistry {
       },
       handler: async (args) => {
         try {
+          // Clean up query parameter - handle placeholder text
+          const query = args.query && args.query !== "SQL query (SELECT only)" ? args.query.trim() : null;
+          if (!query) {
+            throw new Error('Query parameter is required');
+          }
+          
           // Only allow SELECT queries for safety
-          if (!args.query.trim().toUpperCase().startsWith('SELECT')) {
+          if (!query.toUpperCase().startsWith('SELECT')) {
             throw new Error("Only SELECT queries are allowed");
           }
           
-          const result = await db.execute(sql.raw(args.query));
+          const result = await db.execute(sql.raw(query));
           return {
             rows: result.rows,
             rowCount: result.rows.length
@@ -243,14 +270,20 @@ export class MCPToolRegistry {
         required: ["command"]
       },
       handler: async (args) => {
+        // Clean up command parameter - handle placeholder text
+        const command = args.command && args.command !== "Command to run" ? args.command : null;
+        if (!command) {
+          throw new Error('Command parameter is required');
+        }
+        
         // Whitelist of safe commands
         const safeCommands = ['ls', 'pwd', 'echo', 'date', 'whoami'];
-        if (!safeCommands.includes(args.command)) {
-          throw new Error(`Command '${args.command}' is not allowed`);
+        if (!safeCommands.includes(command)) {
+          throw new Error(`Command '${command}' is not allowed`);
         }
         
         try {
-          const fullCommand = args.args ? `${args.command} ${args.args.join(' ')}` : args.command;
+          const fullCommand = args.args ? `${command} ${args.args.join(' ')}` : command;
           const { stdout, stderr } = await execAsync(fullCommand);
           return { stdout, stderr, command: fullCommand };
         } catch (error) {
@@ -276,7 +309,17 @@ export class MCPToolRegistry {
         required: ["content", "operation"]
       },
       handler: async (args) => {
-        switch (args.operation) {
+        // Clean up operation parameter - handle placeholder text
+        const operation = args.operation && args.operation !== "Operation to perform (summarize, extract_keywords, sentiment)" ? args.operation : null;
+        if (!operation) {
+          throw new Error('Operation parameter is required');
+        }
+        
+        if (!['summarize', 'extract_keywords', 'sentiment'].includes(operation)) {
+          throw new Error(`Unknown operation: "${operation}"`);
+        }
+        
+        switch (operation) {
           case "summarize":
             // Simple summarization (first 100 words)
             const words = args.content.split(/\s+/);
