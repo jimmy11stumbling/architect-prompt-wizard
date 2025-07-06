@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router, Route, Switch } from "wouter";
+import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import NavigationSidebar from "@/components/navigation/NavigationSidebar";
 import ErrorBoundary from "@/components/ui/error-boundary";
@@ -26,10 +27,24 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// URL cleanup component to handle encoded characters
+const URLCleaner = () => {
+  useEffect(() => {
+    const currentPath = window.location.pathname;
+    // Check for URL-encoded characters like %22 (double quote)
+    if (currentPath.includes('%22') || currentPath.includes('%27') || currentPath.includes('"') || currentPath.includes("'")) {
+      // Clean the URL and redirect to root
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
+  return null;
+};
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <URLCleaner />
         <Router>
           <SidebarProvider>
             <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
