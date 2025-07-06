@@ -246,11 +246,8 @@ export class RAGService {
         data: { query, options }
       });
 
-      // Add timeout protection
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-      const response = await fetch('/api/rag/search', {
+      // Use timeout with Promise.race to avoid AbortController issues
+      const fetchPromise = fetch('/api/rag/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -263,11 +260,14 @@ export class RAGService {
             includeMetadata: true,
             minSimilarity: 0.1
           }
-        }),
-        signal: controller.signal
+        })
       });
 
-      clearTimeout(timeoutId);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Search timeout after 15 seconds")), 15000);
+      });
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (!response.ok) {
         throw new Error(`Search failed: ${response.statusText}`);
@@ -289,9 +289,8 @@ export class RAGService {
       return searchResponse;
 
     } catch (error) {
-      // Check if this is a timeout error
-      const isTimeout = error instanceof DOMException && error.name === 'AbortError';
-      const errorMessage = isTimeout ? "Search timeout after 15 seconds" : (error instanceof Error ? error.message : "Unknown error");
+      // Outer catch for any other errors
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       
       console.warn("Vector search failed, using platform fallback:", errorMessage);
       
