@@ -7,6 +7,7 @@ import { Router, Route, Switch } from "wouter";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import NavigationSidebar from "@/components/navigation/NavigationSidebar";
 import ErrorBoundary from "@/components/ui/error-boundary";
+import { initializeDefaultUser } from "@/utils/auth";
 
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -23,6 +24,9 @@ import AnalyticsDashboardPage from "./pages/AnalyticsDashboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+// Initialize default user session
+initializeDefaultUser();
 
 const App = () => (
   <ErrorBoundary>
