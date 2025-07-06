@@ -352,8 +352,13 @@ export class HybridSearchEngine {
       }
     }
 
-    // Convert to SearchResult objects and apply filters
-    const searchResults: SearchResult[] = [];
+    // Group results by document and select best chunk per document
+    const documentResults = new Map<string, {
+      bestChunk: DocumentChunk;
+      bestDocument: ProcessedDocument;
+      bestScore: number;
+      bestScores: any;
+    }>();
     
     for (const [chunkId, scores] of combinedScores.entries()) {
       const chunk = this.chunkIndex.get(chunkId);
@@ -368,20 +373,35 @@ export class HybridSearchEngine {
 
       const finalScore = (scores.semanticScore * weights.semantic) + (scores.keywordScore * weights.keyword);
       
+      // Check if this is the best chunk for this document
+      const existing = documentResults.get(document.id);
+      if (!existing || finalScore > existing.bestScore) {
+        documentResults.set(document.id, {
+          bestChunk: chunk,
+          bestDocument: document,
+          bestScore: finalScore,
+          bestScores: scores
+        });
+      }
+    }
+
+    // Convert to SearchResult objects
+    const searchResults: SearchResult[] = [];
+    for (const result of documentResults.values()) {
       searchResults.push({
-        document,
-        chunk,
-        score: finalScore,
+        document: result.bestDocument,
+        chunk: result.bestChunk,
+        score: result.bestScore,
         breakdown: {
-          semanticScore: scores.semanticScore,
-          keywordScore: scores.keywordScore,
-          finalScore,
-          matchType: scores.matchType,
-          matchedTerms: scores.matchedTerms
+          semanticScore: result.bestScores.semanticScore,
+          keywordScore: result.bestScores.keywordScore,
+          finalScore: result.bestScore,
+          matchType: result.bestScores.matchType,
+          matchedTerms: result.bestScores.matchedTerms
         },
         metadata: {
-          ...chunk.metadata,
-          documentMetadata: document.metadata
+          ...result.bestChunk.metadata,
+          documentMetadata: result.bestDocument.metadata
         }
       });
     }

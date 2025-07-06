@@ -165,6 +165,13 @@ Advanced workflow orchestration system:
 
 ## Recent Changes
 
+### **FIXED HYBRID SEARCH DEDUPLICATION: Diverse Document Results (July 6, 2025)**
+- **✅ Fixed Document-Level Deduplication**: Hybrid search now returns unique documents instead of multiple chunks from same document
+- **✅ Best Chunk Selection**: Algorithm now selects the highest-scoring chunk from each document for optimal relevance
+- **✅ Diverse Search Results**: RAG 2.0 interface now shows 16 different documents instead of repeated content from same sources
+- **✅ Improved Result Quality**: Document grouping ensures maximum coverage across different sources and platforms
+- **✅ Enhanced User Experience**: Search results now provide better variety and comprehensive coverage of available knowledge
+
 ### **ENHANCED DEEPSEEK REASONER: Full Document Access Integration Complete (July 6, 2025)**
 - **✅ Comprehensive RAG Integration**: DeepSeek reasoner now has complete access to all 6,800+ indexed documents through enhanced RAG 2.0 system
 - **✅ Multi-Strategy Search Implementation**: Added 3-strategy search approach (semantic, keyword-focused, and broad contextual) for maximum document coverage
