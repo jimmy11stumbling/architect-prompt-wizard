@@ -5,6 +5,7 @@ import { ipaService } from "@/services/ipaService";
 import { useToast } from "@/hooks/use-toast";
 import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
 import { GenerationOrchestrator } from "@/services/ipa/generationOrchestrator";
+import { PromptAutoSaveService } from "@/services/promptAutoSave";
 
 export const useProjectGeneration = () => {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus | null>(null);
@@ -132,6 +133,15 @@ export const useProjectGeneration = () => {
               resultLength: status.result?.length || 0
             }
           });
+          
+          // Auto-save the generated prompt
+          if (status.result && status.spec && PromptAutoSaveService.isAutoSaveEnabled()) {
+            await PromptAutoSaveService.autoSaveGeneratedPrompt(
+              status.result,
+              status.spec,
+              taskId
+            );
+          }
           
           toast({
             title: "Generation Complete",
@@ -289,7 +299,7 @@ export const useProjectGeneration = () => {
             data: { agent: agentName, responseLength: response.length }
           });
         },
-        (finalStatus: GenerationStatus) => {
+        async (finalStatus: GenerationStatus) => {
           // All agents completed
           setGenerationStatus(finalStatus);
           setIsGenerating(false);
@@ -304,6 +314,15 @@ export const useProjectGeneration = () => {
               finalResult: !!finalStatus.result
             }
           });
+
+          // Auto-save the generated prompt from streaming
+          if (finalStatus.result && finalStatus.spec && PromptAutoSaveService.isAutoSaveEnabled()) {
+            await PromptAutoSaveService.autoSaveGeneratedPrompt(
+              finalStatus.result,
+              finalStatus.spec,
+              finalStatus.taskId
+            );
+          }
 
           toast({
             title: "Streaming Generation Complete",

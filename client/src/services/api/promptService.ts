@@ -44,7 +44,9 @@ class PromptService {
   }
 
   async getFeaturedPrompts(): Promise<SavedPrompt[]> {
-    const response = await fetch('/api/prompts/featured');
+    const response = await fetch('/api/prompts/featured', {
+      headers: this.getHeaders(),
+    });
     
     if (!response.ok) {
       throw new Error('Failed to fetch featured prompts');
