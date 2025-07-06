@@ -249,8 +249,8 @@ export class RAGService {
       // Add timeout protection
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        controller.abort(new Error("Search timeout after 5 seconds"));
-      }, 5000); // 5 second timeout
+        controller.abort(new Error("Search timeout after 10 seconds"));
+      }, 10000); // 10 second timeout
 
       try {
         const response = await fetch('/api/rag/search', {

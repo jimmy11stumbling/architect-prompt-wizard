@@ -1,4 +1,3 @@
-
 import { ServerManager } from "./core/serverManager";
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
@@ -41,7 +40,7 @@ export class MCPService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     try {
       this.serverManager.initialize();
       this.initialized = true;
@@ -122,6 +121,39 @@ export class MCPService {
 
   async healthCheck(): Promise<{ healthy: boolean; serverCount: number; onlineServers: number; totalTools: number }> {
     return this.serverManager.healthCheck();
+  }
+
+  // The below function is from a different file and it handles MCP requests with better error handling and timeouts.
+  async callTool2(name: string, arguments_: any): Promise<any> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+      const response = await fetch('/api/mcp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          method: 'tools/call',
+          params: { name, arguments: arguments_ }
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`MCP request failed: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('MCP request timeout for tools/call:', name);
+        return { error: 'Request timeout' };
+      }
+      console.error('MCP request error for tools/call:', error);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 }
 
