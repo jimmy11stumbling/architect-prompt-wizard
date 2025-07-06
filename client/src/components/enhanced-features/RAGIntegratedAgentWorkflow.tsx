@@ -58,20 +58,48 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
     
     setIsEnhancingAgents(true);
     try {
-      // Generate comprehensive search queries for each agent
+      // Cache for shared context (fetched once for all agents)
+      let platformCache: any = null;
+      let bestPracticesCache: any = null;
+      
+      console.log("🔄 [rag-optimization] Fetching shared context once for all agents...");
+      
+      // Get platform-specific context once (shared by all agents)
+      try {
+        platformCache = await ragService.searchRAG2(`${projectSpec.targetPlatform} specific features capabilities`, {
+          limit: 5,
+          semanticWeight: 0.8,
+          categories: ['platform']
+        });
+        
+        // Get best practices once (shared by all agents)
+        bestPracticesCache = await ragService.searchRAG2(`architecture patterns best practices ${projectSpec.targetPlatform}`, {
+          limit: 5,
+          semanticWeight: 0.7,
+          keywordWeight: 0.3,
+          enableReranking: true,
+          categories: ['all']
+        });
+        
+        console.log(`✅ [rag-optimization] Cached shared context: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices`);
+      } catch (error) {
+        console.error("Failed to fetch shared context:", error);
+      }
+
+      // Generate unique search queries for each agent (only agent-specific searches)
       const agentQueries = {
-        'reasoning-assistant': `${projectSpec.projectDescription} architecture patterns best practices`,
-        'context-analyzer': `${projectSpec.targetPlatform} platform features limitations requirements`,
-        'technology-specialist': `${projectSpec.frontendTechStack?.join(' ')} ${projectSpec.backendTechStack?.join(' ')} implementation`,
-        'architecture-designer': `system architecture design patterns microservices ${projectSpec.targetPlatform}`,
+        'reasoning-assistant': `${projectSpec.projectDescription} technical analysis requirements`,
+        'context-analyzer': `${projectSpec.targetPlatform} context integration workflow`,
+        'technology-specialist': `${projectSpec.frontendTechStack?.join(' ')} ${projectSpec.backendTechStack?.join(' ')} technical implementation`,
+        'architecture-designer': `system architecture design patterns microservices database`,
         'feature-planner': `feature planning roadmap ${projectSpec.additionalFeatures} user stories`,
-        'integration-specialist': `API integration ${projectSpec.ragVectorDb} ${projectSpec.mcpType} protocols`,
-        'security-advisor': `${projectSpec.authenticationMethod} security best practices vulnerabilities`,
-        'performance-optimizer': `performance optimization caching database scaling ${projectSpec.targetPlatform}`,
-        'testing-strategist': `testing strategy unit tests integration tests ${projectSpec.frontendTechStack?.join(' ')}`,
-        'deployment-specialist': `${projectSpec.deploymentPreference} deployment CI/CD automation`,
-        'documentation-expert': `documentation standards API docs ${projectSpec.targetPlatform} guides`,
-        'final-synthesizer': `project synthesis integration deployment ready ${projectSpec.targetPlatform}`
+        'integration-specialist': `API integration ${projectSpec.ragVectorDb} ${projectSpec.mcpType} protocols connectivity`,
+        'security-advisor': `${projectSpec.authenticationMethod} security vulnerabilities protection`,
+        'performance-optimizer': `performance optimization caching database scaling infrastructure`,
+        'testing-strategist': `testing strategy unit tests integration quality assurance`,
+        'deployment-specialist': `${projectSpec.deploymentPreference} deployment CI/CD automation DevOps`,
+        'documentation-expert': `documentation standards API documentation technical writing`,
+        'final-synthesizer': `project synthesis integration deployment architecture summary`
       };
 
       // Enhance each agent with relevant RAG context
@@ -81,6 +109,8 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
         if (agentQueries[agent.name as keyof typeof agentQueries]) {
           try {
             const searchQuery = agentQueries[agent.name as keyof typeof agentQueries];
+            
+            // Only make agent-specific search (platform context is cached)
             const searchResults = await ragService.searchRAG2(searchQuery, {
               limit: 5,
               semanticWeight: 0.7,
@@ -89,16 +119,9 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
               categories: ['all']
             });
 
-            // Get platform-specific context
-            const platformResults = await ragService.searchRAG2(`${projectSpec.targetPlatform} specific features capabilities`, {
-              limit: 3,
-              semanticWeight: 0.8,
-              categories: ['platform']
-            });
-
             newContexts[agent.name] = {
               relevantDocuments: searchResults.results || [],
-              platformContext: platformResults.results || [],
+              platformContext: platformCache?.results || [],
               technicalContext: {
                 frontend: projectSpec.frontendTechStack,
                 backend: projectSpec.backendTechStack,
@@ -106,9 +129,15 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                 mcp: projectSpec.mcpType,
                 auth: projectSpec.authenticationMethod
               },
-              bestPractices: searchResults.results?.filter(r => r.content.includes('best practice')) || [],
+              bestPractices: bestPracticesCache?.results || [],
               searchStats: searchResults.searchStats
             };
+
+            console.log(`🔄 [rag-integration] Agent ${agent.name} enhanced with RAG database context`, {
+              documents: searchResults.results?.length || 0,
+              bestPractices: bestPracticesCache?.results?.length || 0,
+              platformContext: platformCache?.results?.length || 0
+            });
 
             // Notify parent component of agent enhancement
             if (onAgentUpdate) {
@@ -123,8 +152,8 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
       setRagContexts(newContexts);
       
       toast({
-        title: "Agents Enhanced",
-        description: `All ${agents.length} agents now have access to comprehensive RAG database context`
+        title: "Agents Enhanced (Optimized)",
+        description: `All ${agents.length} agents now have access to comprehensive RAG database context with efficient caching`
       });
     } catch (error) {
       console.error('Failed to enhance agents with RAG:', error);
