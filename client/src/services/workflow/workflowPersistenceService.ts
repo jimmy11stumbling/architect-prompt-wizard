@@ -1,5 +1,4 @@
-
-import { supabase } from "@/integrations/supabase/client";
+import { workflowService, WorkflowDefinition as APIWorkflow, WorkflowExecution as APIExecution } from "@/services/api/workflowService";
 import { WorkflowDefinition, WorkflowExecution } from "@/types/workflow-types";
 
 export interface WorkflowRecord {
@@ -24,6 +23,33 @@ export interface WorkflowExecutionRecord {
   user_id: string;
 }
 
+// Convert between API format and legacy format
+function convertWorkflowFromAPI(apiWorkflow: APIWorkflow): WorkflowRecord {
+  return {
+    id: apiWorkflow.id!.toString(),
+    name: apiWorkflow.name,
+    definition: apiWorkflow.definition as WorkflowDefinition,
+    user_id: apiWorkflow.userId!.toString(),
+    created_at: apiWorkflow.createdAt!,
+    updated_at: apiWorkflow.updatedAt!,
+    is_active: true,
+  };
+}
+
+function convertExecutionFromAPI(apiExecution: APIExecution): WorkflowExecutionRecord {
+  return {
+    id: apiExecution.id.toString(),
+    workflow_id: apiExecution.workflowId.toString(),
+    status: apiExecution.status,
+    input_data: apiExecution.inputData,
+    output_data: apiExecution.outputData,
+    error_message: apiExecution.errorMessage,
+    started_at: apiExecution.startedAt,
+    completed_at: apiExecution.completedAt,
+    user_id: apiExecution.userId.toString(),
+  };
+}
+
 export class WorkflowPersistenceService {
   private static instance: WorkflowPersistenceService;
 
@@ -35,94 +61,63 @@ export class WorkflowPersistenceService {
   }
 
   async saveWorkflow(definition: WorkflowDefinition): Promise<WorkflowRecord> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) {
       throw new Error('User must be authenticated to save workflows');
     }
 
-    const { data, error } = await supabase
-      .from('workflow_definitions')
-      .insert({
-        name: definition.name,
-        definition: definition as any, // Cast to Json type
-        user_id: user.data.user.id,
-        is_active: true
-      })
-      .select()
-      .single();
+    const savedWorkflow = await workflowService.saveWorkflow({
+      name: definition.name,
+      definition: definition as any,
+      isTemplate: false
+    });
 
-    if (error) throw error;
-    
-    // Cast the returned data to our expected type
-    return {
-      ...data,
-      definition: data.definition as unknown as WorkflowDefinition
-    } as WorkflowRecord;
+    return convertWorkflowFromAPI(savedWorkflow);
   }
 
   async getWorkflows(): Promise<WorkflowRecord[]> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) return [];
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) return [];
 
-    const { data, error } = await supabase
-      .from('workflow_definitions')
-      .select('*')
-      .eq('user_id', user.data.user.id)
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false });
-
-    if (error) throw error;
-    
-    // Cast the returned data to our expected type
-    return (data || []).map(item => ({
-      ...item,
-      definition: item.definition as unknown as WorkflowDefinition
-    })) as WorkflowRecord[];
+    const workflows = await workflowService.getAllWorkflows();
+    return workflows.map(convertWorkflowFromAPI);
   }
 
   async saveExecution(execution: WorkflowExecution): Promise<WorkflowExecutionRecord> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.id) {
       throw new Error('User must be authenticated to save executions');
     }
 
-    const { data, error } = await supabase
-      .from('workflow_executions')
-      .insert({
-        workflow_id: execution.workflowId,
-        status: execution.status,
-        input_data: execution.variables,
-        output_data: execution.result,
-        error_message: execution.error,
-        started_at: new Date(execution.startedAt).toISOString(),
-        completed_at: execution.completedAt ? new Date(execution.completedAt).toISOString() : null,
-        user_id: user.data.user.id
-      })
-      .select()
-      .single();
+    const savedExecution = await workflowService.executeWorkflow(
+      parseInt(execution.workflowId),
+      execution.variables
+    );
 
-    if (error) throw error;
-    return data as WorkflowExecutionRecord;
+    return convertExecutionFromAPI(savedExecution);
   }
 
-  async getExecutions(workflowId?: string): Promise<WorkflowExecutionRecord[]> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) return [];
+  async getExecutions(workflowId: string): Promise<WorkflowExecutionRecord[]> {
+    const executions = await workflowService.getWorkflowExecutions(parseInt(workflowId));
+    return executions.map(convertExecutionFromAPI);
+  }
 
-    let query = supabase
-      .from('workflow_executions')
-      .select('*')
-      .eq('user_id', user.data.user.id);
-
-    if (workflowId) {
-      query = query.eq('workflow_id', workflowId);
+  async updateExecution(executionId: string, updates: Partial<WorkflowExecution>): Promise<WorkflowExecutionRecord> {
+    // For now, we'll just fetch the execution as the API doesn't support updates yet
+    const executions = await workflowService.getWorkflowExecutions(parseInt(updates.workflowId || '1'));
+    const execution = executions.find(e => e.id.toString() === executionId);
+    
+    if (!execution) {
+      throw new Error('Execution not found');
     }
 
-    const { data, error } = await query.order('started_at', { ascending: false });
+    return convertExecutionFromAPI(execution);
+  }
 
-    if (error) throw error;
-    return (data || []) as WorkflowExecutionRecord[];
+  async deleteWorkflow(workflowId: string): Promise<void> {
+    await workflowService.deleteWorkflow(parseInt(workflowId));
   }
 }
 
+// Export singleton instance for backward compatibility
 export const workflowPersistenceService = WorkflowPersistenceService.getInstance();

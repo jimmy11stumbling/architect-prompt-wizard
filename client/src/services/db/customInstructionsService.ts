@@ -1,167 +1,110 @@
-
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
-
-type CustomInstructionRow = Database['public']['Tables']['custom_instructions']['Row'];
-type CustomInstructionInsert = Database['public']['Tables']['custom_instructions']['Insert'];
-type CustomInstructionUpdate = Database['public']['Tables']['custom_instructions']['Update'];
-
+// Migrated to use localStorage for now, can be enhanced with API later
 export interface CustomInstruction {
-  id?: string;
+  id: string;
   name: string;
-  instructionText: string;
+  instruction_text: string;
   description?: string;
-  category?: string;
-  isGlobal?: boolean;
-  isActive?: boolean;
-  priority?: number;
-  appliesTo?: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  category: string;
+  is_global: boolean;
+  is_active: boolean;
+  priority: number;
+  applies_to: string[];
+  created_at: string;
+  updated_at: string;
+  user_id: string;
 }
 
 class CustomInstructionsService {
-  private convertFromDb(row: CustomInstructionRow): CustomInstruction {
-    return {
-      id: row.id,
-      name: row.name,
-      instructionText: row.instruction_text,
-      description: row.description || undefined,
-      category: row.category || 'general',
-      isGlobal: row.is_global || false,
-      isActive: row.is_active || true,
-      priority: row.priority || 0,
-      appliesTo: row.applies_to || [],
-      createdAt: row.created_at || undefined,
-      updatedAt: row.updated_at || undefined
-    };
+  private getStorageKey(): string {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return `custom_instructions_${user.id || 'anonymous'}`;
   }
 
-  private convertToDb(instruction: Partial<CustomInstruction>): Partial<CustomInstructionInsert> {
-    return {
-      name: instruction.name,
-      instruction_text: instruction.instructionText,
-      description: instruction.description,
-      category: instruction.category,
-      is_global: instruction.isGlobal,
-      is_active: instruction.isActive,
-      priority: instruction.priority,
-      applies_to: instruction.appliesTo
-    };
+  private getInstructions(): CustomInstruction[] {
+    const data = localStorage.getItem(this.getStorageKey());
+    return data ? JSON.parse(data) : [];
   }
 
-  async createInstruction(instruction: CustomInstruction): Promise<CustomInstruction> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
-      throw new Error('User must be authenticated to create custom instructions');
-    }
-
-    const insertData: CustomInstructionInsert = {
-      ...this.convertToDb(instruction),
-      user_id: user.data.user.id
-    } as CustomInstructionInsert;
-
-    const { data, error } = await supabase
-      .from('custom_instructions')
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return this.convertFromDb(data);
+  private saveInstructions(instructions: CustomInstruction[]): void {
+    localStorage.setItem(this.getStorageKey(), JSON.stringify(instructions));
   }
 
   async getAllInstructions(): Promise<CustomInstruction[]> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from('custom_instructions')
-      .select('*')
-      .eq('user_id', user.data.user.id)
-      .order('priority', { ascending: false });
-
-    if (error) throw error;
-    return data.map(row => this.convertFromDb(row));
+    return this.getInstructions();
   }
 
   async getActiveInstructions(): Promise<CustomInstruction[]> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
-      return [];
-    }
+    const instructions = this.getInstructions();
+    return instructions.filter(inst => inst.is_active);
+  }
 
-    const { data, error } = await supabase
-      .from('custom_instructions')
-      .select('*')
-      .eq('user_id', user.data.user.id)
-      .eq('is_active', true)
-      .order('priority', { ascending: false });
-
-    if (error) throw error;
-    return data.map(row => this.convertFromDb(row));
+  async getGlobalInstructions(): Promise<CustomInstruction[]> {
+    const instructions = this.getInstructions();
+    return instructions.filter(inst => inst.is_global && inst.is_active);
   }
 
   async getInstructionsByCategory(category: string): Promise<CustomInstruction[]> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) {
-      return [];
-    }
+    const instructions = this.getInstructions();
+    return instructions.filter(inst => inst.category === category && inst.is_active);
+  }
 
-    const { data, error } = await supabase
-      .from('custom_instructions')
-      .select('*')
-      .eq('user_id', user.data.user.id)
-      .eq('category', category)
-      .order('priority', { ascending: false });
+  async saveInstruction(instruction: Omit<CustomInstruction, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<CustomInstruction> {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const instructions = this.getInstructions();
+    
+    const newInstruction: CustomInstruction = {
+      ...instruction,
+      id: Date.now().toString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_id: user.id?.toString() || 'anonymous',
+    };
 
-    if (error) throw error;
-    return data.map(row => this.convertFromDb(row));
+    instructions.push(newInstruction);
+    this.saveInstructions(instructions);
+    
+    return newInstruction;
   }
 
   async updateInstruction(id: string, updates: Partial<CustomInstruction>): Promise<CustomInstruction | null> {
-    const updateData: CustomInstructionUpdate = this.convertToDb(updates) as CustomInstructionUpdate;
+    const instructions = this.getInstructions();
+    const index = instructions.findIndex(inst => inst.id === id);
+    
+    if (index === -1) return null;
 
-    const { data, error } = await supabase
-      .from('custom_instructions')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    instructions[index] = {
+      ...instructions[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) throw error;
-    return data ? this.convertFromDb(data) : null;
+    this.saveInstructions(instructions);
+    return instructions[index];
   }
 
   async deleteInstruction(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('custom_instructions')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    const instructions = this.getInstructions();
+    const filtered = instructions.filter(inst => inst.id !== id);
+    this.saveInstructions(filtered);
   }
 
-  async toggleActive(id: string): Promise<CustomInstruction | null> {
-    const { data: current, error: fetchError } = await supabase
-      .from('custom_instructions')
-      .select('is_active')
-      .eq('id', id)
-      .single();
+  async toggleInstruction(id: string): Promise<CustomInstruction | null> {
+    const instructions = this.getInstructions();
+    const instruction = instructions.find(inst => inst.id === id);
+    
+    if (!instruction) return null;
 
-    if (fetchError) throw fetchError;
+    return this.updateInstruction(id, { is_active: !instruction.is_active });
+  }
 
-    const { data, error } = await supabase
-      .from('custom_instructions')
-      .update({ is_active: !current.is_active })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data ? this.convertFromDb(data) : null;
+  async getApplicableInstructions(context: string[]): Promise<CustomInstruction[]> {
+    const instructions = this.getInstructions();
+    return instructions.filter(inst => 
+      inst.is_active && (
+        inst.is_global || 
+        inst.applies_to.some(rule => context.includes(rule))
+      )
+    ).sort((a, b) => b.priority - a.priority);
   }
 }
 
