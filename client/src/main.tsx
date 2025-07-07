@@ -85,6 +85,48 @@ if (import.meta.env.DEV) {
     }
     return element;
   };
+
+  // Override Vite's error handling more aggressively
+  const originalDefineCustomElements = window.customElements?.define;
+  if (originalDefineCustomElements) {
+    window.customElements.define = function(name, constructor, options) {
+      if (name === 'vite-error-overlay') {
+        console.debug('Blocked vite-error-overlay registration');
+        return;
+      }
+      return originalDefineCustomElements.call(this, name, constructor, options);
+    };
+  }
+
+  // Intercept Vite's error overlay injection
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === 1) { // Element node
+          const element = node as Element;
+          if (element.tagName === 'VITE-ERROR-OVERLAY') {
+            console.debug('Removing vite-error-overlay from DOM');
+            element.remove();
+          }
+        }
+      });
+    });
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Also override any direct DOM manipulation
+  const originalAppendChild = Element.prototype.appendChild;
+  Element.prototype.appendChild = function(child) {
+    if (child.tagName === 'VITE-ERROR-OVERLAY') {
+      console.debug('Blocked vite-error-overlay appendChild');
+      return child;
+    }
+    return originalAppendChild.call(this, child);
+  };
 }
 const originalError = window.onerror;
 window.onerror = (message, source, lineno, colno, error) => {
