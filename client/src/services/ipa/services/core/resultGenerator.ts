@@ -1,9 +1,8 @@
-
 import { ProjectSpec } from "@/types/ipa-types";
 import { agentList } from "../../mockData";
 import { realTimeResponseService } from "../../../integration/realTimeResponseService";
 import { FinalPromptGenerator } from "../../finalPromptGenerator";
-import { savePrompt } from "../../../db/promptDatabaseService";
+import { PromptAutoSaveService } from '@/services/promptAutoSave';
 import { toast } from "@/hooks/use-toast";
 
 export class ResultGenerator {
@@ -35,7 +34,7 @@ export class ResultGenerator {
 
   private static async saveFinalPrompt(currentProjectSpec: ProjectSpec, finalPrompt: string): Promise<void> {
     try {
-      await savePrompt({
+      await PromptAutoSaveService.savePrompt({
         projectName: currentProjectSpec?.projectDescription.substring(0, 50) || "Cursor AI Prompt",
         prompt: finalPrompt,
         timestamp: Date.now(),

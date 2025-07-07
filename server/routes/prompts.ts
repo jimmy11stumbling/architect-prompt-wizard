@@ -109,7 +109,7 @@ router.get('/search', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const prompt = await db
       .select()
       .from(savedPrompts)
@@ -146,7 +146,7 @@ router.post('/', async (req, res) => {
     }
 
     const promptData = validation.data;
-    
+
     const newPrompt = await db
       .insert(savedPrompts)
       .values({
@@ -178,7 +178,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const updateData = validation.data;
-    
+
     const updatedPrompt = await db
       .update(savedPrompts)
       .set({
@@ -212,7 +212,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     const { id } = req.params;
-    
+
     const deletedPrompt = await db
       .delete(savedPrompts)
       .where(
