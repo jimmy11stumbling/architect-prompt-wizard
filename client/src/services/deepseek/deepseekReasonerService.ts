@@ -73,76 +73,31 @@ export class DeepSeekReasonerService {
       let ragContext = "";
       let integrationData: any = {};
 
-      // Load attached assets context if available
+      // Get attached assets context if enabled
       let attachedAssetsContext = "";
       if (query.useAttachedAssets) {
         try {
+          await attachedAssetsService.loadAvailableAssets(); // Ensure assets are loaded
+          attachedAssetsContext = await attachedAssetsService.getContextForPrompt(query.prompt, 8);
+
           realTimeResponseService.addResponse({
             source: "deepseek-reasoner",
-            status: "processing",
-            message: "Loading relevant attached assets via MCP Hub...",
-            data: { query: query.prompt }
+            status: "success",
+            message: `Loaded attached assets context: ${attachedAssetsContext.length} characters`,
+            data: { contextLength: attachedAssetsContext.length }
           });
 
-          // Use MCP Hub service for enhanced context retrieval
-          const response = await fetch('/api/mcp-hub/query', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query: query.prompt,
-              maxAssets: 3,
-              includeContent: true,
-              relevanceThreshold: 0.1
-            })
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            const context = result.data;
-
-            if (context.relevantAssets.length > 0) {
-              attachedAssetsContext = "\n\n=== ATTACHED ASSETS CONTEXT ===\n";
-
-              for (const asset of context.relevantAssets) {
-                const content = context.contextData[asset.filename];
-                if (content) {
-                  attachedAssetsContext += `\n--- ${asset.filename} (${asset.metadata?.category || 'general'}) ---\n`;
-                  attachedAssetsContext += content.substring(0, 2000) + (content.length > 2000 ? "..." : "") + "\n";
-                }
-              }
-              attachedAssetsContext += "\n=== END ATTACHED ASSETS ===\n";
-
-              integrationData.attachedAssets = {
-                count: context.relevantAssets.length,
-                used: context.relevantAssets.map((a: any) => a.filename)
-              };
-
-              realTimeResponseService.addResponse({
-                source: "deepseek-reasoner",
-                status: "success",
-                message: `Loaded ${context.relevantAssets.length} relevant assets from MCP Hub`,
-                data: { 
-                  assetFiles: context.relevantAssets.map((a: any) => a.filename),
-                  categories: context.metadata.categoriesFound
-                }
-              });
-            } else {
-              realTimeResponseService.addResponse({
-                source: "deepseek-reasoner",
-                status: "info",
-                message: "No relevant attached assets found for this query",
-                data: {}
-              });
-            }
-          } else {
-            throw new Error(`MCP Hub query failed: ${response.statusText}`);
-          }
+          integrationData.attachedAssets = {
+            count: attachedAssetsService.getAssetStats().total,
+            used: [] // This would be populated based on which assets were actually used
+          };
         } catch (error) {
+          console.error("Failed to get attached assets context:", error);
           realTimeResponseService.addResponse({
             source: "deepseek-reasoner",
-            status: "warning",
-            message: "Failed to load attached assets via MCP Hub, continuing without them",
-            data: { error: String(error) }
+            status: "error",
+            message: `Failed to load attached assets: ${error}`,
+            data: { error }
           });
         }
       }

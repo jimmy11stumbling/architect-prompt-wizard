@@ -300,6 +300,12 @@ export class AttachedAssetsService {
     });
   }
 
+  private async ensureAssetsLoaded(): Promise<void> {
+    if (this.assets.size === 0) {
+      await this.loadAvailableAssets();
+    }
+  }
+
   async queryAssets(options: {
     query: string;
     maxAssets?: number;
@@ -390,6 +396,9 @@ export class AttachedAssetsService {
   }
 
   async getContextForPrompt(prompt: string, maxAssets: number = 5): Promise<string> {
+    // Ensure assets are loaded first
+    await this.ensureAssetsLoaded();
+    
     // Enhanced query processing for better document matching
     const queryTerms = prompt.toLowerCase();
     const isMCPQuery = queryTerms.includes('mcp') || queryTerms.includes('model context protocol') || 
@@ -408,23 +417,24 @@ export class AttachedAssetsService {
 
     // Prioritize specific documentation based on query type
     if (isMCPQuery) {
-      // Ensure MCP documents are included
+      // Ensure MCP documents are loaded and included
       const mcpAssets = Array.from(this.assets.values()).filter(asset => 
         asset.filename.toLowerCase().includes('mcp') || 
-        asset.content?.toLowerCase().includes('model context protocol') ||
-        asset.content?.toLowerCase().includes('mcp')
+        asset.filename.toLowerCase().includes('model context protocol') ||
+        asset.filename.toLowerCase().includes('model-context-protocol')
       );
 
-      // Add MCP assets if not already included
-      mcpAssets.forEach(mcpAsset => {
+      // Load content for MCP assets and add them if not already included
+      for (const mcpAsset of mcpAssets) {
         if (!relevantAssets.relevantAssets.find(asset => asset.filename === mcpAsset.filename)) {
+          const content = await this.getAssetContent(mcpAsset.filename);
           relevantAssets.relevantAssets.unshift({
             ...mcpAsset,
-            content: this.contentCache.get(mcpAsset.filename),
+            content: content,
             metadata: { ...mcpAsset.metadata, relevanceScore: 0.95 }
           });
         }
-      });
+      }
     }
 
     if (relevantAssets.relevantAssets.length === 0) {
