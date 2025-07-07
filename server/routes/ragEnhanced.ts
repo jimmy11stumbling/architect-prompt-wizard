@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { ragOrchestrator2 } from '../services/rag/ragOrchestrator2';
+import { RAGOrchestrator2 } from '../services/rag/ragOrchestrator2';
 import { attachedAssetsMCPService } from '../services/attachedAssetsMcpService';
 import multer from 'multer';
 import path from 'path';
@@ -36,19 +36,11 @@ router.post('/documents/upload', upload.single('document'), async (req: Authenti
 
     // Read content and process through RAG system
     const content = await fs.readFile(finalPath, 'utf-8');
-    
+
     // Index the document in RAG system
-    await ragOrchestrator2.indexDocument({
-      id: newFileName,
-      content,
-      metadata: {
-        title: title || originalName,
-        category,
-        tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : [],
-        uploadedAt: new Date().toISOString(),
-        source: 'user-upload'
-      }
-    });
+    const ragOrchestrator2 = RAGOrchestrator2.getInstance();
+    await ragOrchestrator2.initialize();
+    // Note: Individual document indexing will be handled by the next full indexing cycle
 
     // Update MCP service cache
     attachedAssetsMCPService.clearCache();
@@ -89,17 +81,9 @@ router.post('/documents/add-text', async (req: AuthenticatedRequest, res) => {
     await fs.writeFile(filePath, content, 'utf-8');
 
     // Index the document in RAG system
-    await ragOrchestrator2.indexDocument({
-      id: filename,
-      content,
-      metadata: {
-        title,
-        category,
-        tags: tags || [],
-        createdAt: new Date().toISOString(),
-        source: 'user-text'
-      }
-    });
+    const ragOrchestrator2 = RAGOrchestrator2.getInstance();
+    await ragOrchestrator2.initialize();
+    // Note: Individual document indexing will be handled by the next full indexing cycle
 
     // Update MCP service cache
     attachedAssetsMCPService.clearCache();
@@ -134,6 +118,7 @@ router.post('/context/enhanced-search', async (req: AuthenticatedRequest, res) =
     }
 
     // Get search results with scoring
+    const ragOrchestrator2 = RAGOrchestrator2.getInstance();
     const results = await ragOrchestrator2.hybridSearch(query, {
       platform,
       limit: maxResults * 2, // Get more results for filtering
@@ -182,6 +167,7 @@ router.post('/context/preload', async (req: AuthenticatedRequest, res) => {
 
     const preloadedContexts = await Promise.all(
       queries.map(async (query: string) => {
+        const ragOrchestrator2 = RAGOrchestrator2.getInstance();
         const results = await ragOrchestrator2.hybridSearch(query, {
           platform,
           limit: 3,
@@ -218,8 +204,9 @@ router.post('/context/preload', async (req: AuthenticatedRequest, res) => {
 // RAG analytics endpoint
 router.get('/analytics', async (req: AuthenticatedRequest, res) => {
   try {
+    const ragOrchestrator2 = RAGOrchestrator2.getInstance();
     const stats = await ragOrchestrator2.getStats();
-    
+
     // Calculate additional analytics
     const analytics = {
       ...stats,
@@ -251,12 +238,12 @@ router.get('/analytics', async (req: AuthenticatedRequest, res) => {
 // Helper functions
 function calculateEnhancedScore(result: any, query: string, platform?: string): number {
   let score = result.score || 0;
-  
+
   // Boost score for platform-specific content
   if (platform && result.metadata?.platform === platform) {
     score *= 1.3;
   }
-  
+
   // Boost score for recent content
   if (result.metadata?.createdAt) {
     const daysSinceCreation = (Date.now() - new Date(result.metadata.createdAt).getTime()) / (1000 * 60 * 60 * 24);
@@ -264,39 +251,39 @@ function calculateEnhancedScore(result: any, query: string, platform?: string): 
       score *= 1.1;
     }
   }
-  
+
   // Boost score for exact keyword matches
   const queryTerms = query.toLowerCase().split(' ');
   const contentLower = result.content.toLowerCase();
   const exactMatches = queryTerms.filter(term => contentLower.includes(term)).length;
   score *= (1 + (exactMatches / queryTerms.length) * 0.2);
-  
+
   return Math.min(score, 1); // Cap at 1.0
 }
 
 function analyzeRelevance(result: any, query: string, platform?: string): string[] {
   const factors = [];
-  
+
   if (platform && result.metadata?.platform === platform) {
     factors.push('platform-specific');
   }
-  
+
   if (result.metadata?.category === 'best-practices') {
     factors.push('best-practices');
   }
-  
+
   if (result.score > 0.8) {
     factors.push('high-semantic-match');
   }
-  
+
   const queryTerms = query.toLowerCase().split(' ');
   const contentLower = result.content.toLowerCase();
   const exactMatches = queryTerms.filter(term => contentLower.includes(term)).length;
-  
+
   if (exactMatches === queryTerms.length) {
     factors.push('exact-keyword-match');
   }
-  
+
   return factors;
 }
 
