@@ -1,3 +1,4 @@
+
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 import { attachedAssetsService } from "./attachedAssetsService";
 import { ReasonerQuery, DeepSeekResponse } from './types';
@@ -25,7 +26,7 @@ export class DeepSeekReasonerService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-
+    
     try {
       this.initialized = true;
     } catch (error) {
@@ -73,31 +74,76 @@ export class DeepSeekReasonerService {
       let ragContext = "";
       let integrationData: any = {};
 
-      // Get attached assets context if enabled
+      // Load attached assets context if available
       let attachedAssetsContext = "";
       if (query.useAttachedAssets) {
         try {
-          await attachedAssetsService.loadAvailableAssets(); // Ensure assets are loaded
-          attachedAssetsContext = await attachedAssetsService.getContextForPrompt(query.prompt, 8);
-
           realTimeResponseService.addResponse({
             source: "deepseek-reasoner",
-            status: "success",
-            message: `Loaded attached assets context: ${attachedAssetsContext.length} characters`,
-            data: { contextLength: attachedAssetsContext.length }
+            status: "processing",
+            message: "Loading relevant attached assets via MCP Hub...",
+            data: { query: query.prompt }
           });
 
-          integrationData.attachedAssets = {
-            count: attachedAssetsService.getAssetStats().total,
-            used: [] // This would be populated based on which assets were actually used
-          };
+          // Use MCP Hub service for enhanced context retrieval
+          const response = await fetch('/api/mcp-hub/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: query.prompt,
+              maxAssets: 3,
+              includeContent: true,
+              relevanceThreshold: 0.1
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const context = result.data;
+            
+            if (context.relevantAssets.length > 0) {
+              attachedAssetsContext = "\n\n=== ATTACHED ASSETS CONTEXT ===\n";
+              
+              for (const asset of context.relevantAssets) {
+                const content = context.contextData[asset.filename];
+                if (content) {
+                  attachedAssetsContext += `\n--- ${asset.filename} (${asset.metadata?.category || 'general'}) ---\n`;
+                  attachedAssetsContext += content.substring(0, 2000) + (content.length > 2000 ? "..." : "") + "\n";
+                }
+              }
+              attachedAssetsContext += "\n=== END ATTACHED ASSETS ===\n";
+              
+              integrationData.attachedAssets = {
+                count: context.relevantAssets.length,
+                used: context.relevantAssets.map((a: any) => a.filename)
+              };
+
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "success",
+                message: `Loaded ${context.relevantAssets.length} relevant assets from MCP Hub`,
+                data: { 
+                  assetFiles: context.relevantAssets.map((a: any) => a.filename),
+                  categories: context.metadata.categoriesFound
+                }
+              });
+            } else {
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "info",
+                message: "No relevant attached assets found for this query",
+                data: {}
+              });
+            }
+          } else {
+            throw new Error(`MCP Hub query failed: ${response.statusText}`);
+          }
         } catch (error) {
-          console.error("Failed to get attached assets context:", error);
           realTimeResponseService.addResponse({
             source: "deepseek-reasoner",
-            status: "error",
-            message: `Failed to load attached assets: ${error}`,
-            data: { error }
+            status: "warning",
+            message: "Failed to load attached assets via MCP Hub, continuing without them",
+            data: { error: String(error) }
           });
         }
       }
@@ -149,14 +195,14 @@ export class DeepSeekReasonerService {
           for (const strategy of searchStrategies) {
             try {
               const ragResults = await ragService.query(strategy);
-
+              
               if (ragResults.results && ragResults.results.length > 0) {
                 // Add unique results (avoid duplicates)
                 const newResults = ragResults.results.filter((newResult: any) => 
                   !allResults.some(existing => existing.id === newResult.id)
                 );
                 allResults = [...allResults, ...newResults];
-
+                
                 realTimeResponseService.addResponse({
                   source: "deepseek-reasoner",
                   status: "info",
@@ -180,7 +226,7 @@ export class DeepSeekReasonerService {
           if (topResults.length > 0) {
             ragContext = "\n\n=== COMPREHENSIVE RAG CONTEXT (Full Document Access) ===\n";
             ragContext += `Searched across 6,800+ documents, found ${allResults.length} relevant results, showing top ${topResults.length}:\n\n`;
-
+            
             topResults.forEach((result, index) => {
               ragContext += `\n[${index + 1}] ${result.metadata?.title || 'Document'} (Relevance: ${((result.relevanceScore || 0) * 100).toFixed(1)}%)\n`;
               ragContext += `${result.content.substring(0, 1500)}${result.content.length > 1500 ? "..." : ""}\n`;
@@ -225,7 +271,7 @@ export class DeepSeekReasonerService {
           });
         }
       }
-
+      
       if (query.conversationHistory && query.conversationHistory.length > 0) {
         query.conversationHistory.forEach(msg => {
           messages.push({
@@ -237,18 +283,18 @@ export class DeepSeekReasonerService {
 
       // Enhanced prompt with RAG context and attached assets
       let enhancedPrompt = query.prompt;
-
+      
       if (attachedAssetsContext || ragContext) {
         let contextSection = "";
-
+        
         if (attachedAssetsContext) {
           contextSection += attachedAssetsContext + "\n\n";
         }
-
+        
         if (ragContext) {
           contextSection += `Context from knowledge base:\n${ragContext}\n\n`;
         }
-
+        
         enhancedPrompt = `${contextSection}User query: ${query.prompt}`;
       }
 
@@ -302,7 +348,7 @@ export class DeepSeekReasonerService {
 
   clearConversation(conversationId: string): void {
     this.conversationManager.clearConversation(conversationId);
-
+    
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "success",

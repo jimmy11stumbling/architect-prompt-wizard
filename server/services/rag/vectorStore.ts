@@ -1,13 +1,9 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { sql } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-core';
 import { cosineDistance, desc } from 'drizzle-orm';
 import * as schema from '@shared/schema';
-import ws from 'ws';
-
-// Configure Neon for serverless environment
-neonConfig.webSocketConstructor = ws;
 
 // Vector database schema for embeddings
 export const vectorDocuments = pgTable('vector_documents', {
@@ -44,9 +40,7 @@ export class VectorStore {
   private initialized = false;
 
   constructor(connectionString: string) {
-    this.pool = new Pool({ 
-      connectionString
-    });
+    this.pool = new Pool({ connectionString });
     this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
   }
 

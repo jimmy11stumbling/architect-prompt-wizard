@@ -24,7 +24,6 @@ export class PromptAutoSaveService {
         prompt,
         tags,
         isPublic: false, // Private by default, user can change later
-        userId: null, // No user authentication yet
       });
 
       console.log('Auto-saved prompt:', savedPrompt);

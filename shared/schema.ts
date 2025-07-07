@@ -78,7 +78,7 @@ export const promptGenerations = pgTable("prompt_generations", {
 
 export const savedPrompts = pgTable("saved_prompts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).default(null),
+  userId: integer("user_id").references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   prompt: text("prompt").notNull(),

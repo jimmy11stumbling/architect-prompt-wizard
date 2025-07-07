@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { deepseekReasonerService, ReasonerQuery, ReasonerResponse, ConversationHistory as ConversationHistoryType } from "@/services/deepseek/deepseekReasonerService";
 import { DeepSeekStreamingClient, StreamingMessage } from "@/services/deepseek/streamingClient";
@@ -19,14 +20,14 @@ const DeepSeekReasonerPanel: React.FC = () => {
     mcpEnabled: true,
     useAttachedAssets: true
   });
-
+  
   // RAG Statistics state
   const [ragStats, setRagStats] = useState({
     documentsIndexed: 0,
     chunksIndexed: 0,
     lastUpdated: null
   });
-
+  
   // Streaming state
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
@@ -35,8 +36,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
   const streamControllerRef = useRef<AbortController | null>(null);
-  const [assetStats, setAssetStats] = useState({ totalAssets: 0, categories: {} });
-
+  
   const { toast } = useToast();
 
   const sampleQueries = [
@@ -140,11 +140,11 @@ const DeepSeekReasonerPanel: React.FC = () => {
         onComplete: (fullResponse: string, reasoning?: string) => {
           setIsStreaming(false);
           setIsProcessing(false);
-
+          
           // Save to conversation history
           const newConversationId = currentConversationId || `conv-${Date.now()}`;
           setCurrentConversationId(newConversationId);
-
+          
           // Create response object
           const result: ReasonerResponse = {
             answer: fullResponse,
@@ -157,10 +157,10 @@ const DeepSeekReasonerPanel: React.FC = () => {
               totalTokens: tokenCount
             }
           };
-
+          
           setResponse(result);
           setQuery("");
-
+          
           toast({
             title: "Streaming Complete",
             description: `Response generated with ${tokenCount} tokens`
@@ -169,7 +169,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
         onError: (error: Error) => {
           setIsStreaming(false);
           setIsProcessing(false);
-
+          
           toast({
             title: "Streaming Failed",
             description: error.message,
@@ -181,7 +181,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
     } catch (error) {
       setIsStreaming(false);
       setIsProcessing(false);
-
+      
       console.error("Streaming failed:", error);
       toast({
         title: "Processing Failed",
@@ -210,12 +210,12 @@ const DeepSeekReasonerPanel: React.FC = () => {
       const result = await deepseekReasonerService.processQuery(reasonerQuery);
       setResponse(result);
       setCurrentConversationId(result.conversationId);
-
+      
       const updatedConversations = deepseekReasonerService.getAllConversations();
       setConversations(updatedConversations);
 
       setQuery("");
-
+      
       toast({
         title: "Processing Complete",
         description: `Response generated with ${result.usage.totalTokens} tokens`
@@ -238,7 +238,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
     }
     setIsStreaming(false);
     setIsProcessing(false);
-
+    
     toast({
       title: "Stream Stopped",
       description: "Streaming has been interrupted"
@@ -267,7 +267,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
       setConversations(deepseekReasonerService.getAllConversations());
       setCurrentConversationId(null);
       setResponse(null);
-
+      
       toast({
         title: "Conversation Cleared",
         description: "Started a new conversation"
@@ -290,59 +290,6 @@ const DeepSeekReasonerPanel: React.FC = () => {
     const existingConversations = deepseekReasonerService.getAllConversations();
     setConversations(existingConversations);
   }, []);
-
-  useEffect(() => {
-    const fetchRagStats = async () => {
-      if (integrationSettings.ragEnabled) {
-        try {
-          const response = await fetch('/api/rag/stats');
-          if (response.ok) {
-            const stats = await response.json();
-            setRagStats({
-              documentsIndexed: stats.documentsIndexed || 0,
-              chunksIndexed: stats.chunksIndexed || 0,
-              lastUpdated: new Date()
-            });
-          }
-        } catch (error) {
-          console.warn('Failed to fetch RAG stats:', error);
-        }
-      }
-    };
-
-    fetchRagStats();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchRagStats, 30000);
-    return () => clearInterval(interval);
-  }, [integrationSettings.ragEnabled]);
-
-  useEffect(() => {
-    const existingConversations = deepseekReasonerService.getAllConversations();
-    setConversations(existingConversations);
-  }, []);
-
-  useEffect(() => {
-    const loadAssetStats = async () => {
-    try {
-      // Assuming attachedAssetsService.getAssetStatistics() returns the stats object
-      const stats = {
-        totalAssets: 3219, // Replace with actual number of assets
-        categories: {
-          MCP: 500,
-          RAG2: 300,
-          A2A: 200,
-          Other: 2219
-        }
-      };
-      setAssetStats(stats);
-    } catch (error) {
-      console.error('Failed to load asset statistics:', error);
-      setAssetStats({ totalAssets: 0, categories: {} }); // Reset on error
-    }
-  };
-    loadAssetStats();
-  }, []);
-
 
   return (
     <div className="space-y-6">
