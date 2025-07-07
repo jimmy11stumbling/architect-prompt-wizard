@@ -112,12 +112,12 @@ export class RAGService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     try {
       // Initialize the basic service
       await this.initializeWithSampleData();
       this.initialized = true;
-      
+
       // Initialize RAG 2.0 system
       await this.initializeRAG2System();
     } catch (error) {
@@ -188,7 +188,7 @@ export class RAGService {
         timeout: 30000,
         reason: 'indexing timeout'
       });
-      
+
       const timeoutId = setTimeout(() => {
         safeAbort();
       }, 30000); // 30 second timeout for indexing
@@ -227,7 +227,7 @@ export class RAGService {
       // Check if this is a timeout/abort error and handle gracefully
       const isTimeout = error instanceof DOMException && error.name === 'AbortError';
       const errorMessage = isTimeout ? "Indexing timeout after 30 seconds" : (error instanceof Error ? error.message : "Unknown error");
-      
+
       console.warn("[SafeAbort] Data indexing failed:", errorMessage);
       realTimeResponseService.addResponse({
         source: "rag-service",
@@ -273,7 +273,7 @@ export class RAGService {
         timeout: 5000,
         reason: 'timeout'
       });
-      
+
       const timeoutId = setTimeout(() => {
         safeAbort();
       }, 5000); // 5 second timeout
@@ -319,13 +319,13 @@ export class RAGService {
 
       } catch (error) {
         clearTimeout(timeoutId);
-        
+
         // Check if this is a timeout/abort error
         const isTimeout = error instanceof DOMException && error.name === 'AbortError';
         const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
-        
+
         console.warn("[SafeAbort] Vector search failed, using platform fallback:", errorMessage);
-        
+
         realTimeResponseService.addResponse({
           source: "rag-service",
           status: "error",
@@ -349,7 +349,7 @@ export class RAGService {
   async getSuggestions(partialQuery: string, limit = 5): Promise<string[]> {
     try {
       const response = await fetch(`/api/rag/suggestions?q=${encodeURIComponent(partialQuery)}&limit=${limit}`);
-      
+
       if (!response.ok) {
         return [];
       }
@@ -374,7 +374,7 @@ export class RAGService {
         timeout: 10000,
         reason: 'stats timeout'
       });
-      
+
       const timeoutId = setTimeout(() => {
         safeAbort();
       }, 10000); // 10 second timeout for stats
@@ -382,9 +382,9 @@ export class RAGService {
       const response = await fetch('/api/rag/stats', {
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         return null;
       }
@@ -394,7 +394,7 @@ export class RAGService {
       // Check if this is a timeout/abort error and handle gracefully
       const isTimeout = error instanceof DOMException && error.name === 'AbortError';
       const isFetchError = error instanceof TypeError && error.message === 'Failed to fetch';
-      
+
       if (isTimeout || isFetchError) {
         console.warn("[SafeAbort] RAG stats fetch failed gracefully:", error instanceof Error ? error.message : "Unknown error");
       } else {
@@ -410,7 +410,7 @@ export class RAGService {
   async getPerformanceMetrics(): Promise<any> {
     try {
       const response = await fetch('/api/rag/analytics/metrics');
-      
+
       if (!response.ok) {
         return null;
       }
@@ -427,7 +427,7 @@ export class RAGService {
    */
   private async fallbackToBasicSearch(query: string, options: any): Promise<RAG2SearchResponse> {
     console.log("Falling back to basic RAG search");
-    
+
     const basicResponse = await this.query({
       query,
       limit: options.limit || 10
@@ -464,7 +464,7 @@ export class RAGService {
 
   async query(ragQuery: RAGQuery): Promise<RAGResponse> {
     const startTime = Date.now();
-    
+
     realTimeResponseService.addResponse({
       source: "rag-service",
       status: "processing",
@@ -511,17 +511,17 @@ export class RAGService {
   private async performSemanticSearch(ragQuery: RAGQuery): Promise<RAGResult[]> {
     const query = ragQuery.query.toLowerCase();
     const limit = ragQuery.limit || 5;
-    
+
     // Enhanced semantic matching simulation
     const results: RAGResult[] = this.documents
       .map(doc => {
         let relevanceScore = 0;
-        
+
         // Title matching (high weight)
         if (doc.title.toLowerCase().includes(query)) {
           relevanceScore += 0.8;
         }
-        
+
         // Content matching (medium weight)
         const queryWords = query.split(' ');
         const contentWords = doc.content.toLowerCase().split(' ');
@@ -529,13 +529,13 @@ export class RAGService {
           contentWords.some(contentWord => contentWord.includes(word))
         );
         relevanceScore += (matchingWords.length / queryWords.length) * 0.6;
-        
+
         // Tag matching (medium weight)
         const matchingTags = doc.tags.filter(tag => 
           tag.toLowerCase().includes(query) || query.includes(tag.toLowerCase())
         );
         relevanceScore += (matchingTags.length / doc.tags.length) * 0.5;
-        
+
         // Category matching (low weight)
         if (doc.category.toLowerCase().includes(query.split(' ')[0])) {
           relevanceScore += 0.3;
@@ -632,7 +632,7 @@ export class RAGService {
 
   async healthCheck(): Promise<{ healthy: boolean; documentCount: number; vectorDb: string; categories: string[] }> {
     const categories = [...new Set(this.documents.map(doc => doc.category))];
-    
+
     return {
       healthy: this.initialized,
       documentCount: this.documents.length,
@@ -641,16 +641,55 @@ export class RAGService {
     };
   }
 
-  getStats() {
-    const categories = [...new Set(this.documents.map(doc => doc.category))];
-    const totalWords = this.documents.reduce((sum, doc) => sum + doc.content.split(' ').length, 0);
-    
-    return {
-      totalDocuments: this.documents.length,
-      categories: categories.length,
-      totalWords,
-      avgWordsPerDoc: Math.round(totalWords / this.documents.length)
-    };
+  async getStats(): Promise<RAGStats> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 30000); // Increased to 30 second timeout
+
+      const response = await fetch('/api/rag/stats', {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Return default stats instead of throwing
+        console.warn(`RAG stats request failed: ${response.statusText}`);
+        return {
+          documentsIndexed: 0,
+          chunksIndexed: 0,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+
+      const data = await response.json();
+      return {
+        documentsIndexed: data.documentsIndexed || 0,
+        chunksIndexed: data.chunksIndexed || 0,
+        lastUpdated: data.lastUpdated || new Date().toISOString()
+      };
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('[RAG Service] Stats request timed out, returning default stats');
+        return {
+          documentsIndexed: 0,
+          chunksIndexed: 0,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      console.warn('Failed to get RAG stats, returning default stats:', error);
+      return {
+        documentsIndexed: 0,
+        chunksIndexed: 0,
+        lastUpdated: new Date().toISOString()
+      };
+    }
   }
 }
 

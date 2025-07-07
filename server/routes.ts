@@ -1121,6 +1121,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint
+  app.get("/api/health", async (req, res) => {
+    try {
+      // Quick database check
+      const dbCheck = await sql`SELECT 1 as test`;
+
+      res.json({ 
+        status: "healthy", 
+        timestamp: new Date().toISOString(),
+        services: {
+          database: dbCheck.length > 0 ? "connected" : "error",
+          rag: "operational",
+          server: "running"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

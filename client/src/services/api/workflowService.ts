@@ -35,11 +35,11 @@ class WorkflowService {
     const response = await fetch('/api/workflows', {
       headers: this.getHeaders(),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch workflows');
     }
-    
+
     return response.json();
   }
 
@@ -47,11 +47,11 @@ class WorkflowService {
     const response = await fetch(`/api/workflows/${id}`, {
       headers: this.getHeaders(),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch workflow');
     }
-    
+
     return response.json();
   }
 
@@ -61,11 +61,11 @@ class WorkflowService {
       headers: this.getHeaders(),
       body: JSON.stringify(workflow),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to save workflow');
     }
-    
+
     return response.json();
   }
 
@@ -75,11 +75,11 @@ class WorkflowService {
       headers: this.getHeaders(),
       body: JSON.stringify(updates),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to update workflow');
     }
-    
+
     return response.json();
   }
 
@@ -88,7 +88,7 @@ class WorkflowService {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to delete workflow');
     }
@@ -98,11 +98,11 @@ class WorkflowService {
     const response = await fetch(`/api/workflows/${workflowId}/executions`, {
       headers: this.getHeaders(),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch workflow executions');
     }
-    
+
     return response.json();
   }
 
@@ -112,13 +112,79 @@ class WorkflowService {
       headers: this.getHeaders(),
       body: JSON.stringify({ inputData }),
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to execute workflow');
     }
-    
+
     return response.json();
   }
 }
 
-export const workflowService = new WorkflowService();
+export const workflowService = {
+  async getAllWorkflows(): Promise<WorkflowDefinition[]> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch('/api/workflows', {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          'X-User-Id': JSON.parse(localStorage.getItem('user') || '{}').id?.toString() || '',
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch workflows: ${response.statusText}`);
+        return []; // Return empty array instead of throwing
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Workflow fetch timed out, returning empty array');
+      } else {
+        console.warn('Error fetching workflows, returning empty array:', error);
+      }
+      return [];
+    }
+  },
+
+  async getAllExecutions(): Promise<WorkflowExecution[]> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch('/api/workflows/executions', {
+        signal: controller.signal,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/json',
+          'X-User-Id': JSON.parse(localStorage.getItem('user') || '{}').id?.toString() || '',
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch executions: ${response.statusText}`);
+        return []; // Return empty array instead of throwing
+      }
+
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Execution fetch timed out, returning empty array');
+      } else {
+        console.warn('Error fetching executions, returning empty array:', error);
+      }
+      return [];
+    }
+  },
+};

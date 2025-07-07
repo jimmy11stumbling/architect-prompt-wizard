@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { deepseekReasonerService, ReasonerQuery, ReasonerResponse, ConversationHistory as ConversationHistoryType } from "@/services/deepseek/deepseekReasonerService";
 import { DeepSeekStreamingClient, StreamingMessage } from "@/services/deepseek/streamingClient";
@@ -7,6 +6,8 @@ import QueryInterface from "./deepseek/QueryInterface";
 import ResponseTabs from "./deepseek/ResponseTabs";
 import ConversationHistory from "./deepseek/ConversationHistory";
 import StreamingResponse from "./deepseek/StreamingResponse";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Database, Network } from "lucide-react";
 
 const DeepSeekReasonerPanel: React.FC = () => {
   const [query, setQuery] = useState("");
@@ -20,14 +21,21 @@ const DeepSeekReasonerPanel: React.FC = () => {
     mcpEnabled: true,
     useAttachedAssets: true
   });
-  
+
   // RAG Statistics state
   const [ragStats, setRagStats] = useState({
     documentsIndexed: 0,
     chunksIndexed: 0,
     lastUpdated: null
   });
-  
+
+  // Connection Status state
+  const [connectionStatus, setConnectionStatus] = useState({
+    rag: 'checking',
+    api: 'checking',
+    deepseek: 'checking'
+  });
+
   // Streaming state
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
@@ -36,7 +44,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
   const streamControllerRef = useRef<AbortController | null>(null);
-  
+
   const { toast } = useToast();
 
   const sampleQueries = [
@@ -49,29 +57,52 @@ const DeepSeekReasonerPanel: React.FC = () => {
 
   // Fetch RAG statistics on component mount and when RAG is enabled
   useEffect(() => {
-    const fetchRagStats = async () => {
-      if (integrationSettings.ragEnabled) {
-        try {
-          const response = await fetch('/api/rag/stats');
-          if (response.ok) {
-            const stats = await response.json();
-            setRagStats({
-              documentsIndexed: stats.documentsIndexed || 0,
-              chunksIndexed: stats.chunksIndexed || 0,
-              lastUpdated: new Date()
-            });
-          }
-        } catch (error) {
-          console.warn('Failed to fetch RAG stats:', error);
+    const checkConnectivity = async () => {
+      // Check RAG connectivity
+      try {
+        const response = await fetch('/api/rag/stats', {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const stats = await response.json();
+        setRagStats({
+          documentsIndexed: stats.documentsIndexed || 0,
+          chunksIndexed: stats.chunksIndexed || 0,
+          lastUpdated: new Date()
+        });
+        setConnectionStatus(prev => ({ ...prev, rag: 'connected' }));
+      } catch (error) {
+        console.warn('Failed to get RAG stats:', error instanceof Error ? error.message : 'Unknown error');
+        setConnectionStatus(prev => ({ ...prev, rag: 'disconnected' }));
+      }
+
+      // Check API connectivity
+      try {
+        const response = await fetch('/api/health', { 
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        });
+        setConnectionStatus(prev => ({ ...prev, api: response.ok ? 'connected' : 'disconnected' }));
+      } catch (error) {
+        setConnectionStatus(prev => ({ ...prev, api: 'disconnected' }));
+      }
+
+      // Check DeepSeek service
+      try {
+        const health = await deepseekReasonerService.healthCheck();
+        setConnectionStatus(prev => ({ ...prev, deepseek: health.healthy ? 'connected' : 'error' }));
+      } catch (error) {
+        setConnectionStatus(prev => ({ ...prev, deepseek: 'disconnected' }));
       }
     };
 
-    fetchRagStats();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchRagStats, 30000);
+    checkConnectivity();
+    const interval = setInterval(checkConnectivity, 30000);
     return () => clearInterval(interval);
-  }, [integrationSettings.ragEnabled]);
+  }, []);
 
   const processQuery = async () => {
     if (!query.trim()) {
@@ -140,11 +171,11 @@ const DeepSeekReasonerPanel: React.FC = () => {
         onComplete: (fullResponse: string, reasoning?: string) => {
           setIsStreaming(false);
           setIsProcessing(false);
-          
+
           // Save to conversation history
           const newConversationId = currentConversationId || `conv-${Date.now()}`;
           setCurrentConversationId(newConversationId);
-          
+
           // Create response object
           const result: ReasonerResponse = {
             answer: fullResponse,
@@ -157,10 +188,10 @@ const DeepSeekReasonerPanel: React.FC = () => {
               totalTokens: tokenCount
             }
           };
-          
+
           setResponse(result);
           setQuery("");
-          
+
           toast({
             title: "Streaming Complete",
             description: `Response generated with ${tokenCount} tokens`
@@ -169,7 +200,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
         onError: (error: Error) => {
           setIsStreaming(false);
           setIsProcessing(false);
-          
+
           toast({
             title: "Streaming Failed",
             description: error.message,
@@ -181,7 +212,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
     } catch (error) {
       setIsStreaming(false);
       setIsProcessing(false);
-      
+
       console.error("Streaming failed:", error);
       toast({
         title: "Processing Failed",
@@ -210,12 +241,12 @@ const DeepSeekReasonerPanel: React.FC = () => {
       const result = await deepseekReasonerService.processQuery(reasonerQuery);
       setResponse(result);
       setCurrentConversationId(result.conversationId);
-      
+
       const updatedConversations = deepseekReasonerService.getAllConversations();
       setConversations(updatedConversations);
 
       setQuery("");
-      
+
       toast({
         title: "Processing Complete",
         description: `Response generated with ${result.usage.totalTokens} tokens`
@@ -238,7 +269,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
     }
     setIsStreaming(false);
     setIsProcessing(false);
-    
+
     toast({
       title: "Stream Stopped",
       description: "Streaming has been interrupted"
@@ -267,7 +298,7 @@ const DeepSeekReasonerPanel: React.FC = () => {
       setConversations(deepseekReasonerService.getAllConversations());
       setCurrentConversationId(null);
       setResponse(null);
-      
+
       toast({
         title: "Conversation Cleared",
         description: "Started a new conversation"
@@ -293,6 +324,39 @@ const DeepSeekReasonerPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Database className="h-4 w-4 mr-2" />
+                Knowledge Base
+                <div className={`ml-auto w-2 h-2 rounded-full ${connectionStatus.rag === 'connected' ? 'bg-green-500' : connectionStatus.rag === 'disconnected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {ragStats.documentsIndexed.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Documents indexed</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Network className="h-4 w-4 mr-2" />
+                API Status
+                <div className={`ml-auto w-2 h-2 rounded-full ${connectionStatus.api === 'connected' ? 'bg-green-500' : connectionStatus.api === 'disconnected' ? 'bg-red-500' : 'bg-yellow-500'}`}></div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold">
+                {connectionStatus.api === 'connected' ? 'Online' : connectionStatus.api === 'disconnected' ? 'Offline' : 'Checking...'}
+              </div>
+              <p className="text-xs text-muted-foreground">Backend connectivity</p>
+            </CardContent>
+          </Card>
+      </div>
       <QueryInterface
         query={query}
         setQuery={setQuery}

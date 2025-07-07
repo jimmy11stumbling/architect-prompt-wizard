@@ -158,35 +158,70 @@ export class DeepSeekReasonerService {
             data: { query: query.prompt, documentsAvailable: "6800+" }
           });
 
-          // Use the backend RAG API directly for better integration
-          const ragResponse = await fetch('/api/rag/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query: query.prompt,
-              limit: 15,
-              includeMetadata: true,
-              semanticWeight: 0.7
-            })
-          });
+          // Use the backend RAG API directly for better integration with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-          let allResults: any[] = [];
-          
-          if (ragResponse.ok) {
-            const ragData = await ragResponse.json();
-            allResults = ragData.results || [];
-            
-            realTimeResponseService.addResponse({
-              source: "deepseek-reasoner",
-              status: "info",
-              message: `RAG search found ${allResults.length} relevant documents`,
-              data: { 
-                results: allResults.length,
-                avgRelevance: allResults.reduce((acc: number, r: any) => acc + (r.relevanceScore || 0), 0) / allResults.length
-              }
+          try {
+            const ragResponse = await fetch('/api/rag/search', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+              },
+              body: JSON.stringify({
+                query: query.prompt,
+                limit: 15,
+                includeMetadata: true,
+                semanticWeight: 0.7
+              }),
+              signal: controller.signal
             });
-          } else {
-            console.error('RAG search failed:', ragResponse.statusText);
+
+            clearTimeout(timeoutId);
+            let allResults: any[] = [];
+            
+            if (ragResponse.ok) {
+              const ragData = await ragResponse.json();
+              allResults = ragData.results || [];
+              
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "info",
+                message: `RAG search found ${allResults.length} relevant documents`,
+                data: { 
+                  results: allResults.length,
+                  avgRelevance: allResults.length > 0 ? allResults.reduce((acc: number, r: any) => acc + (r.relevanceScore || 0), 0) / allResults.length : 0
+                }
+              });
+            } else {
+              console.warn('RAG search failed:', ragResponse.statusText);
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "warning",
+                message: `RAG search failed: ${ragResponse.statusText}`,
+                data: { statusCode: ragResponse.status }
+              });
+            }
+          } catch (ragFetchError) {
+            clearTimeout(timeoutId);
+            if (ragFetchError instanceof Error && ragFetchError.name === 'AbortError') {
+              console.warn('RAG search timed out');
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "warning",
+                message: "RAG search timed out, continuing without enhanced context",
+                data: { timeout: true }
+              });
+            } else {
+              console.warn('RAG search request failed:', ragFetchError);
+              realTimeResponseService.addResponse({
+                source: "deepseek-reasoner",
+                status: "warning",
+                message: "RAG search request failed, continuing without enhanced context",
+                data: { error: String(ragFetchError) }
+              });
+            }
           }
 
           if (allResults.length > 0) {
