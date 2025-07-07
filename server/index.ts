@@ -1,6 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { createServer } from 'vite';
+import { testConnection } from './db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 app.use(express.json());
@@ -36,7 +43,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Graceful shutdown handling
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit process, just log the error
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit process immediately
+});
+
 (async () => {
+  // Test database connection on startup
+  try {
+    await testConnection();
+  } catch (error) {
+    console.error('Failed to connect to database:', error);
+    process.exit(1);
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -45,6 +71,21 @@ app.use((req, res, next) => {
 
     res.status(status).json({ message });
     throw err;
+  });
+
+  // Health check endpoint
+  app.get('/health', async (req, res) => {
+    let dbHealthy = false;
+    try {
+      dbHealthy = await testConnection();
+    } catch (e) {
+      console.error("Health check failed", e);
+    }
+    res.json({ 
+      status: 'ok', 
+      database: dbHealthy ? 'connected' : 'disconnected',
+      timestamp: new Date().toISOString()
+    });
   });
 
   // importantly only setup vite in development and after
@@ -60,11 +101,28 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
+  const httpServer = server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      httpServer.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    });
+  
+    process.on('SIGINT', () => {
+      console.log('SIGINT received, shutting down gracefully');
+      httpServer.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
+    });
 })();
