@@ -1,5 +1,5 @@
 
-const { neon } = require('@neondatabase/serverless');
+import { neon } from '@neondatabase/serverless';
 
 async function migratePrompts() {
   const sql = neon(process.env.DATABASE_URL);
