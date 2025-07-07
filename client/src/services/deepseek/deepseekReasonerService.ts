@@ -1,4 +1,3 @@
-
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 import { attachedAssetsService } from "./attachedAssetsService";
 import { ReasonerQuery, DeepSeekResponse } from './types';
@@ -26,7 +25,7 @@ export class DeepSeekReasonerService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     try {
       this.initialized = true;
     } catch (error) {
@@ -100,10 +99,10 @@ export class DeepSeekReasonerService {
           if (response.ok) {
             const result = await response.json();
             const context = result.data;
-            
+
             if (context.relevantAssets.length > 0) {
               attachedAssetsContext = "\n\n=== ATTACHED ASSETS CONTEXT ===\n";
-              
+
               for (const asset of context.relevantAssets) {
                 const content = context.contextData[asset.filename];
                 if (content) {
@@ -112,7 +111,7 @@ export class DeepSeekReasonerService {
                 }
               }
               attachedAssetsContext += "\n=== END ATTACHED ASSETS ===\n";
-              
+
               integrationData.attachedAssets = {
                 count: context.relevantAssets.length,
                 used: context.relevantAssets.map((a: any) => a.filename)
@@ -195,14 +194,14 @@ export class DeepSeekReasonerService {
           for (const strategy of searchStrategies) {
             try {
               const ragResults = await ragService.query(strategy);
-              
+
               if (ragResults.results && ragResults.results.length > 0) {
                 // Add unique results (avoid duplicates)
                 const newResults = ragResults.results.filter((newResult: any) => 
                   !allResults.some(existing => existing.id === newResult.id)
                 );
                 allResults = [...allResults, ...newResults];
-                
+
                 realTimeResponseService.addResponse({
                   source: "deepseek-reasoner",
                   status: "info",
@@ -226,7 +225,7 @@ export class DeepSeekReasonerService {
           if (topResults.length > 0) {
             ragContext = "\n\n=== COMPREHENSIVE RAG CONTEXT (Full Document Access) ===\n";
             ragContext += `Searched across 6,800+ documents, found ${allResults.length} relevant results, showing top ${topResults.length}:\n\n`;
-            
+
             topResults.forEach((result, index) => {
               ragContext += `\n[${index + 1}] ${result.metadata?.title || 'Document'} (Relevance: ${((result.relevanceScore || 0) * 100).toFixed(1)}%)\n`;
               ragContext += `${result.content.substring(0, 1500)}${result.content.length > 1500 ? "..." : ""}\n`;
@@ -271,7 +270,7 @@ export class DeepSeekReasonerService {
           });
         }
       }
-      
+
       if (query.conversationHistory && query.conversationHistory.length > 0) {
         query.conversationHistory.forEach(msg => {
           messages.push({
@@ -283,18 +282,18 @@ export class DeepSeekReasonerService {
 
       // Enhanced prompt with RAG context and attached assets
       let enhancedPrompt = query.prompt;
-      
+
       if (attachedAssetsContext || ragContext) {
         let contextSection = "";
-        
+
         if (attachedAssetsContext) {
           contextSection += attachedAssetsContext + "\n\n";
         }
-        
+
         if (ragContext) {
           contextSection += `Context from knowledge base:\n${ragContext}\n\n`;
         }
-        
+
         enhancedPrompt = `${contextSection}User query: ${query.prompt}`;
       }
 
@@ -348,7 +347,7 @@ export class DeepSeekReasonerService {
 
   clearConversation(conversationId: string): void {
     this.conversationManager.clearConversation(conversationId);
-    
+
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "success",

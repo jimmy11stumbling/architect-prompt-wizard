@@ -32,9 +32,9 @@ export class AttachedAssetsService {
       if (!response.ok) {
         throw new Error('Failed to load attached assets');
       }
-      
+
       const assetList = await response.json();
-      
+
       // Process and categorize assets
       const processedAssets = assetList.map((asset: any) => ({
         filename: asset.filename,
@@ -82,10 +82,10 @@ export class AttachedAssetsService {
       }
 
       const content = await response.text();
-      
+
       // Cache the content
       this.contentCache.set(filename, content);
-      
+
       realTimeResponseService.addResponse({
         source: "attached-assets-service",
         status: "success",
@@ -107,14 +107,14 @@ export class AttachedAssetsService {
 
   async searchAssets(query: string, type?: 'text' | 'image' | 'document'): Promise<AttachedAsset[]> {
     const allAssets = Array.from(this.assets.values());
-    
+
     return allAssets.filter(asset => {
       const matchesType = !type || asset.type === type;
       const matchesQuery = !query || 
         asset.filename.toLowerCase().includes(query.toLowerCase()) ||
         asset.metadata?.description?.toLowerCase().includes(query.toLowerCase()) ||
         asset.metadata?.tags?.some(tag => tag.toLowerCase().includes(query.toLowerCase()));
-      
+
       return matchesType && matchesQuery;
     });
   }
@@ -197,7 +197,7 @@ export class AttachedAssetsService {
 
   private determineAssetType(filename: string): 'text' | 'image' | 'document' {
     const extension = filename.split('.').pop()?.toLowerCase();
-    
+
     if (['txt', 'md', 'json', 'csv', 'log'].includes(extension || '')) {
       return 'text';
     }
@@ -274,7 +274,7 @@ export class AttachedAssetsService {
     totalSize: number;
   } {
     const assets = Array.from(this.assets.values());
-    
+
     return {
       total: assets.length,
       byType: assets.reduce((acc, asset) => {
@@ -298,6 +298,174 @@ export class AttachedAssetsService {
       message: "Asset content cache cleared",
       data: {}
     });
+  }
+
+  async queryAssets(options: {
+    query: string;
+    maxAssets?: number;
+    includeContent?: boolean;
+    category?: string;
+  }): Promise<{
+    relevantAssets: AttachedAsset[];
+    totalMatches: number;
+    searchTerms: string[];
+  }> {
+    await this.ensureAssetsLoaded();
+
+    const { query, maxAssets = 5, includeContent = false, category } = options;
+    const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 2);
+
+    // Add specialized MCP search terms
+    const expandedTerms = [...searchTerms];
+    if (query.toLowerCase().includes('mcp') || query.toLowerCase().includes('protocol')) {
+      expandedTerms.push('model', 'context', 'protocol', 'json-rpc', 'tools', 'resources');
+    }
+    if (query.toLowerCase().includes('rag')) {
+      expandedTerms.push('retrieval', 'augmented', 'generation', 'vector', 'embedding');
+    }
+    if (query.toLowerCase().includes('a2a') || query.toLowerCase().includes('agent')) {
+      expandedTerms.push('agent', 'communication', 'coordination', 'fipa');
+    }
+
+    const scoredAssets = Array.from(this.assets.values())
+      .filter(asset => !category || asset.metadata?.category === category)
+      .map(asset => {
+        let score = 0;
+        const assetText = `${asset.filename} ${asset.content || ''}`.toLowerCase();
+        const filenameText = asset.filename.toLowerCase();
+
+        // Filename bonus scoring
+        expandedTerms.forEach(term => {
+          if (filenameText.includes(term)) {
+            score += 5; // High bonus for filename matches
+          }
+        });
+
+        // Content scoring with enhanced term matching
+        expandedTerms.forEach(term => {
+          const termRegex = new RegExp(`\\b${term}\\b`, 'gi');
+          const matches = assetText.match(termRegex);
+          if (matches) {
+            // Weight by term importance and frequency
+            const termWeight = term.length >= 6 ? 2 : 1; // Longer terms are more specific
+            score += matches.length * termWeight;
+          }
+        });
+
+        // Special boost for exact phrase matches
+        if (assetText.includes(query.toLowerCase())) {
+          score += 10;
+        }
+
+        // Boost for MCP-related documents when MCP is queried
+        if ((query.toLowerCase().includes('mcp') || query.toLowerCase().includes('protocol')) && 
+            (filenameText.includes('mcp') || assetText.includes('model context protocol'))) {
+          score += 15;
+        }
+
+        return {
+          asset,
+          score
+        };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    const relevantAssets = scoredAssets
+      .slice(0, maxAssets)
+      .map(item => ({
+        ...item.asset,
+        content: includeContent ? this.contentCache.get(item.asset.filename) : undefined,
+        metadata: {
+          ...item.asset.metadata,
+          relevanceScore: Math.min(item.score / 20, 1) // Normalize score with higher ceiling
+        }
+      }));
+
+    return {
+      relevantAssets,
+      totalMatches: scoredAssets.length,
+      searchTerms: expandedTerms
+    };
+  }
+
+  async getContextForPrompt(prompt: string, maxAssets: number = 5): Promise<string> {
+    // Enhanced query processing for better document matching
+    const queryTerms = prompt.toLowerCase();
+    const isMCPQuery = queryTerms.includes('mcp') || queryTerms.includes('model context protocol') || 
+                      queryTerms.includes('model-context-protocol') || queryTerms.includes('protocol');
+    const isRAGQuery = queryTerms.includes('rag') || queryTerms.includes('retrieval') || 
+                      queryTerms.includes('augmented generation');
+    const isA2AQuery = queryTerms.includes('a2a') || queryTerms.includes('agent') || 
+                      queryTerms.includes('communication');
+
+    // Get relevant assets with enhanced filtering
+    const relevantAssets = await this.queryAssets({
+      query: prompt,
+      maxAssets: isMCPQuery || isRAGQuery || isA2AQuery ? 8 : maxAssets,
+      includeContent: true
+    });
+
+    // Prioritize specific documentation based on query type
+    if (isMCPQuery) {
+      // Ensure MCP documents are included
+      const mcpAssets = Array.from(this.assets.values()).filter(asset => 
+        asset.filename.toLowerCase().includes('mcp') || 
+        asset.content?.toLowerCase().includes('model context protocol') ||
+        asset.content?.toLowerCase().includes('mcp')
+      );
+
+      // Add MCP assets if not already included
+      mcpAssets.forEach(mcpAsset => {
+        if (!relevantAssets.relevantAssets.find(asset => asset.filename === mcpAsset.filename)) {
+          relevantAssets.relevantAssets.unshift({
+            ...mcpAsset,
+            content: this.contentCache.get(mcpAsset.filename),
+            metadata: { ...mcpAsset.metadata, relevanceScore: 0.95 }
+          });
+        }
+      });
+    }
+
+    if (relevantAssets.relevantAssets.length === 0) {
+      return "No relevant documentation found for this query.";
+    }
+
+    let context = "=== RELEVANT DOCUMENTATION ===\n\n";
+
+    // Sort by relevance score if available
+    const sortedAssets = relevantAssets.relevantAssets
+      .sort((a, b) => (b.metadata?.relevanceScore || 0) - (a.metadata?.relevanceScore || 0))
+      .slice(0, Math.min(8, relevantAssets.relevantAssets.length));
+
+    sortedAssets.forEach((asset, index) => {
+      context += `## Document ${index + 1}: ${asset.filename}\n`;
+      if (asset.metadata?.category) {
+        context += `Category: ${asset.metadata.category}\n`;
+      }
+      if (asset.metadata?.relevanceScore) {
+        context += `Relevance: ${(asset.metadata.relevanceScore * 100).toFixed(1)}%\n`;
+      }
+      context += "\n";
+
+      if (asset.content) {
+        // Dynamic content length based on relevance
+        const baseLength = 3000;
+        const relevanceMultiplier = asset.metadata?.relevanceScore || 0.5;
+        const maxContentLength = Math.floor(baseLength * (1 + relevanceMultiplier));
+
+        const truncatedContent = asset.content.length > maxContentLength 
+          ? asset.content.substring(0, maxContentLength) + "\n\n[Content truncated - this document contains more information]"
+          : asset.content;
+        context += `${truncatedContent}\n\n`;
+      }
+      context += "---\n\n";
+    });
+
+    context += "=== END DOCUMENTATION ===\n";
+    context += `\nTotal documents accessed: ${sortedAssets.length} of ${Array.from(this.assets.values()).length} available\n`;
+
+    return context;
   }
 }
 
