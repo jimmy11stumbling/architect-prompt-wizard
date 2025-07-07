@@ -18,6 +18,8 @@ import promptsRouter from "./routes/prompts";
 import workflowsRouter from "./routes/workflows";
 import attachedAssetsRouter from "./routes/attachedAssets";
 import mcpHubRouter from "./routes/mcpHub";
+import ragEnhancedRouter from "./routes/ragEnhanced";
+import { ragOrchestrator2 } from "./services/rag/ragOrchestrator2";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes (no auth middleware)
@@ -27,7 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
-      
+
       // For development, accept any login
       const user = { id: 1, username, email: `${username}@example.com` };
       res.json({ user, token: "development-token" });
@@ -43,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
-      
+
       // For development, accept any registration
       const user = { id: 1, username, email: email || `${username}@example.com` };
       res.json({ user, token: "development-token" });
@@ -359,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { platform } = req.query;
       const comprehensiveData = await mcpHub.getComprehensiveContext(platform as string);
-      
+
       // Convert to the format expected by existing agents
       const documentation = {
         platforms: comprehensiveData.allPlatforms.map(p => ({
@@ -384,13 +386,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp-hub/comprehensive-context", async (req, res) => {
     try {
       const { query, targetPlatform, platformFilter, includeTechnologies, includeFeatures, includeIntegrations, includePricing, includeKnowledgeBase } = req.body;
-      
+
       // Use platformFilter if provided, otherwise use targetPlatform
       const effectivePlatform = platformFilter || targetPlatform;
       console.log(`[MCP Hub] Comprehensive context for platform: ${effectivePlatform}`);
-      
+
       const context = await mcpHub.getComprehensiveContext(effectivePlatform);
-      
+
       // If a specific platform is requested, only return that platform's data
       if (effectivePlatform && context.platform) {
         res.json({ 
@@ -508,13 +510,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
       const ragOrchestrator = RAGOrchestrator2.getInstance();
-      
+
       // Setup progress tracking
       const progressUpdates: any[] = [];
       await ragOrchestrator.indexAllData((progress) => {
         progressUpdates.push(progress);
       });
-      
+
       res.json({ 
         message: "RAG 2.0 indexing completed successfully",
         progress: progressUpdates,
@@ -529,14 +531,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rag/search", async (req, res) => {
     try {
       const { query, filters, limit, options } = req.body;
-      
+
       if (!query) {
         return res.status(400).json({ error: "Query is required" });
       }
 
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
       const ragOrchestrator = RAGOrchestrator2.getInstance();
-      
+
       const ragQuery = {
         query,
         filters,
@@ -555,19 +557,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/rag/suggestions", async (req, res) => {
     try {
       const { q: query, limit } = req.query;
-      
+
       if (!query) {
         return res.status(400).json({ error: "Query parameter 'q' is required" });
       }
 
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
       const ragOrchestrator = RAGOrchestrator2.getInstance();
-      
+
       const suggestions = await ragOrchestrator.getSuggestions(
         query as string, 
         parseInt(limit as string) || 5
       );
-      
+
       res.json({ suggestions });
     } catch (error) {
       console.error("Error getting suggestions:", error);
@@ -579,7 +581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
       const ragOrchestrator = RAGOrchestrator2.getInstance();
-      
+
       const stats = await ragOrchestrator.getStats();
       res.json(stats);
     } catch (error) {
@@ -593,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
       const ragOrchestrator = RAGOrchestrator2.getInstance();
-      
+
       const stats = await ragOrchestrator.getStats();
       const metrics = {
         performance: {
@@ -614,7 +616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           embeddingServiceHealth: stats.embeddingStats.size > 0 ? 'operational' : 'not-ready'
         }
       };
-      
+
       res.json(metrics);
     } catch (error) {
       console.error("Error getting RAG metrics:", error);
@@ -626,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rag/compress-context", async (req, res) => {
     try {
       const { context, maxTokens = 2000 } = req.body;
-      
+
       if (!context) {
         return res.status(400).json({ error: "Context is required" });
       }
@@ -634,11 +636,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Simple context compression (could be enhanced with more sophisticated methods)
       const words = context.split(/\s+/);
       let compressed = context;
-      
+
       if (words.length > maxTokens) {
         compressed = words.slice(0, maxTokens).join(' ') + '...\n\n[Context truncated for length]';
       }
-      
+
       res.json({ 
         originalLength: words.length,
         compressedLength: compressed.split(/\s+/).length,
@@ -666,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { RAGOrchestrator } = await import("./services/rag/ragOrchestrator");
       const ragOrchestrator = new RAGOrchestrator();
-      
+
       await ragOrchestrator.reIndex();
       res.json({ message: "Re-indexing completed successfully" });
     } catch (error) {
@@ -679,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp/initialize", async (req, res) => {
     try {
       const { mcpRegistry } = await import("./services/mcp/mcpClient");
-      
+
       // Register default MCP clients
       mcpRegistry.registerClient("platform-tools", {
         serverName: "platform-tools",
@@ -687,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await mcpRegistry.initializeAll();
-      
+
       res.json({ 
         message: "MCP system initialized successfully",
         clients: mcpRegistry.listClients()
@@ -717,7 +719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp/tools/call", async (req, res) => {
     try {
       const { clientName, toolName, arguments: toolArgs, args } = req.body;
-      
+
       if (!toolName) {
         return res.status(400).json({ error: "toolName is required" });
       }
@@ -725,9 +727,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { mcpToolRegistry } = await import("./services/mcp/mcpToolRegistry");
       // Support both 'arguments' and 'args' for flexibility
       const parameters = toolArgs || args || {};
-      
+
       const result = await mcpToolRegistry.executeTool(toolName, parameters);
-      
+
       res.json({ result });
     } catch (error) {
       console.error("Error calling MCP tool:", error);
@@ -771,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp/resources/read", async (req, res) => {
     try {
       const { uri } = req.body;
-      
+
       if (!uri) {
         return res.status(400).json({ error: "uri is required" });
       }
@@ -787,11 +789,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             environment: process.env.NODE_ENV
           };
           break;
-        
+
         case "docs://api":
           result = `# IPA API Documentation\n\n## Endpoints\n\n### RAG System\n- POST /api/rag/initialize\n- POST /api/rag/index\n- POST /api/rag/search\n\n### MCP System\n- POST /api/mcp/initialize\n- GET /api/mcp/tools\n- POST /api/mcp/tools/call\n\n### A2A System\n- POST /api/a2a/initialize\n- POST /api/a2a/message\n- GET /api/a2a/agents`;
           break;
-        
+
         case "schema://database":
           result = {
             tables: ["users", "platforms", "platform_features", "prompt_generations", "saved_prompts", "workflows", "knowledge_base"],
@@ -801,11 +803,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           };
           break;
-        
+
         default:
           return res.status(404).json({ error: "Resource not found" });
       }
-      
+
       res.json({ result });
     } catch (error) {
       console.error("Error reading MCP resource:", error);
@@ -827,14 +829,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp/resources/read", async (req, res) => {
     try {
       const { clientName, uri } = req.body;
-      
+
       if (!clientName || !uri) {
         return res.status(400).json({ error: "clientName and uri are required" });
       }
 
       const { mcpRegistry } = await import("./services/mcp/mcpClient");
       const result = await mcpRegistry.readResource(clientName, uri);
-      
+
       res.json({ result });
     } catch (error) {
       console.error("Error reading MCP resource:", error);
@@ -877,7 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/a2a/task", async (req, res) => {
     try {
       const { description, requiredCapabilities, priority, agents, strategy } = req.body;
-      
+
       if (!description) {
         return res.status(400).json({ error: "Task description is required" });
       }
@@ -895,7 +897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           priority || "medium"
         );
       }
-      
+
       res.json({ result });
     } catch (error) {
       console.error("Error creating A2A task:", error);
@@ -906,7 +908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/a2a/negotiate", async (req, res) => {
     try {
       const { initiator, participants, task } = req.body;
-      
+
       if (!initiator || !participants || !task) {
         return res.status(400).json({ error: "initiator, participants, and task are required" });
       }
@@ -915,7 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coordinator = new AgentCoordinator();
 
       const result = await coordinator.negotiateTask(initiator, participants, task);
-      
+
       res.json({ result });
     } catch (error) {
       console.error("Error in A2A negotiation:", error);
@@ -927,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { AgentCoordinator } = await import("./services/a2a/agentCoordinator");
       const coordinator = new AgentCoordinator();
-      
+
       const stats = coordinator.getCoordinationStats();
       res.json(stats);
     } catch (error) {
@@ -939,24 +941,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/a2a/negotiate", async (req, res) => {
     try {
       const { initiator, participants, task } = req.body;
-      
+
       if (!initiator || !participants || !task) {
         return res.status(400).json({ error: "Initiator, participants, and task are required" });
       }
 
       const { FIPAProtocol } = await import("./services/a2a/fipaProtocol");
       const protocol = new FIPAProtocol();
-      
+
       // Simulate Contract Net Protocol negotiation
       const proposals = participants.map((participant: string) => ({
         performative: "propose",
         sender: { name: participant },
         content: `Agent ${participant} proposes to handle task: ${task}`
       }));
-      
+
       // Simple winner selection (could be based on capabilities, availability, etc.)
       const winner = participants[Math.floor(Math.random() * participants.length)];
-      
+
       res.json({ 
         result: {
           winner,
@@ -1074,6 +1076,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error loading settings:", error);
       res.status(500).json({ error: "Failed to load settings" });
+    }
+  });
+
+  // Enhanced RAG routes
+  app.use("/api/rag-enhanced", ragEnhancedRouter);
+
+  // Basic RAG search endpoint for DeepSeek integration
+  app.post("/api/rag/search", async (req, res) => {
+    try {
+      const { query, limit = 10, includeMetadata = true, semanticWeight = 0.7 } = req.body;
+
+      if (!query) {
+        return res.status(400).json({ error: "Query is required" });
+      }
+
+      const results = await ragOrchestrator2.hybridSearch(query, {
+        limit,
+        includeMetadata,
+        semanticWeight
+      });
+
+      res.json({
+        success: true,
+        results: results || [],
+        metadata: {
+          query,
+          resultCount: results?.length || 0,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("RAG search error:", error);
+      res.status(500).json({ 
+        error: "RAG search failed",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

@@ -158,106 +158,75 @@ export class DeepSeekReasonerService {
             data: { query: query.prompt, documentsAvailable: "6800+" }
           });
 
-          // Comprehensive search strategy: multiple searches with different approaches
-          const searchStrategies = [
-            // Primary semantic search with high relevance
-            { 
+          // Use the backend RAG API directly for better integration
+          const ragResponse = await fetch('/api/rag/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
               query: query.prompt,
-              limit: 10, 
-              semanticWeight: 0.8, 
-              categories: ['all'], 
+              limit: 15,
               includeMetadata: true,
-              description: "Primary semantic search"
-            },
-            // Keyword-focused search for exact matches
-            { 
-              query: query.prompt,
-              limit: 5, 
-              semanticWeight: 0.3, 
-              categories: ['platform-specification', 'documentation'], 
-              includeMetadata: true,
-              description: "Keyword-focused technical search"
-            },
-            // Broad contextual search
-            { 
-              query: query.prompt,
-              limit: 8, 
-              semanticWeight: 0.6, 
-              categories: ['all'], 
-              includeMetadata: true,
-              description: "Broad contextual search"
-            }
-          ];
+              semanticWeight: 0.7
+            })
+          });
 
           let allResults: any[] = [];
-          let searchMetadata: any = {};
-
-          for (const strategy of searchStrategies) {
-            try {
-              const ragResults = await ragService.query(strategy);
-              
-              if (ragResults.results && ragResults.results.length > 0) {
-                // Add unique results (avoid duplicates)
-                const newResults = ragResults.results.filter((newResult: any) => 
-                  !allResults.some(existing => existing.id === newResult.id)
-                );
-                allResults = [...allResults, ...newResults];
-                
-                realTimeResponseService.addResponse({
-                  source: "deepseek-reasoner",
-                  status: "info",
-                  message: `${strategy.description}: Found ${ragResults.results.length} results`,
-                  data: { 
-                    strategy: strategy.description, 
-                    results: ragResults.results.length,
-                    avgRelevance: ragResults.results.reduce((acc: number, r: any) => acc + (r.relevanceScore || 0), 0) / ragResults.results.length
-                  }
-                });
+          
+          if (ragResponse.ok) {
+            const ragData = await ragResponse.json();
+            allResults = ragData.results || [];
+            
+            realTimeResponseService.addResponse({
+              source: "deepseek-reasoner",
+              status: "info",
+              message: `RAG search found ${allResults.length} relevant documents`,
+              data: { 
+                results: allResults.length,
+                avgRelevance: allResults.reduce((acc: number, r: any) => acc + (r.relevanceScore || 0), 0) / allResults.length
               }
-            } catch (strategyError) {
-              console.warn(`RAG strategy failed: ${strategy.description}`, strategyError);
-            }
+            });
+          } else {
+            console.error('RAG search failed:', ragResponse.statusText);
           }
 
-          // Sort all results by relevance and take top results
-          allResults.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
-          const topResults = allResults.slice(0, 15); // Take top 15 most relevant results
+          if (allResults.length > 0) {
+            // Sort by relevance score
+            allResults.sort((a, b) => (b.score || b.relevanceScore || 0) - (a.score || a.relevanceScore || 0));
+            const topResults = allResults.slice(0, 10); // Take top 10 most relevant results
 
-          if (topResults.length > 0) {
-            ragContext = "\n\n=== COMPREHENSIVE RAG CONTEXT (Full Document Access) ===\n";
-            ragContext += `Searched across 6,800+ documents, found ${allResults.length} relevant results, showing top ${topResults.length}:\n\n`;
+            ragContext = "\n\n=== KNOWLEDGE BASE CONTEXT ===\n";
+            ragContext += `Found ${allResults.length} relevant documents from database:\n\n`;
             
             topResults.forEach((result, index) => {
-              ragContext += `\n[${index + 1}] ${result.metadata?.title || 'Document'} (Relevance: ${((result.relevanceScore || 0) * 100).toFixed(1)}%)\n`;
-              ragContext += `${result.content.substring(0, 1500)}${result.content.length > 1500 ? "..." : ""}\n`;
+              const score = result.score || result.relevanceScore || 0;
+              ragContext += `\n[Document ${index + 1}] ${result.metadata?.title || result.metadata?.filename || 'Knowledge Base Document'}\n`;
+              ragContext += `Relevance: ${(score * 100).toFixed(1)}%\n`;
+              ragContext += `Content: ${result.content.substring(0, 2000)}${result.content.length > 2000 ? "..." : ""}\n`;
               if (result.metadata) {
-                ragContext += `Source: ${result.metadata.source || 'Database'} | Category: ${result.metadata.category || 'General'}\n`;
+                ragContext += `Category: ${result.metadata.category || 'General'} | Source: ${result.metadata.source || 'Database'}\n`;
               }
-              ragContext += "---\n";
+              ragContext += "\n" + "=".repeat(50) + "\n";
             });
-            ragContext += "\n=== END COMPREHENSIVE RAG CONTEXT ===\n";
+            ragContext += "\n=== END KNOWLEDGE BASE CONTEXT ===\n\n";
 
             integrationData.rag = {
-              totalDocumentsSearched: "6800+",
-              strategiesUsed: searchStrategies.length,
-              uniqueResultsFound: allResults.length,
+              totalDocumentsSearched: allResults.length,
               topResultsUsed: topResults.length,
-              avgRelevance: topResults.reduce((acc, r) => acc + (r.relevanceScore || 0), 0) / topResults.length,
-              highestRelevance: topResults[0]?.relevanceScore || 0,
-              searchTime: searchMetadata?.totalTime || 0
+              avgRelevance: topResults.reduce((acc, r) => acc + (r.score || r.relevanceScore || 0), 0) / topResults.length,
+              highestRelevance: topResults[0]?.score || topResults[0]?.relevanceScore || 0
             };
 
             realTimeResponseService.addResponse({
               source: "deepseek-reasoner",
               status: "success",
-              message: `RAG search complete: ${topResults.length} highly relevant documents found from 6,800+ database`,
+              message: `RAG context loaded: ${topResults.length} relevant documents found`,
               data: integrationData.rag
             });
           } else {
             realTimeResponseService.addResponse({
               source: "deepseek-reasoner",
-              status: "info",
-              message: "No relevant documents found in RAG database",
+              status: "warning",
+              message: "No relevant documents found in knowledge base for this query",
               data: { query: query.prompt }
             });
           }
@@ -285,17 +254,21 @@ export class DeepSeekReasonerService {
       let enhancedPrompt = query.prompt;
       
       if (attachedAssetsContext || ragContext) {
-        let contextSection = "";
-        
-        if (attachedAssetsContext) {
-          contextSection += attachedAssetsContext + "\n\n";
-        }
+        let contextSection = "You have access to the following context information:\n\n";
         
         if (ragContext) {
-          contextSection += `Context from knowledge base:\n${ragContext}\n\n`;
+          contextSection += ragContext + "\n";
         }
         
-        enhancedPrompt = `${contextSection}User query: ${query.prompt}`;
+        if (attachedAssetsContext) {
+          contextSection += attachedAssetsContext + "\n";
+        }
+        
+        contextSection += "\nPlease use this context to provide accurate, informed responses. ";
+        contextSection += "Reference specific information from the context when relevant.\n\n";
+        contextSection += "User Question: " + query.prompt;
+        
+        enhancedPrompt = contextSection;
       }
 
       messages.push({
