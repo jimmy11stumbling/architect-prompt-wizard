@@ -19,7 +19,7 @@ import workflowsRouter from "./routes/workflows";
 import attachedAssetsRouter from "./routes/attachedAssets";
 import mcpHubRouter from "./routes/mcpHub";
 import ragEnhancedRouter from "./routes/ragEnhanced";
-import { ragOrchestrator2 } from "./services/rag/ragOrchestrator2";
+import { RAGOrchestrator2 } from "./services/rag/ragOrchestrator2";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes (no auth middleware)
@@ -1091,18 +1091,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Query is required" });
       }
 
-      const results = await ragOrchestrator2.hybridSearch(query, {
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
+      const ragQuery = {
+        query,
         limit,
-        includeMetadata,
-        semanticWeight
-      });
+        options: {
+          includeMetadata,
+          hybridWeight: { semantic: semanticWeight, keyword: 1 - semanticWeight }
+        }
+      };
+
+      const results = await ragOrchestrator.query(ragQuery);
 
       res.json({
         success: true,
-        results: results || [],
+        results: results.results || [],
         metadata: {
           query,
-          resultCount: results?.length || 0,
+          resultCount: results.totalResults || 0,
           timestamp: new Date().toISOString()
         }
       });
