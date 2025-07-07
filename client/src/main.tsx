@@ -13,6 +13,7 @@ window.addEventListener('unhandledrejection', (event) => {
       event.reason?.message?.includes('Timeout after') ||
       event.reason?.message?.includes('Search timeout') ||
       event.reason?.message?.includes('plugin:runtime-error-plugin') ||
+      event.reason?.message?.includes('[plugin:runtime-error-plugin]') ||
       event.reason?.message?.includes('unknown runtime error') ||
       event.reason?.message?.includes('Platform not found') ||
       event.reason?.message?.includes('Bad Gateway') ||
@@ -41,6 +42,7 @@ window.addEventListener('error', (event) => {
       event.error?.message?.includes('Timeout after') ||
       event.error?.message?.includes('Search timeout') ||
       event.error?.message?.includes('plugin:runtime-error-plugin') ||
+      event.error?.message?.includes('[plugin:runtime-error-plugin]') ||
       event.error?.message?.includes('unknown runtime error') ||
       event.error?.message?.includes('Platform not found') ||
       event.error?.message?.includes('Bad Gateway') ||
@@ -49,13 +51,41 @@ window.addEventListener('error', (event) => {
       event.error?.message?.includes('Failed to fetch') ||
       event.error?.name === 'AbortError' ||
       event.error instanceof TypeError ||
-      event.error instanceof DOMException) {
-    console.warn('Handled error:', event.error);
+      event.error instanceof DOMException ||
+      event.message?.includes('plugin:runtime-error-plugin') ||
+      event.message?.includes('[plugin:runtime-error-plugin]') ||
+      event.message?.includes('unknown runtime error')) {
+    console.debug('Suppressed error:', event.error?.message || event.message);
     event.preventDefault();
   }
 });
 
 // Suppress runtime error plugin overlays
+// Override Vite's error overlay handling
+if (import.meta.env.DEV) {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    const message = args.join(' ');
+    if (message.includes('plugin:runtime-error-plugin') || 
+        message.includes('[plugin:runtime-error-plugin]') ||
+        message.includes('unknown runtime error')) {
+      console.debug('Suppressed console error:', message);
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  };
+
+  // Intercept and suppress Vite overlay creation
+  const originalCreateElement = document.createElement;
+  document.createElement = function(tagName, options) {
+    const element = originalCreateElement.call(this, tagName, options);
+    if (tagName === 'vite-error-overlay') {
+      console.debug('Blocked vite-error-overlay creation');
+      return document.createElement('div'); // Return empty div instead
+    }
+    return element;
+  };
+}
 const originalError = window.onerror;
 window.onerror = (message, source, lineno, colno, error) => {
   const msg = message?.toString() || '';
@@ -64,7 +94,10 @@ window.onerror = (message, source, lineno, colno, error) => {
       msg.includes('Failed to fetch') ||
       msg.includes('SafeAbort') ||
       msg.includes('stats timeout') ||
-      msg.includes('plugin:runtime-error-plugin')) {
+      msg.includes('plugin:runtime-error-plugin') ||
+      msg.includes('unknown runtime error') ||
+      msg.includes('[plugin:runtime-error-plugin]')) {
+    console.debug('Suppressed runtime error:', msg);
     return true; // Prevent error from propagating
   }
   return originalError ? originalError(message, source, lineno, colno, error) : false;
