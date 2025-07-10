@@ -173,11 +173,13 @@ export class DeepSeekReasonerService {
             enhancedQuery += ' agent-to-agent communication FIPA ACL protocol coordination';
           }
 
-          // Use the backend RAG API directly for better integration with timeout
+          // Use the backend RAG API directly with improved timeout and retry logic
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // Reduced to 10 second timeout
 
           try {
+            console.log(`[DeepSeek RAG] Calling /api/rag/search with query: "${enhancedQuery}"`);
+            
             const ragResponse = await fetch('/api/rag/search', {
               method: 'POST',
               headers: { 
@@ -186,7 +188,7 @@ export class DeepSeekReasonerService {
               },
               body: JSON.stringify({
                 query: enhancedQuery,
-                limit: 20,
+                limit: 15, // Reduced from 20 for faster response
                 includeMetadata: true,
                 semanticWeight: 0.8
               }),
@@ -200,36 +202,39 @@ export class DeepSeekReasonerService {
               const ragData = await ragResponse.json();
               allResults = ragData.results || [];
               
+              console.log(`[DeepSeek RAG] Successfully retrieved ${allResults.length} results`);
+              
               realTimeResponseService.addResponse({
                 source: "deepseek-reasoner",
-                status: "info",
+                status: "success",
                 message: `RAG search found ${allResults.length} relevant documents`,
                 data: { 
                   results: allResults.length,
-                  avgRelevance: allResults.length > 0 ? allResults.reduce((acc: number, r: any) => acc + (r.relevanceScore || 0), 0) / allResults.length : 0
+                  avgRelevance: allResults.length > 0 ? allResults.reduce((acc: number, r: any) => acc + (r.relevanceScore || r.score || 0), 0) / allResults.length : 0
                 }
               });
             } else {
-              console.warn('RAG search failed:', ragResponse.statusText);
+              const errorText = await ragResponse.text();
+              console.error('RAG search failed:', ragResponse.status, errorText);
               realTimeResponseService.addResponse({
                 source: "deepseek-reasoner",
                 status: "warning",
                 message: `RAG search failed: ${ragResponse.statusText}`,
-                data: { statusCode: ragResponse.status }
+                data: { statusCode: ragResponse.status, error: errorText }
               });
             }
           } catch (ragFetchError) {
             clearTimeout(timeoutId);
             if (ragFetchError instanceof Error && ragFetchError.name === 'AbortError') {
-              console.warn('RAG search timed out');
+              console.warn('RAG search timed out after 10 seconds');
               realTimeResponseService.addResponse({
                 source: "deepseek-reasoner",
                 status: "warning",
-                message: "RAG search timed out, continuing without enhanced context",
+                message: "RAG search timed out (10s), continuing without enhanced context",
                 data: { timeout: true }
               });
             } else {
-              console.warn('RAG search request failed:', ragFetchError);
+              console.error('RAG search request failed:', ragFetchError);
               realTimeResponseService.addResponse({
                 source: "deepseek-reasoner",
                 status: "warning",

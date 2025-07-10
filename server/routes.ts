@@ -20,6 +20,7 @@ import attachedAssetsRouter from "./routes/attachedAssets";
 import mcpHubRouter from "./routes/mcpHub";
 import ragEnhancedRouter from "./routes/ragEnhanced";
 import { RAGOrchestrator2 } from "./services/rag/ragOrchestrator2";
+import { VectorStore } from "./services/rag/vectorStore";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes (no auth middleware)
@@ -1092,11 +1093,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const ragOrchestrator = RAGOrchestrator2.getInstance();
-      
+
       // Enhanced query processing for technical terms
       let processedQuery = query;
       const queryLower = query.toLowerCase();
-      
+
       // Add synonyms and related terms for better retrieval
       if (queryLower.includes('mcp')) {
         processedQuery += ' "Model Context Protocol" JSON-RPC tool resource communication agent integration';
@@ -1107,7 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (queryLower.includes('a2a')) {
         processedQuery += ' "agent-to-agent" FIPA ACL protocol multi-agent coordination';
       }
-      
+
       const ragQuery = {
         query: processedQuery,
         limit,
@@ -1159,6 +1160,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString(),
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // RAG search endpoint
+  app.post("/api/rag/search", async (req, res) => {
+    try {
+      const { query, limit = 10, includeMetadata = true, semanticWeight = 0.8 } = req.body;
+
+      if (!query) {
+        return res.status(400).json({ error: "Query is required" });
+      }
+
+      console.log(`[RAG Search] Processing query: "${query}" with limit: ${limit}`);
+
+      // Use the vector store for search
+      const vectorStore = new VectorStore(process.env.DATABASE_URL!);
+      await vectorStore.initialize();
+
+      // Perform text search (since embeddings need OpenAI API key for proper semantic search)
+      const results = await vectorStore.textSearch(query, { limit, includeMetadata });
+
+      console.log(`[RAG Search] Found ${results.length} results for query: "${query}"`);
+
+      res.json({
+        query,
+        results,
+        totalResults: results.length,
+        searchTime: Date.now()
+      });
+    } catch (error) {
+      console.error("RAG search error:", error);
+      res.status(500).json({ error: "RAG search failed", details: error instanceof Error ? error.message : String(error) });
     }
   });
 

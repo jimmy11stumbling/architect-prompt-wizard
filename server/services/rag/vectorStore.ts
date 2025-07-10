@@ -143,6 +143,35 @@ export class VectorStore {
     }
   }
 
+  async textSearch(query: string, options: { limit?: number; includeMetadata?: boolean; semanticWeight?: number } = {}): Promise<any[]> {
+    if (!this.initialized) await this.initialize();
+
+    const { limit = 10 } = options;
+
+    try {
+      // For now, return a basic text search using LIKE until we implement proper embedding search
+      const results = await this.db
+        .select({
+          content: vectorDocuments.content,
+          metadata: vectorDocuments.metadata,
+          score: sql<number>`1.0` // Mock score for now
+        })
+        .from(vectorDocuments)
+        .where(sql`${vectorDocuments.content} ILIKE ${'%' + query + '%'}`)
+        .limit(limit);
+
+      return results.map(result => ({
+        content: result.content,
+        metadata: result.metadata,
+        score: result.score,
+        relevanceScore: result.score
+      }));
+    } catch (error) {
+      console.error('Failed to perform text search:', error);
+      return [];
+    }
+  }
+
   async deleteDocument(documentId: string): Promise<void> {
     if (!this.initialized) await this.initialize();
 
