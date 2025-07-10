@@ -48,14 +48,25 @@ export class VectorStore {
     if (this.initialized) return;
 
     try {
-      // Enable pgvector extension
-      await this.db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+      console.log('Initializing vector store...');
+      
+      // Test database connection first
+      await this.db.execute(sql`SELECT 1`);
+      console.log('Database connection successful');
+
+      // Enable pgvector extension (may fail if not available, but that's okay)
+      try {
+        await this.db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+        console.log('pgvector extension enabled');
+      } catch (vectorError) {
+        console.warn('pgvector extension not available, using text search only:', vectorError);
+      }
       
       // Create vector documents table if it doesn't exist
       await this.db.execute(sql`
         CREATE TABLE IF NOT EXISTS vector_documents (
           id SERIAL PRIMARY KEY,
-          document_id TEXT NOT NULL,
+          document_id TEXT NOT NULL UNIQUE,
           content TEXT NOT NULL,
           embedding VECTOR(1536),
           metadata JSONB,
@@ -63,18 +74,31 @@ export class VectorStore {
           updated_at TIMESTAMP DEFAULT NOW()
         )
       `);
+      console.log('Vector documents table created/verified');
 
-      // Create index for similarity search
+      // Create text search index for better performance
       await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
-        ON vector_documents USING ivfflat (embedding vector_cosine_ops)
-        WITH (lists = 100)
+        CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
+        ON vector_documents USING gin(to_tsvector('english', content))
       `);
+
+      // Create index for similarity search (only if pgvector is available)
+      try {
+        await this.db.execute(sql`
+          CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
+          ON vector_documents USING ivfflat (embedding vector_cosine_ops)
+          WITH (lists = 100)
+        `);
+        console.log('Vector similarity index created');
+      } catch (indexError) {
+        console.warn('Vector similarity index not created (pgvector not available)');
+      }
 
       this.initialized = true;
       console.log('Vector store initialized successfully');
     } catch (error) {
       console.error('Failed to initialize vector store:', error);
+      console.error('Error details:', error);
       throw error;
     }
   }
@@ -149,25 +173,49 @@ export class VectorStore {
     const { limit = 10 } = options;
 
     try {
-      // For now, return a basic text search using LIKE until we implement proper embedding search
+      console.log(`[VectorStore] Performing text search for: "${query}" with limit: ${limit}`);
+      
+      // Enhanced text search with better scoring
       const results = await this.db
         .select({
+          id: vectorDocuments.documentId,
           content: vectorDocuments.content,
           metadata: vectorDocuments.metadata,
-          score: sql<number>`1.0` // Mock score for now
+          score: sql<number>`
+            CASE 
+              WHEN ${vectorDocuments.content} ILIKE ${`%${query}%`} THEN 0.9
+              WHEN ${vectorDocuments.content} ILIKE ${`%${query.toLowerCase()}%`} THEN 0.8
+              ELSE 0.5
+            END
+          `
         })
         .from(vectorDocuments)
-        .where(sql`${vectorDocuments.content} ILIKE ${'%' + query + '%'}`)
+        .where(sql`
+          ${vectorDocuments.content} ILIKE ${`%${query}%`} OR 
+          ${vectorDocuments.content} ILIKE ${`%${query.toLowerCase()}%`} OR
+          ${vectorDocuments.metadata}::text ILIKE ${`%${query}%`}
+        `)
+        .orderBy(sql`
+          CASE 
+            WHEN ${vectorDocuments.content} ILIKE ${`%${query}%`} THEN 0.9
+            WHEN ${vectorDocuments.content} ILIKE ${`%${query.toLowerCase()}%`} THEN 0.8
+            ELSE 0.5
+          END DESC
+        `)
         .limit(limit);
 
+      console.log(`[VectorStore] Found ${results.length} results for query: "${query}"`);
+      
       return results.map(result => ({
+        id: result.id,
         content: result.content,
-        metadata: result.metadata,
+        metadata: result.metadata || {},
         score: result.score,
         relevanceScore: result.score
       }));
     } catch (error) {
       console.error('Failed to perform text search:', error);
+      console.error('Error details:', error);
       return [];
     }
   }

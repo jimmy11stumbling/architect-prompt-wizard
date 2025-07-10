@@ -507,6 +507,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Populate vector store with knowledge base data
+  app.post("/api/rag/populate", async (req, res) => {
+    try {
+      console.log('[RAG Populate] Starting database population...');
+      
+      const vectorStore = new VectorStore(process.env.DATABASE_URL!);
+      await vectorStore.initialize();
+      
+      // Get all knowledge base entries
+      const knowledgeBase = await storage.getAllKnowledgeBase();
+      console.log(`[RAG Populate] Found ${knowledgeBase.length} knowledge base entries`);
+      
+      if (knowledgeBase.length === 0) {
+        return res.json({ 
+          message: "No knowledge base entries found to populate",
+          documentsAdded: 0 
+        });
+      }
+      
+      // Convert to vector documents
+      const documents = knowledgeBase.map(kb => ({
+        id: `kb_${kb.id}`,
+        content: kb.content,
+        metadata: {
+          title: kb.title,
+          source: kb.source,
+          category: kb.category,
+          type: 'knowledge-base',
+          id: kb.id
+        }
+      }));
+      
+      // Add to vector store
+      await vectorStore.addDocuments(documents);
+      console.log(`[RAG Populate] Added ${documents.length} documents to vector store`);
+      
+      // Get updated stats
+      const stats = await vectorStore.getStats();
+      
+      res.json({ 
+        message: "Database populated successfully",
+        documentsAdded: documents.length,
+        totalDocuments: stats.totalDocuments,
+        stats
+      });
+    } catch (error) {
+      console.error("Error populating database:", error);
+      res.status(500).json({ error: "Failed to populate database" });
+    }
+  });
+
   app.post("/api/rag/index", async (req, res) => {
     try {
       const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
@@ -1173,25 +1224,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`[RAG Search] Processing query: "${query}" with limit: ${limit}`);
+      const startTime = Date.now();
 
       // Use the vector store for search
       const vectorStore = new VectorStore(process.env.DATABASE_URL!);
       await vectorStore.initialize();
 
-      // Perform text search (since embeddings need OpenAI API key for proper semantic search)
-      const results = await vectorStore.textSearch(query, { limit, includeMetadata });
+      // Check if we have any documents first
+      const stats = await vectorStore.getStats();
+      console.log(`[RAG Search] Vector store stats:`, stats);
 
-      console.log(`[RAG Search] Found ${results.length} results for query: "${query}"`);
+      // If no documents, try to populate from knowledge base
+      if (stats.totalDocuments === 0) {
+        console.log(`[RAG Search] No documents found, attempting to populate from knowledge base...`);
+        try {
+          const knowledgeBase = await storage.getAllKnowledgeBase();
+          console.log(`[RAG Search] Found ${knowledgeBase.length} knowledge base entries`);
+          
+          if (knowledgeBase.length > 0) {
+            const documents = knowledgeBase.map(kb => ({
+              id: `kb_${kb.id}`,
+              content: kb.content,
+              metadata: {
+                title: kb.title,
+                source: kb.source,
+                category: kb.category,
+                type: 'knowledge-base'
+              }
+            }));
+            
+            await vectorStore.addDocuments(documents);
+            console.log(`[RAG Search] Added ${documents.length} documents to vector store`);
+          }
+        } catch (populateError) {
+          console.warn(`[RAG Search] Failed to populate documents:`, populateError);
+        }
+      }
+
+      // Perform text search
+      const results = await vectorStore.textSearch(query, { limit, includeMetadata });
+      const searchTime = Date.now() - startTime;
+
+      console.log(`[RAG Search] Found ${results.length} results for query: "${query}" in ${searchTime}ms`);
 
       res.json({
         query,
         results,
         totalResults: results.length,
-        searchTime: Date.now()
+        searchTime,
+        success: true,
+        metadata: {
+          documentsInIndex: stats.totalDocuments,
+          searchMethod: 'text-search',
+          timestamp: new Date().toISOString()
+        }
       });
     } catch (error) {
       console.error("RAG search error:", error);
-      res.status(500).json({ error: "RAG search failed", details: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ 
+        error: "RAG search failed", 
+        details: error instanceof Error ? error.message : String(error),
+        success: false
+      });
     }
   });
 

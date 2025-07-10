@@ -188,7 +188,7 @@ export class DeepSeekReasonerService {
               },
               body: JSON.stringify({
                 query: enhancedQuery,
-                limit: 15, // Reduced from 20 for faster response
+                limit: 15,
                 includeMetadata: true,
                 semanticWeight: 0.8
               }),
@@ -202,14 +202,18 @@ export class DeepSeekReasonerService {
               const ragData = await ragResponse.json();
               allResults = ragData.results || [];
               
-              console.log(`[DeepSeek RAG] Successfully retrieved ${allResults.length} results`);
+              console.log(`[DeepSeek RAG] Successfully retrieved ${allResults.length} results from ${ragData.metadata?.documentsInIndex || 0} indexed documents`);
+              console.log(`[DeepSeek RAG] Search took ${ragData.searchTime}ms using ${ragData.metadata?.searchMethod || 'unknown'} method`);
               
               realTimeResponseService.addResponse({
                 source: "deepseek-reasoner",
                 status: "success",
-                message: `RAG search found ${allResults.length} relevant documents`,
+                message: `RAG search found ${allResults.length} relevant documents from ${ragData.metadata?.documentsInIndex || 0} indexed`,
                 data: { 
                   results: allResults.length,
+                  documentsInIndex: ragData.metadata?.documentsInIndex || 0,
+                  searchTime: ragData.searchTime,
+                  searchMethod: ragData.metadata?.searchMethod,
                   avgRelevance: allResults.length > 0 ? allResults.reduce((acc: number, r: any) => acc + (r.relevanceScore || r.score || 0), 0) / allResults.length : 0
                 }
               });
