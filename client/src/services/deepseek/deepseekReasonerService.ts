@@ -158,6 +158,21 @@ export class DeepSeekReasonerService {
             data: { query: query.prompt, documentsAvailable: "6800+" }
           });
 
+          // Enhanced query processing for MCP and other technical terms
+          let enhancedQuery = query.prompt;
+          const queryLower = query.prompt.toLowerCase();
+          
+          // Add context-specific search terms for better retrieval
+          if (queryLower.includes('mcp')) {
+            enhancedQuery += ' Model Context Protocol MCP tool resource communication JSON-RPC agent integration';
+          }
+          if (queryLower.includes('rag')) {
+            enhancedQuery += ' retrieval augmented generation vector database semantic search';
+          }
+          if (queryLower.includes('a2a')) {
+            enhancedQuery += ' agent-to-agent communication FIPA ACL protocol coordination';
+          }
+
           // Use the backend RAG API directly for better integration with timeout
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
@@ -170,10 +185,10 @@ export class DeepSeekReasonerService {
                 'Cache-Control': 'no-cache'
               },
               body: JSON.stringify({
-                query: query.prompt,
-                limit: 15,
+                query: enhancedQuery,
+                limit: 20,
                 includeMetadata: true,
-                semanticWeight: 0.7
+                semanticWeight: 0.8
               }),
               signal: controller.signal
             });
@@ -227,16 +242,21 @@ export class DeepSeekReasonerService {
           if (allResults.length > 0) {
             // Sort by relevance score
             allResults.sort((a, b) => (b.score || b.relevanceScore || 0) - (a.score || a.relevanceScore || 0));
-            const topResults = allResults.slice(0, 10); // Take top 10 most relevant results
+            const topResults = allResults.slice(0, 12); // Take top 12 most relevant results
 
             ragContext = "\n\n=== KNOWLEDGE BASE CONTEXT ===\n";
             ragContext += `Found ${allResults.length} relevant documents from database:\n\n`;
+            
+            // Add specific MCP context if query is about MCP
+            if (queryLower.includes('mcp')) {
+              ragContext += "IMPORTANT: MCP refers to 'Model Context Protocol' - a standardized protocol for AI systems to access tools and resources through JSON-RPC communication.\n\n";
+            }
             
             topResults.forEach((result, index) => {
               const score = result.score || result.relevanceScore || 0;
               ragContext += `\n[Document ${index + 1}] ${result.metadata?.title || result.metadata?.filename || 'Knowledge Base Document'}\n`;
               ragContext += `Relevance: ${(score * 100).toFixed(1)}%\n`;
-              ragContext += `Content: ${result.content.substring(0, 2000)}${result.content.length > 2000 ? "..." : ""}\n`;
+              ragContext += `Content: ${result.content.substring(0, 2500)}${result.content.length > 2500 ? "..." : ""}\n`;
               if (result.metadata) {
                 ragContext += `Category: ${result.metadata.category || 'General'} | Source: ${result.metadata.source || 'Database'}\n`;
               }
@@ -289,7 +309,13 @@ export class DeepSeekReasonerService {
       let enhancedPrompt = query.prompt;
       
       if (attachedAssetsContext || ragContext) {
-        let contextSection = "You have access to the following context information:\n\n";
+        let contextSection = "You are an expert AI assistant with access to comprehensive technical documentation. ";
+        contextSection += "You have access to the following context information:\n\n";
+        
+        // Add domain-specific clarification
+        if (queryLower.includes('mcp')) {
+          contextSection += "IMPORTANT CONTEXT: When discussing 'MCP', this refers to 'Model Context Protocol' - a standardized protocol for AI systems to access tools and resources through JSON-RPC communication, NOT Master Customer Profile.\n\n";
+        }
         
         if (ragContext) {
           contextSection += ragContext + "\n";
@@ -300,7 +326,8 @@ export class DeepSeekReasonerService {
         }
         
         contextSection += "\nPlease use this context to provide accurate, informed responses. ";
-        contextSection += "Reference specific information from the context when relevant.\n\n";
+        contextSection += "Reference specific information from the context when relevant. ";
+        contextSection += "Focus on technical accuracy and implementation details.\n\n";
         contextSection += "User Question: " + query.prompt;
         
         enhancedPrompt = contextSection;

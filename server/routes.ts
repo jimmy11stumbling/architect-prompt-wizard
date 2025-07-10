@@ -1092,8 +1092,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const ragOrchestrator = RAGOrchestrator2.getInstance();
+      
+      // Enhanced query processing for technical terms
+      let processedQuery = query;
+      const queryLower = query.toLowerCase();
+      
+      // Add synonyms and related terms for better retrieval
+      if (queryLower.includes('mcp')) {
+        processedQuery += ' "Model Context Protocol" JSON-RPC tool resource communication agent integration';
+      }
+      if (queryLower.includes('rag')) {
+        processedQuery += ' "retrieval augmented generation" vector database semantic search embedding';
+      }
+      if (queryLower.includes('a2a')) {
+        processedQuery += ' "agent-to-agent" FIPA ACL protocol multi-agent coordination';
+      }
+      
       const ragQuery = {
-        query,
+        query: processedQuery,
         limit,
         options: {
           includeMetadata,
