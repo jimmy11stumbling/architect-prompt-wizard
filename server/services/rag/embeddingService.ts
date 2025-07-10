@@ -263,3 +263,103 @@ export class EmbeddingService {
     };
   }
 }
+export interface EmbeddingDocument {
+  id: string;
+  content: string;
+  metadata: Record<string, any>;
+  embedding?: number[];
+}
+
+export class EmbeddingService {
+  private static instance: EmbeddingService;
+  private apiKey?: string;
+
+  private constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.OPENAI_API_KEY;
+  }
+
+  static getInstance(apiKey?: string): EmbeddingService {
+    if (!EmbeddingService.instance) {
+      EmbeddingService.instance = new EmbeddingService(apiKey);
+    }
+    return EmbeddingService.instance;
+  }
+
+  async generateEmbedding(text: string): Promise<number[]> {
+    if (!this.apiKey) {
+      console.warn('[EmbeddingService] No API key available, generating mock embedding');
+      // Generate a mock embedding for development/testing
+      return this.generateMockEmbedding(text);
+    }
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'text-embedding-3-small',
+          input: text,
+          dimensions: 1536
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.data[0].embedding;
+    } catch (error) {
+      console.warn('[EmbeddingService] OpenAI API failed, using mock embedding:', error);
+      return this.generateMockEmbedding(text);
+    }
+  }
+
+  async generateEmbeddings(documents: EmbeddingDocument[]): Promise<EmbeddingDocument[]> {
+    const embeddedDocuments = [];
+    
+    for (const doc of documents) {
+      try {
+        const embedding = await this.generateEmbedding(doc.content);
+        embeddedDocuments.push({
+          ...doc,
+          embedding
+        });
+      } catch (error) {
+        console.error(`Failed to generate embedding for document ${doc.id}:`, error);
+        // Skip documents that fail to embed
+      }
+    }
+    
+    return embeddedDocuments;
+  }
+
+  private generateMockEmbedding(text: string): number[] {
+    // Generate a deterministic mock embedding based on text content
+    const textHash = this.simpleHash(text);
+    const embedding = new Array(1536);
+    
+    for (let i = 0; i < 1536; i++) {
+      // Create pseudo-random values based on text hash and position
+      const seed = (textHash + i) % 1000000;
+      embedding[i] = (Math.sin(seed) + Math.cos(seed * 2)) / 2;
+    }
+    
+    // Normalize the vector
+    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+    return embedding.map(val => val / magnitude);
+  }
+
+  private simpleHash(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+  }
+}

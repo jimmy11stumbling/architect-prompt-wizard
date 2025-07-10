@@ -1,4 +1,3 @@
-
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 import { attachedAssetsService } from "./attachedAssetsService";
 import { ReasonerQuery, DeepSeekResponse } from './types';
@@ -26,7 +25,7 @@ export class DeepSeekReasonerService {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     try {
       this.initialized = true;
     } catch (error) {
@@ -100,10 +99,10 @@ export class DeepSeekReasonerService {
           if (response.ok) {
             const result = await response.json();
             const context = result.data;
-            
+
             if (context.relevantAssets.length > 0) {
               attachedAssetsContext = "\n\n=== ATTACHED ASSETS CONTEXT ===\n";
-              
+
               for (const asset of context.relevantAssets) {
                 const content = context.contextData[asset.filename];
                 if (content) {
@@ -112,7 +111,7 @@ export class DeepSeekReasonerService {
                 }
               }
               attachedAssetsContext += "\n=== END ATTACHED ASSETS ===\n";
-              
+
               integrationData.attachedAssets = {
                 count: context.relevantAssets.length,
                 used: context.relevantAssets.map((a: any) => a.filename)
@@ -161,7 +160,7 @@ export class DeepSeekReasonerService {
           // Enhanced query processing for MCP and other technical terms
           let enhancedQuery = query.prompt;
           const queryLower = query.prompt.toLowerCase();
-          
+
           // Add context-specific search terms for better retrieval
           if (queryLower.includes('mcp')) {
             enhancedQuery += ' Model Context Protocol MCP tool resource communication JSON-RPC agent integration';
@@ -179,7 +178,7 @@ export class DeepSeekReasonerService {
 
           try {
             console.log(`[DeepSeek RAG] Calling /api/rag/search with query: "${enhancedQuery}"`);
-            
+
             const ragResponse = await fetch('/api/rag/search', {
               method: 'POST',
               headers: { 
@@ -197,14 +196,14 @@ export class DeepSeekReasonerService {
 
             clearTimeout(timeoutId);
             let allResults: any[] = [];
-            
+
             if (ragResponse.ok) {
               const ragData = await ragResponse.json();
               allResults = ragData.results || [];
-              
+
               console.log(`[DeepSeek RAG] Successfully retrieved ${allResults.length} results from ${ragData.metadata?.documentsInIndex || 0} indexed documents`);
               console.log(`[DeepSeek RAG] Search took ${ragData.searchTime}ms using ${ragData.metadata?.searchMethod || 'unknown'} method`);
-              
+
               realTimeResponseService.addResponse({
                 source: "deepseek-reasoner",
                 status: "success",
@@ -255,12 +254,12 @@ export class DeepSeekReasonerService {
 
             ragContext = "\n\n=== KNOWLEDGE BASE CONTEXT ===\n";
             ragContext += `Found ${allResults.length} relevant documents from database:\n\n`;
-            
+
             // Add specific MCP context if query is about MCP
             if (queryLower.includes('mcp')) {
               ragContext += "IMPORTANT: MCP refers to 'Model Context Protocol' - a standardized protocol for AI systems to access tools and resources through JSON-RPC communication.\n\n";
             }
-            
+
             topResults.forEach((result, index) => {
               const score = result.score || result.relevanceScore || 0;
               ragContext += `\n[Document ${index + 1}] ${result.metadata?.title || result.metadata?.filename || 'Knowledge Base Document'}\n`;
@@ -304,7 +303,7 @@ export class DeepSeekReasonerService {
           });
         }
       }
-      
+
       if (query.conversationHistory && query.conversationHistory.length > 0) {
         query.conversationHistory.forEach(msg => {
           messages.push({
@@ -316,29 +315,29 @@ export class DeepSeekReasonerService {
 
       // Enhanced prompt with RAG context and attached assets
       let enhancedPrompt = query.prompt;
-      
+
       if (attachedAssetsContext || ragContext) {
         let contextSection = "You are an expert AI assistant with access to comprehensive technical documentation. ";
         contextSection += "You have access to the following context information:\n\n";
-        
+
         // Add domain-specific clarification
         if (queryLower.includes('mcp')) {
           contextSection += "IMPORTANT CONTEXT: When discussing 'MCP', this refers to 'Model Context Protocol' - a standardized protocol for AI systems to access tools and resources through JSON-RPC communication, NOT Master Customer Profile.\n\n";
         }
-        
+
         if (ragContext) {
           contextSection += ragContext + "\n";
         }
-        
+
         if (attachedAssetsContext) {
           contextSection += attachedAssetsContext + "\n";
         }
-        
+
         contextSection += "\nPlease use this context to provide accurate, informed responses. ";
         contextSection += "Reference specific information from the context when relevant. ";
         contextSection += "Focus on technical accuracy and implementation details.\n\n";
         contextSection += "User Question: " + query.prompt;
-        
+
         enhancedPrompt = contextSection;
       }
 
@@ -392,7 +391,7 @@ export class DeepSeekReasonerService {
 
   clearConversation(conversationId: string): void {
     this.conversationManager.clearConversation(conversationId);
-    
+
     realTimeResponseService.addResponse({
       source: "deepseek-reasoner",
       status: "success",

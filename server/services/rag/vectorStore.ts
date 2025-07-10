@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-core';
 import { cosineDistance, desc } from 'drizzle-orm';
 import * as schema from '@shared/schema';
+import { EmbeddingService } from './embeddingService';
 
 // Vector database schema for embeddings
 export const vectorDocuments = pgTable('vector_documents', {
@@ -38,10 +39,12 @@ export class VectorStore {
   private db: ReturnType<typeof drizzle>;
   private pool: Pool;
   private initialized = false;
+  private embeddingService: EmbeddingService;
 
   constructor(connectionString: string) {
     this.pool = new Pool({ connectionString });
     this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
+    this.embeddingService = EmbeddingService.getInstance();
   }
 
   async initialize(): Promise<void> {
@@ -108,29 +111,70 @@ export class VectorStore {
 
     try {
       for (const doc of documents) {
-        if (!doc.embedding) {
-          throw new Error(`Document ${doc.id} missing embedding`);
+        let embedding = doc.embedding;
+        
+        // Generate embedding if missing
+        if (!embedding) {
+          console.log(`[VectorStore] Generating embedding for document: ${doc.id}`);
+          embedding = await this.embeddingService.generateEmbedding(doc.content);
         }
 
         await this.db.insert(vectorDocuments).values({
           documentId: doc.id,
           content: doc.content,
-          embedding: doc.embedding,
+          embedding: embedding,
           metadata: doc.metadata
         }).onConflictDoUpdate({
           target: vectorDocuments.documentId,
           set: {
             content: doc.content,
-            embedding: doc.embedding,
+            embedding: embedding,
             metadata: doc.metadata,
             updatedAt: new Date()
           }
         });
       }
       
-      console.log(`Added ${documents.length} documents to vector store`);
+      console.log(`[VectorStore] Added ${documents.length} documents to vector store with embeddings`);
     } catch (error) {
       console.error('Failed to add documents to vector store:', error);
+      throw error;
+    }
+  }
+
+  async ensureEmbeddingsExist(): Promise<void> {
+    if (!this.initialized) await this.initialize();
+
+    try {
+      // Find documents without embeddings
+      const documentsWithoutEmbeddings = await this.db
+        .select({
+          id: vectorDocuments.id,
+          documentId: vectorDocuments.documentId,
+          content: vectorDocuments.content,
+          metadata: vectorDocuments.metadata
+        })
+        .from(vectorDocuments)
+        .where(sql`${vectorDocuments.embedding} IS NULL`);
+
+      if (documentsWithoutEmbeddings.length > 0) {
+        console.log(`[VectorStore] Found ${documentsWithoutEmbeddings.length} documents without embeddings, generating...`);
+        
+        for (const doc of documentsWithoutEmbeddings) {
+          const embedding = await this.embeddingService.generateEmbedding(doc.content);
+          
+          await this.db.update(vectorDocuments)
+            .set({ 
+              embedding: embedding,
+              updatedAt: new Date()
+            })
+            .where(sql`${vectorDocuments.id} = ${doc.id}`);
+        }
+        
+        console.log(`[VectorStore] Generated embeddings for ${documentsWithoutEmbeddings.length} documents`);
+      }
+    } catch (error) {
+      console.error('Failed to ensure embeddings exist:', error);
       throw error;
     }
   }
@@ -167,13 +211,64 @@ export class VectorStore {
     }
   }
 
+  async vectorSearch(queryEmbedding: number[], options: { limit?: number; includeMetadata?: boolean } = {}): Promise<any[]> {
+    if (!this.initialized) await this.initialize();
+
+    const { limit = 10 } = options;
+
+    try {
+      console.log(`[VectorStore] Performing vector similarity search with limit: ${limit}`);
+      
+      // Check if we have any documents with embeddings
+      const countResult = await this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(vectorDocuments)
+        .where(sql`${vectorDocuments.embedding} IS NOT NULL`);
+
+      const vectorCount = countResult[0]?.count || 0;
+      console.log(`[VectorStore] Found ${vectorCount} documents with embeddings`);
+
+      if (vectorCount === 0) {
+        console.warn('[VectorStore] No documents with embeddings found, falling back to text search');
+        return [];
+      }
+
+      // Perform vector similarity search
+      const results = await this.db
+        .select({
+          id: vectorDocuments.documentId,
+          content: vectorDocuments.content,
+          metadata: vectorDocuments.metadata,
+          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector)`
+        })
+        .from(vectorDocuments)
+        .where(sql`${vectorDocuments.embedding} IS NOT NULL`)
+        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector)`))
+        .limit(limit);
+
+      console.log(`[VectorStore] Vector search found ${results.length} results`);
+      
+      return results.map(result => ({
+        id: result.id,
+        content: result.content,
+        metadata: result.metadata || {},
+        score: result.similarity,
+        relevanceScore: result.similarity,
+        searchMethod: 'vector'
+      }));
+    } catch (error) {
+      console.error('Failed to perform vector search:', error);
+      return [];
+    }
+  }
+
   async textSearch(query: string, options: { limit?: number; includeMetadata?: boolean; semanticWeight?: number } = {}): Promise<any[]> {
     if (!this.initialized) await this.initialize();
 
     const { limit = 10 } = options;
 
     try {
-      console.log(`[VectorStore] Performing text search for: "${query}" with limit: ${limit}`);
+      console.log(`[VectorStore] Performing text search fallback for: "${query}" with limit: ${limit}`);
       
       // Enhanced text search with better scoring
       const results = await this.db
@@ -204,14 +299,15 @@ export class VectorStore {
         `)
         .limit(limit);
 
-      console.log(`[VectorStore] Found ${results.length} results for query: "${query}"`);
+      console.log(`[VectorStore] Text search found ${results.length} results for query: "${query}"`);
       
       return results.map(result => ({
         id: result.id,
         content: result.content,
         metadata: result.metadata || {},
         score: result.score,
-        relevanceScore: result.score
+        relevanceScore: result.score,
+        searchMethod: 'text'
       }));
     } catch (error) {
       console.error('Failed to perform text search:', error);

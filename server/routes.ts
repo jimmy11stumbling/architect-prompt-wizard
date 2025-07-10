@@ -1234,9 +1234,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await vectorStore.getStats();
       console.log(`[RAG Search] Vector store stats:`, stats);
 
-      // If no documents, try to populate from knowledge base
+      // If no documents, populate from knowledge base
       if (stats.totalDocuments === 0) {
-        console.log(`[RAG Search] No documents found, attempting to populate from knowledge base...`);
+        console.log(`[RAG Search] No documents found, populating from knowledge base...`);
         try {
           const knowledgeBase = await storage.getAllKnowledgeBase();
           console.log(`[RAG Search] Found ${knowledgeBase.length} knowledge base entries`);
@@ -1261,11 +1261,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Perform text search
-      const results = await vectorStore.textSearch(query, { limit, includeMetadata });
-      const searchTime = Date.now() - startTime;
+      // Ensure all documents have embeddings
+      await vectorStore.ensureEmbeddingsExist();
 
-      console.log(`[RAG Search] Found ${results.length} results for query: "${query}" in ${searchTime}ms`);
+      let results = [];
+      let searchMethod = 'vector';
+
+      try {
+        // Generate embedding for query
+        const { EmbeddingService } = await import("./services/rag/embeddingService");
+        const embeddingService = EmbeddingService.getInstance();
+        const queryEmbedding = await embeddingService.generateEmbedding(query);
+        
+        // Perform vector similarity search
+        results = await vectorStore.vectorSearch(queryEmbedding, { limit, includeMetadata });
+        
+        // If no vector results, fall back to text search
+        if (results.length === 0) {
+          console.log(`[RAG Search] No vector results found, falling back to text search`);
+          results = await vectorStore.textSearch(query, { limit, includeMetadata });
+          searchMethod = 'text-fallback';
+        }
+      } catch (vectorError) {
+        console.warn(`[RAG Search] Vector search failed, using text search:`, vectorError);
+        results = await vectorStore.textSearch(query, { limit, includeMetadata });
+        searchMethod = 'text-fallback';
+      }
+
+      const searchTime = Date.now() - startTime;
+      console.log(`[RAG Search] Found ${results.length} results using ${searchMethod} for query: "${query}" in ${searchTime}ms`);
 
       res.json({
         query,
@@ -1275,8 +1299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         metadata: {
           documentsInIndex: stats.totalDocuments,
-          searchMethod: 'text-search',
-          timestamp: new Date().toISOString()
+          searchMethod,
+          timestamp: new Date().toISOString(),
+          vectorSearchUsed: searchMethod === 'vector'
         }
       });
     } catch (error) {
