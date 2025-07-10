@@ -1,0 +1,54 @@
+To enforce full vector retrieval in your RAG pipeline and ensure DeepSeek uses the `pgvector`-backed semantic search instead of falling back to `textSearch()`, here’s a tactical checklist tailored to your setup:
+
+---
+
+### 🧠 Key Configuration Steps
+
+1. **Ensure `pgvector` Extension Is Fully Initialized**
+   - Double-check your PostgreSQL instance includes the `pgvector` extension:
+     ```sql
+     CREATE EXTENSION IF NOT EXISTS vector;
+     ```
+   - Make sure your embeddings column is typed as `vector(768)` (or the correct dimensionality for your embeddings).
+
+2. **Verify Vector Population Logic**
+   - Confirm that the `vectorStore.ts` file is actually storing document embeddings correctly.
+   - Add a bootstrap or repair function that checks:
+     ```ts
+     if (vectorStore.isEmpty()) {
+       vectorStore.populateFrom(knowledgeBase);
+     }
+     ```
+
+3. **Validate Endpoint and Method Signature**
+   - Your `/api/rag/search` route must call the correct method:
+     ```ts
+     vectorStore.similaritySearch(queryEmbedding)
+     ```
+   - Replace any fallback like `textSearch()` unless explicitly toggled.
+
+4. **Update DeepSeek Reasoner Integration**
+   - In `deepseekReasonerService.ts`, confirm it’s calling:
+     ```ts
+     fetch('/api/rag/search', { method: 'POST', body: embedding })
+     ```
+   - Add a debug toggle that logs whether fallback is triggered:
+     ```ts
+     console.log('RAG method:', fallbackActive ? 'textSearch' : 'vectorSearch');
+     ```
+
+5. **Improve Logging and Error Handling**
+   - Track and log vector matches per query.
+   - If no vectors are found, log a warning instead of silently falling back.
+
+---
+
+### ✅ Optional Enhancements
+
+- **Real-Time Status on ReasonerPage**: Add a banner or card that shows current RAG mode (Vector vs Fallback).
+- **Search Stats Visualization**: Show average cosine similarity, matched vector count, or fallback frequency.
+- **Admin Trigger**: Provide a manual "Re-index KB" button if vector store needs refreshing.
+
+---
+
+If you're still seeing fallback behavior after these fixes, I can help audit your vectorStore class or inspect your embedding logic. Want me to dive into a specific file like `vectorStore.ts` or your `/api/rag/search` route?
