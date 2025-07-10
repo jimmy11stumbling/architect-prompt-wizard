@@ -1,3 +1,4 @@
+
 import { get_encoding } from 'tiktoken';
 import natural from 'natural';
 import stringSimilarity from 'string-similarity';
@@ -14,21 +15,30 @@ export interface EmbeddingResult {
   model: string;
 }
 
+export interface EmbeddingDocument {
+  id: string;
+  content: string;
+  metadata: Record<string, any>;
+  embedding?: number[];
+}
+
 export class EmbeddingService {
   private static instance: EmbeddingService;
   private tfidfVectorizer: natural.TfIdf;
   private vocabulary: Map<string, number> = new Map();
   private initialized = false;
+  private apiKey?: string;
 
-  static getInstance(): EmbeddingService {
-    if (!EmbeddingService.instance) {
-      EmbeddingService.instance = new EmbeddingService();
-    }
-    return EmbeddingService.instance;
+  private constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.OPENAI_API_KEY;
+    this.tfidfVectorizer = new natural.TfIdf();
   }
 
-  constructor() {
-    this.tfidfVectorizer = new natural.TfIdf();
+  static getInstance(apiKey?: string): EmbeddingService {
+    if (!EmbeddingService.instance) {
+      EmbeddingService.instance = new EmbeddingService(apiKey);
+    }
+    return EmbeddingService.instance;
   }
 
   async initialize(documents: string[] = []): Promise<void> {
@@ -56,19 +66,47 @@ export class EmbeddingService {
     }
   }
 
-  async generateEmbedding(text: string, options: EmbeddingOptions = {}): Promise<EmbeddingResult> {
+  async generateEmbedding(text: string, options: EmbeddingOptions = {}): Promise<number[]> {
     const { model = 'local-tfidf', dimensions = 1536 } = options;
 
-    switch (model) {
-      case 'local-tfidf':
-        return this.generateTFIDFEmbedding(text, dimensions);
-      case 'openai':
-        return this.generateOpenAIEmbedding(text);
-      case 'cohere':
-        return this.generateCohereEmbedding(text);
-      default:
-        throw new Error(`Unsupported embedding model: ${model}`);
+    // Try OpenAI first if API key is available
+    if (this.apiKey && (model === 'openai' || model === 'local-tfidf')) {
+      try {
+        return await this.generateOpenAIEmbedding(text);
+      } catch (error) {
+        console.warn('[EmbeddingService] OpenAI API failed, falling back to TF-IDF:', error);
+      }
     }
+
+    // Fall back to local TF-IDF
+    const result = await this.generateTFIDFEmbedding(text, dimensions);
+    return result.embedding;
+  }
+
+  private async generateOpenAIEmbedding(text: string): Promise<number[]> {
+    if (!this.apiKey) {
+      throw new Error('No OpenAI API key available');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text,
+        dimensions: 1536
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data[0].embedding;
   }
 
   private async generateTFIDFEmbedding(text: string, targetDimensions: number): Promise<EmbeddingResult> {
@@ -130,18 +168,39 @@ export class EmbeddingService {
     }
   }
 
-  private async generateOpenAIEmbedding(text: string): Promise<EmbeddingResult> {
-    // This would integrate with OpenAI API if available
-    // For now, fall back to TF-IDF
-    console.log('OpenAI embeddings not configured, falling back to TF-IDF');
-    return this.generateTFIDFEmbedding(text, 1536);
+  async generateEmbeddings(documents: EmbeddingDocument[]): Promise<EmbeddingDocument[]> {
+    const embeddedDocuments = [];
+    
+    for (const doc of documents) {
+      try {
+        const embedding = await this.generateEmbedding(doc.content);
+        embeddedDocuments.push({
+          ...doc,
+          embedding
+        });
+      } catch (error) {
+        console.error(`Failed to generate embedding for document ${doc.id}:`, error);
+        // Skip documents that fail to embed
+      }
+    }
+    
+    return embeddedDocuments;
   }
 
-  private async generateCohereEmbedding(text: string): Promise<EmbeddingResult> {
-    // This would integrate with Cohere API if available
-    // For now, fall back to TF-IDF
-    console.log('Cohere embeddings not configured, falling back to TF-IDF');
-    return this.generateTFIDFEmbedding(text, 1536);
+  private generateMockEmbedding(text: string): number[] {
+    // Generate a deterministic mock embedding based on text content
+    const textHash = this.simpleHash(text);
+    const embedding = new Array(1536);
+    
+    for (let i = 0; i < 1536; i++) {
+      // Create pseudo-random values based on text hash and position
+      const seed = (textHash + i) % 1000000;
+      embedding[i] = (Math.sin(seed) + Math.cos(seed * 2)) / 2;
+    }
+    
+    // Normalize the vector
+    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+    return embedding.map(val => val / magnitude);
   }
 
   private tokenizeText(text: string): string[] {
@@ -204,7 +263,11 @@ export class EmbeddingService {
     for (const text of texts) {
       try {
         const embedding = await this.generateEmbedding(text, options);
-        embeddings.push(embedding);
+        embeddings.push({
+          embedding,
+          tokens: this.countTokens(text),
+          model: options.model || 'local-tfidf'
+        });
       } catch (error) {
         console.error(`Failed to generate embedding for text: ${text.substring(0, 100)}...`, error);
         // Generate a zero vector as fallback
@@ -261,96 +324,6 @@ export class EmbeddingService {
       size: this.vocabulary.size,
       topTerms
     };
-  }
-}
-export interface EmbeddingDocument {
-  id: string;
-  content: string;
-  metadata: Record<string, any>;
-  embedding?: number[];
-}
-
-export class EmbeddingService {
-  private static instance: EmbeddingService;
-  private apiKey?: string;
-
-  private constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.OPENAI_API_KEY;
-  }
-
-  static getInstance(apiKey?: string): EmbeddingService {
-    if (!EmbeddingService.instance) {
-      EmbeddingService.instance = new EmbeddingService(apiKey);
-    }
-    return EmbeddingService.instance;
-  }
-
-  async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.apiKey) {
-      console.warn('[EmbeddingService] No API key available, generating mock embedding');
-      // Generate a mock embedding for development/testing
-      return this.generateMockEmbedding(text);
-    }
-
-    try {
-      const response = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-3-small',
-          input: text,
-          dimensions: 1536
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.data[0].embedding;
-    } catch (error) {
-      console.warn('[EmbeddingService] OpenAI API failed, using mock embedding:', error);
-      return this.generateMockEmbedding(text);
-    }
-  }
-
-  async generateEmbeddings(documents: EmbeddingDocument[]): Promise<EmbeddingDocument[]> {
-    const embeddedDocuments = [];
-    
-    for (const doc of documents) {
-      try {
-        const embedding = await this.generateEmbedding(doc.content);
-        embeddedDocuments.push({
-          ...doc,
-          embedding
-        });
-      } catch (error) {
-        console.error(`Failed to generate embedding for document ${doc.id}:`, error);
-        // Skip documents that fail to embed
-      }
-    }
-    
-    return embeddedDocuments;
-  }
-
-  private generateMockEmbedding(text: string): number[] {
-    // Generate a deterministic mock embedding based on text content
-    const textHash = this.simpleHash(text);
-    const embedding = new Array(1536);
-    
-    for (let i = 0; i < 1536; i++) {
-      // Create pseudo-random values based on text hash and position
-      const seed = (textHash + i) % 1000000;
-      embedding[i] = (Math.sin(seed) + Math.cos(seed * 2)) / 2;
-    }
-    
-    // Normalize the vector
-    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    return embedding.map(val => val / magnitude);
   }
 
   private simpleHash(str: string): number {
