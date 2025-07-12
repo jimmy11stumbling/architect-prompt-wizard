@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Brain, Send, Loader2, Database, Network, Zap, Clock, Cpu, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { DeepSeekService, useDeepSeekStore } from '@/services/deepseek';
 import { ragService } from '@/services/rag/ragService';
 import { mcpHubService } from '@/services/mcp/mcpHubService';
@@ -15,8 +15,6 @@ export default function StreamingInterface() {
   const [mcpEnabled, setMcpEnabled] = useState(true);
   const [ragStats, setRagStats] = useState(null);
   const [mcpStats, setMcpStats] = useState(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const responseRef = useRef<HTMLDivElement>(null);
 
   const { 
     isLoading, 
@@ -31,6 +29,7 @@ export default function StreamingInterface() {
   // Auto-scroll refs
   const reasoningRef = useRef<HTMLDivElement>(null);
   const responseContentRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll when streaming content updates
   useEffect(() => {
@@ -44,6 +43,23 @@ export default function StreamingInterface() {
       responseContentRef.current.scrollTop = responseContentRef.current.scrollHeight;
     }
   }, [streamingResponse, storeIsStreaming]);
+
+  // Auto-scroll to response when streaming starts
+  useEffect(() => {
+    if (storeIsStreaming && (streamingReasoning || streamingResponse)) {
+      const responseElement = document.getElementById('streaming-response-section');
+      if (responseElement) {
+        responseElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [storeIsStreaming, streamingReasoning, streamingResponse]);
+
+  // Auto-scroll conversation when new messages are added
+  useEffect(() => {
+    if (conversationRef.current && !storeIsStreaming) {
+      conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+    }
+  }, [conversation, storeIsStreaming]);
 
   // Load system stats on mount
   useEffect(() => {
@@ -65,8 +81,6 @@ export default function StreamingInterface() {
   const handleSubmit = async () => {
     if (!query.trim() || isLoading || storeIsStreaming) return;
 
-    setIsStreaming(true);
-
     try {
       await DeepSeekService.processQueryStreaming(query, { 
         ragEnabled,
@@ -76,8 +90,6 @@ export default function StreamingInterface() {
       setQuery('');
     } catch (error) {
       console.error('Query failed:', error);
-    } finally {
-      setIsStreaming(false);
     }
   };
 
@@ -225,7 +237,7 @@ export default function StreamingInterface() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="min-h-[100px] bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-            disabled={isLoading}
+            disabled={isLoading || storeIsStreaming}
           />
 
           <div className="flex items-center justify-between">
@@ -237,7 +249,7 @@ export default function StreamingInterface() {
               <Button 
                 variant="outline"
                 onClick={handleClear}
-                disabled={isLoading}
+                disabled={isLoading || storeIsStreaming}
                 size="sm"
               >
                 Clear
@@ -277,7 +289,7 @@ export default function StreamingInterface() {
 
       {/* Response Display */}
       {(currentResponse || storeIsStreaming) && (
-        <div className="space-y-4">
+        <div id="streaming-response-section" className="space-y-4">
           {/* Streaming Status */}
           {storeIsStreaming && (
             <Card className="border-blue-500 bg-blue-900/50">
@@ -288,7 +300,7 @@ export default function StreamingInterface() {
                     Streaming DeepSeek Response...
                   </span>
                   <Badge variant="outline" className="text-xs">
-                    {streamingReasoning.length + streamingResponse.length} tokens
+                    {(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)} characters
                   </Badge>
                 </div>
               </CardContent>
@@ -296,71 +308,77 @@ export default function StreamingInterface() {
           )}
 
           {/* Reasoning Process */}
-          <Card className="border-gray-700 bg-gray-800">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-white">
-                <Cpu className="h-5 w-5 text-blue-400" />
-                Reasoning Process
-                {storeIsStreaming && (
-                  <div className="ml-auto flex items-center gap-1">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-muted-foreground">Live</span>
-                  </div>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div 
-                ref={reasoningRef}
-                className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white font-mono leading-relaxed"
-                style={{ 
-                  maxHeight: '400px', 
-                  overflowY: 'auto',
-                  backgroundColor: '#111827',
-                  color: '#ffffff'
-                }}
-              >
-                {storeIsStreaming ? streamingReasoning : currentResponse?.reasoning}
-                {storeIsStreaming && streamingReasoning && (
-                  <span className="animate-pulse text-blue-400">|</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {(streamingReasoning || currentResponse?.reasoning) && (
+            <Card className="border-gray-700 bg-gray-800">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
+                  <Cpu className="h-5 w-5 text-blue-400" />
+                  Reasoning Process
+                  {storeIsStreaming && streamingReasoning && (
+                    <div className="ml-auto flex items-center gap-1">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-muted-foreground">Live</span>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div 
+                  ref={reasoningRef}
+                  className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white font-mono leading-relaxed"
+                  style={{ 
+                    maxHeight: '400px', 
+                    overflowY: 'auto',
+                    backgroundColor: '#111827',
+                    color: '#ffffff'
+                  }}
+                >
+                  {storeIsStreaming ? streamingReasoning : currentResponse?.reasoning}
+                  {storeIsStreaming && streamingReasoning && (
+                    <span className="animate-pulse text-blue-400 ml-1">▌</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Final Response */}
-          <Card className="border-gray-700 bg-gray-800">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-white">
-                <Brain className="h-5 w-5 text-purple-400" />
-                Response
-                {storeIsStreaming && streamingResponse && (
-                  <div className="ml-auto flex items-center gap-1">
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-muted-foreground">Live</span>
-                  </div>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div 
-                ref={responseContentRef}
-                className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white leading-relaxed"
-                style={{ 
-                  backgroundColor: '#111827',
-                  color: '#ffffff'
-                }}
-              >
-                {storeIsStreaming ? streamingResponse : currentResponse?.response}
-                {storeIsStreaming && streamingResponse && (
-                  <span className="animate-pulse text-purple-400">|</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {(streamingResponse || currentResponse?.response) && (
+            <Card className="border-gray-700 bg-gray-800">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
+                  <Brain className="h-5 w-5 text-purple-400" />
+                  Response
+                  {storeIsStreaming && streamingResponse && (
+                    <div className="ml-auto flex items-center gap-1">
+                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-muted-foreground">Live</span>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div 
+                  ref={responseContentRef}
+                  className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white leading-relaxed"
+                  style={{ 
+                    maxHeight: '600px', 
+                    overflowY: 'auto',
+                    backgroundColor: '#111827',
+                    color: '#ffffff'
+                  }}
+                >
+                  {storeIsStreaming ? streamingResponse : currentResponse?.response}
+                  {storeIsStreaming && streamingResponse && (
+                    <span className="animate-pulse text-purple-400 ml-1">▌</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Usage Statistics */}
-          {currentResponse && (
+          {currentResponse && !storeIsStreaming && (
             <Card className="border-gray-700 bg-gray-800">
               <CardHeader>
                 <CardTitle className="text-sm text-white">Usage Statistics</CardTitle>
@@ -399,7 +417,7 @@ export default function StreamingInterface() {
               Conversation History ({conversation.length} messages)
             </CardTitle>
           </CardHeader>
-          <CardContent className="max-h-96 overflow-y-auto">
+          <CardContent className="max-h-96 overflow-y-auto" ref={conversationRef}>
             <div className="space-y-3">
               {conversation.map((message, index) => (
                 <div 

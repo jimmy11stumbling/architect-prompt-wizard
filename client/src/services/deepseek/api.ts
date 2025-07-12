@@ -1,10 +1,41 @@
-// DeepSeek API Service
+// DeepSeek API Client
 import { DeepSeekRequest, DeepSeekResponse, DeepSeekApiResponse } from './types';
 
 export class DeepSeekApi {
-  private static readonly API_ENDPOINT = '/api/deepseek/query';
-  private static readonly STREAM_ENDPOINT = '/api/deepseek/stream';
-  private static readonly TIMEOUT = 60000; // 60 seconds for DeepSeek reasoning
+  private static readonly BASE_URL = '/api/deepseek';
+
+  static async query(request: DeepSeekRequest): Promise<DeepSeekResponse> {
+    const response = await fetch(`${this.BASE_URL}/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: request.messages,
+        maxTokens: request.maxTokens,
+        temperature: request.temperature,
+        ragContext: request.ragEnabled
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+
+    const data: DeepSeekApiResponse = await response.json();
+
+    return {
+      reasoning: data.choices[0]?.message?.reasoning_content || '',
+      response: data.choices[0]?.message?.content || '',
+      usage: data.usage || {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        reasoningTokens: 0
+      },
+      processingTime: data.processingTime || 0
+    };
+  }
 
   static async streamQuery(
     request: DeepSeekRequest,
@@ -13,198 +44,131 @@ export class DeepSeekApi {
     onComplete: (response: DeepSeekResponse) => void,
     onError: (error: Error) => void
   ): Promise<void> {
-    const startTime = Date.now();
-    const conversationId = this.generateConversationId();
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);
+      console.log('Starting DeepSeek streaming request...');
 
-      const response = await fetch(this.STREAM_ENDPOINT, {
+      const response = await fetch(`${this.BASE_URL}/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messages: request.messages,
-          ragContext: request.ragEnabled || false,
-          temperature: request.temperature || 0.1
+          maxTokens: request.maxTokens,
+          temperature: request.temperature,
+          ragContext: request.ragEnabled
         }),
-        signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+        throw new Error(`Stream request failed: ${response.status}`);
       }
 
-      if (!response.body) {
-        throw new Error('No response stream available');
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body stream available');
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
+      const decoder = new TextDecoder();
       let buffer = '';
-      let reasoning = '';
-      let responseText = '';
-      let usage = { promptTokens: 0, completionTokens: 0, reasoningTokens: 0, totalTokens: 0 };
-      let isInReasoning = true;
+      let fullReasoning = '';
+      let fullResponse = '';
+      let usage = {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        reasoningTokens: 0
+      };
+      let processingTime = 0;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        
-        // Keep the last incomplete line in the buffer
-        buffer = lines.pop() || '';
+          if (done) {
+            console.log('Stream complete');
+            break;
+          }
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim();
-            
-            if (data === '[DONE]') {
-              const finalResponse: DeepSeekResponse = {
-                reasoning: reasoning.trim(),
-                response: responseText.trim(),
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+            const dataStr = trimmed.slice(6);
+            if (dataStr === '[DONE]') {
+              console.log('Stream finished with [DONE]');
+              onComplete({
+                reasoning: fullReasoning,
+                response: fullResponse,
                 usage,
-                processingTime: Date.now() - startTime,
-                conversationId
-              };
-              onComplete(finalResponse);
+                processingTime
+              });
               return;
             }
 
             try {
-              const parsed = JSON.parse(data);
-              
-              // Handle reasoning tokens
-              if (parsed.choices?.[0]?.delta?.reasoning_content) {
-                const token = parsed.choices[0].delta.reasoning_content;
-                reasoning += token;
-                onReasoningToken(token);
-              }
-              
-              // Handle response tokens
-              if (parsed.choices?.[0]?.delta?.content) {
-                const token = parsed.choices[0].delta.content;
-                responseText += token;
-                onResponseToken(token);
-                isInReasoning = false;
+              const data = JSON.parse(dataStr);
+              console.log('Received streaming data:', data);
+
+              if (data.error) {
+                throw new Error(data.error);
               }
 
-              // Update usage if available
-              if (parsed.usage) {
-                usage = {
-                  promptTokens: parsed.usage.prompt_tokens || 0,
-                  completionTokens: parsed.usage.completion_tokens || 0,
-                  reasoningTokens: parsed.usage.reasoning_tokens || 0,
-                  totalTokens: parsed.usage.total_tokens || 0
-                };
+              if (data.choices && data.choices[0]) {
+                const choice = data.choices[0];
+                const delta = choice.delta;
+
+                if (delta) {
+                  // Handle reasoning content streaming
+                  if (delta.reasoning_content) {
+                    console.log('Reasoning token:', delta.reasoning_content);
+                    fullReasoning += delta.reasoning_content;
+                    onReasoningToken(delta.reasoning_content);
+                  }
+
+                  // Handle response content streaming
+                  if (delta.content) {
+                    console.log('Response token:', delta.content);
+                    fullResponse += delta.content;
+                    onResponseToken(delta.content);
+                  }
+                }
+              }
+
+              // Update usage stats if available
+              if (data.usage) {
+                usage = data.usage;
+              }
+
+              // Update processing time if available
+              if (data.processingTime) {
+                processingTime = data.processingTime;
               }
 
             } catch (parseError) {
-              console.warn('Failed to parse streaming data:', parseError);
+              console.warn('Failed to parse streaming data:', parseError, 'Raw data:', dataStr);
             }
           }
         }
-      }
 
+        // If we reach here without [DONE], complete anyway
+        onComplete({
+          reasoning: fullReasoning,
+          response: fullResponse,
+          usage,
+          processingTime
+        });
+
+      } finally {
+        reader.releaseLock();
+      }
     } catch (error) {
-      if (error.name === 'AbortError') {
-        onError(new Error('DeepSeek API request timed out after 60 seconds'));
-      } else if (error.message?.includes('signal is aborted')) {
-        onError(new Error('DeepSeek API request was cancelled'));
-      } else {
-        onError(new Error(`DeepSeek API error: ${error.message || 'Unknown error'}`));
-      }
+      console.error('Streaming error:', error);
+      onError(error instanceof Error ? error : new Error('Unknown streaming error'));
     }
-  }
-
-  static async query(request: DeepSeekRequest): Promise<DeepSeekResponse> {
-    const startTime = Date.now();
-    const conversationId = this.generateConversationId();
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);
-
-      const response = await fetch(this.API_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: request.messages,
-          ragContext: request.ragEnabled || false
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
-      }
-
-      const apiResponse: DeepSeekApiResponse = await response.json();
-      return this.processResponse(apiResponse, conversationId, Date.now() - startTime);
-
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('DeepSeek API request timed out after 60 seconds');
-      }
-      if (error.message?.includes('signal is aborted')) {
-        throw new Error('DeepSeek API request was cancelled');
-      }
-      throw new Error(`DeepSeek API error: ${error.message || 'Unknown error'}`);
-    }
-  }
-
-  private static processResponse(
-    apiResponse: DeepSeekApiResponse,
-    conversationId: string,
-    processingTime: number
-  ): DeepSeekResponse {
-    const message = apiResponse.choices[0].message;
-    
-    // Extract reasoning and response from API response
-    let reasoning = message.reasoning_content || '';
-    let response = message.content || '';
-    
-    // Handle cases where response might be in reasoning field
-    if (!response && reasoning) {
-      response = reasoning;
-      reasoning = 'DeepSeek reasoning process completed.';
-    }
-    
-    // Ensure we have meaningful content
-    if (!response) {
-      response = 'No response received from DeepSeek API';
-    }
-    if (!reasoning) {
-      reasoning = 'No reasoning provided by DeepSeek API';
-    }
-
-    return {
-      reasoning: reasoning.trim(),
-      response: response.trim(),
-      usage: {
-        promptTokens: apiResponse.usage.prompt_tokens,
-        completionTokens: apiResponse.usage.completion_tokens,
-        reasoningTokens: apiResponse.usage.reasoning_tokens,
-        totalTokens: apiResponse.usage.total_tokens
-      },
-      processingTime,
-      conversationId
-    };
-  }
-
-  private static generateConversationId(): string {
-    return `deepseek-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }
