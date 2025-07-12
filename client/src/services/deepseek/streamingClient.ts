@@ -24,7 +24,7 @@ export class DeepSeekStreamingClient {
     options: StreamingOptions = {}
   ): Promise<void> {
     const apiKey = localStorage.getItem("deepseek_api_key");
-    
+
     if (!apiKey) {
       const error = new Error("DeepSeek API key is required for streaming");
       options.onError?.(error);
@@ -72,7 +72,7 @@ export class DeepSeekStreamingClient {
       let buffer = "";
       let fullResponse = "";
       let fullReasoning = "";
-      
+
       // Throttling mechanism to reduce UI jumping
       let lastUpdateTime = 0;
       const UPDATE_THROTTLE_MS = 50; // Minimum 50ms between UI updates
@@ -113,15 +113,20 @@ export class DeepSeekStreamingClient {
             try {
               const parsed = JSON.parse(jsonStr);
               const choice = parsed.choices?.[0];
-              
+
               if (choice?.delta) {
                 const now = Date.now();
-                
+
                 // Handle main content tokens
                 const contentToken = choice.delta.content;
                 if (contentToken) {
+                  // Ensure proper spacing between tokens
+                  if (fullResponse && !fullResponse.endsWith(' ') && 
+                      !contentToken.startsWith(' ') && !contentToken.match(/^[.,!?;:]/)) {
+                    fullResponse += ' ';
+                  }
                   fullResponse += contentToken;
-                  
+
                   // Throttle UI updates to prevent jumping
                   if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
                     options.onToken?.(contentToken);
@@ -132,8 +137,13 @@ export class DeepSeekStreamingClient {
                 // Handle reasoning tokens (if available)
                 const reasoningToken = choice.delta.reasoning_content;
                 if (reasoningToken) {
+                  // Ensure proper spacing for reasoning tokens too
+                  if (fullReasoning && !fullReasoning.endsWith(' ') && 
+                      !reasoningToken.startsWith(' ') && !reasoningToken.match(/^[.,!?;:]/)) {
+                    fullReasoning += ' ';
+                  }
                   fullReasoning += reasoningToken;
-                  
+
                   // Throttle UI updates to prevent jumping
                   if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
                     options.onReasoningToken?.(reasoningToken);
@@ -150,7 +160,7 @@ export class DeepSeekStreamingClient {
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error("Unknown streaming error");
-      
+
       realTimeResponseService.addResponse({
         source: "deepseek-streaming",
         status: "error",

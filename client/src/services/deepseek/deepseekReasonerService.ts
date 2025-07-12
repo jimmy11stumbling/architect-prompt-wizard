@@ -476,6 +476,95 @@ export class DeepSeekReasonerService {
       throw new Error(`Reasoning failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  private async generateStreamingResponse(
+    messages: ChatMessage[],
+    options: ReasonerOptions
+  ): Promise<ReasonerResponse> {
+    console.log('🔄 [deepseek-streaming] Initiating streaming connection to DeepSeek', {
+      model: this.model,
+      messageCount: messages.length,
+      streaming: true
+    });
+
+    try {
+      const result = await this.streamingClient.streamResponse(
+        messages,
+        {
+          model: this.model,
+          temperature: options.temperature || 0.7,
+          max_tokens: options.maxTokens || 4000
+        },
+        options.onProgress!
+      );
+
+      console.log('🔄 [deepseek-streaming] Streaming completed successfully', {
+        totalTokens: result.usage?.total_tokens || 0,
+        responseLength: result.content.length,
+        reasoningLength: result.reasoning?.length || 0
+      });
+
+      // Apply text sanitization to streaming results
+      const sanitizedContent = ResponseProcessor.sanitizeText(result.content);
+      const sanitizedReasoning = result.reasoning ? ResponseProcessor.sanitizeText(result.reasoning) : null;
+
+      return {
+        content: sanitizedContent,
+        reasoning: sanitizedReasoning,
+        model: this.model,
+        usage: result.usage || { total_tokens: 0, prompt_tokens: 0, completion_tokens: 0 }
+      };
+
+    } catch (error) {
+      console.error('❌ [deepseek-streaming] Streaming failed:', error);
+      throw error;
+    }
+  }
+
+  async generateResponse(
+    messages: ChatMessage[],
+    options: ReasonerOptions = {}
+  ): Promise<ReasonerResponse> {
+    console.log('🔄 [deepseek-reasoner] Generating response', {
+      messageCount: messages.length,
+      options
+    });
+
+    try {
+      // Validate API key
+      if (!this.hasValidApiKey()) {
+        throw new Error('No valid DeepSeek API key configured');
+      }
+
+      // Check if streaming is requested
+      if (options.streaming && options.onProgress) {
+        return await this.generateStreamingResponse(messages, options);
+      }
+
+      // Generate standard response
+      const response = await this.apiClient.generateResponse(messages, {
+        model: this.model,
+        temperature: options.temperature || 0.7,
+        max_tokens: options.maxTokens || 4000
+      });
+
+      const processed = ResponseProcessor.processResponse(response);
+
+      return {
+        content: processed.content,
+        reasoning: processed.reasoning,
+        model: this.model,
+        usage: processed.metadata.usage || { total_tokens: 0, prompt_tokens: 0, completion_tokens: 0 }
+      };
+
+    } catch (error) {
+      console.error('❌ [deepseek-reasoner] Generation failed:', error);
+
+      // Don't fallback to mock responses - let the error propagate
+      // This ensures users see real errors instead of garbled mock content
+      throw new Error(`DeepSeek API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 export const deepseekReasonerService = DeepSeekReasonerService.getInstance();

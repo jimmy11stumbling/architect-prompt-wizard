@@ -1,8 +1,28 @@
-
 import { ReasonerQuery, DeepSeekResponse, TokenUsage } from '../types';
 import { ConversationManager } from './conversationManager';
 
 export class ResponseProcessor {
+  static sanitizeText(text: string): string {
+    if (!text || typeof text !== 'string') return '';
+
+    return text
+      // Fix spacing issues
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      // Fix missing spaces after punctuation
+      .replace(/([.!?])([A-Z])/g, '$1 $2')
+      // Fix broken word concatenations
+      .replace(/([a-z])([a-z][A-Z])/g, '$1 $2')
+      // Remove duplicate spaces
+      .replace(/\s+/g, ' ')
+      // Fix common malformed patterns
+      .replace(/forAgent-A/g, 'for Agent-A')
+      .replace(/systemsMAS/g, 'systems MAS')
+      .replace(/together a,/g, 'together,')
+      // Clean up line breaks
+      .replace(/\n\s*\n/g, '\n\n')
+      .trim();
+  }
+
   static processApiResponse(
     apiResponse: any,
     query: ReasonerQuery,
@@ -10,8 +30,11 @@ export class ResponseProcessor {
     conversationId: string,
     conversationManager: ConversationManager
   ): DeepSeekResponse {
-    const answer = apiResponse.choices[0].message.content;
-    const reasoning = apiResponse.choices[0].message.reasoning_content || apiResponse.choices[0].message.reasoning || "Advanced reasoning process completed.";
+    let answer = apiResponse.choices[0].message.content;
+    let reasoning = apiResponse.choices[0].message.reasoning_content || apiResponse.choices[0].message.reasoning || "Advanced reasoning process completed.";
+
+    answer = this.sanitizeText(answer);
+    reasoning = this.sanitizeText(reasoning);
 
     const tokenUsage: TokenUsage = {
       promptTokens: apiResponse.usage?.prompt_tokens || 0,
