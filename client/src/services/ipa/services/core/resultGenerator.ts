@@ -36,10 +36,10 @@ export class ResultGenerator {
   private static async saveFinalPrompt(currentProjectSpec: ProjectSpec, finalPrompt: string): Promise<void> {
     try {
       await savePrompt({
-        projectName: currentProjectSpec?.projectDescription.substring(0, 50) || "Cursor AI Prompt",
+        projectName: currentProjectSpec?.projectDescription.substring(0, 50) || "Master Blueprint",
         prompt: finalPrompt,
         timestamp: Date.now(),
-        tags: ["ipa-generated", "cursor-ai"]
+        tags: ["ipa-generated", "master-blueprint"]
       });
 
       console.log("Prompt successfully saved to database");
@@ -55,8 +55,8 @@ export class ResultGenerator {
       });
 
       toast({
-        title: "Prompt Generated Successfully",
-        description: "Your Cursor AI prompt has been generated and saved",
+        title: "Master Blueprint Generated Successfully",
+        description: "Your Master Blueprint has been generated and saved",
       });
     } catch (error) {
       console.error("Failed to save prompt to database:", error);

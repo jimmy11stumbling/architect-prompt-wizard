@@ -60,7 +60,7 @@ export class PromptGenerationService {
         
         toast({
           title: "Generation Started",
-          description: "Starting to generate your Cursor AI prompt with specialized agents",
+          description: "Starting to generate your Master Blueprint with specialized agents",
         });
         
         return Promise.resolve(mockTaskId);
