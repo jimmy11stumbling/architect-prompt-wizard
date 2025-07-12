@@ -26,6 +26,9 @@ export class WorkflowNotificationService {
   private static instance: WorkflowNotificationService;
   private notifications = new Map<string, WorkflowNotification>();
   private subscribers = new Set<(notifications: WorkflowNotification[]) => void>();
+  private notificationThrottle = new Map<string, number>();
+  private readonly THROTTLE_DELAY = 5000; // 5 seconds
+  private readonly MAX_NOTIFICATIONS = 10;
 
   static getInstance(): WorkflowNotificationService {
     if (!WorkflowNotificationService.instance) {
@@ -35,13 +38,35 @@ export class WorkflowNotificationService {
   }
 
   constructor() {
-    // Subscribe to real-time events
+    // Subscribe to real-time events with throttling
     realTimeResponseService.subscribe((response) => {
-      this.handleRealTimeEvent(response);
+      this.handleRealTimeEventThrottled(response);
     });
   }
 
-  private handleRealTimeEvent(event: any) {
+  private handleRealTimeEventThrottled(event: any) {
+    const eventKey = `${event.source}-${event.status}-${event.data?.workflowId || 'unknown'}`;
+    const now = Date.now();
+    
+    // Check if we should throttle this event
+    if (this.notificationThrottle.has(eventKey)) {
+      const lastNotification = this.notificationThrottle.get(eventKey)!;
+      if (now - lastNotification < this.THROTTLE_DELAY) {
+        return; // Skip this notification
+      }
+    }
+    
+    // Update throttle timestamp
+    this.notificationThrottle.set(eventKey, now);
+    
+    // Clean up old throttle entries
+    this.cleanupThrottleMap();
+    
+    // Check notification limit
+    if (this.notifications.size >= this.MAX_NOTIFICATIONS) {
+      this.removeOldestNotifications();
+    }
+    
     // Convert real-time events to notifications
     switch (event.source) {
       case "workflow-engine":
@@ -53,6 +78,28 @@ export class WorkflowNotificationService {
       case "workflow-monitoring":
         this.handleMonitoringEvent(event);
         break;
+    }
+  }
+
+  private cleanupThrottleMap() {
+    const now = Date.now();
+    for (const [key, timestamp] of this.notificationThrottle.entries()) {
+      if (now - timestamp > this.THROTTLE_DELAY * 2) {
+        this.notificationThrottle.delete(key);
+      }
+    }
+  }
+
+  private removeOldestNotifications() {
+    const notifications = Array.from(this.notifications.values())
+      .sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Remove oldest non-persistent notifications
+    for (const notification of notifications) {
+      if (!notification.persistent) {
+        this.notifications.delete(notification.id);
+        break;
+      }
     }
   }
 
@@ -269,6 +316,25 @@ export class WorkflowNotificationService {
 
     this.notifications.forEach((notification, id) => {
       if (notification.timestamp < cutoffTime && !notification.persistent) {
+        toRemove.push(id);
+      }
+    });
+
+    toRemove.forEach(id => this.notifications.delete(id));
+    this.notifySubscribers();
+  }
+
+  dismissAllNotifications(): void {
+    this.notifications.clear();
+    this.notificationThrottle.clear();
+    this.notifySubscribers();
+  }
+
+  dismissNotificationsByType(type: "success" | "warning" | "error" | "info"): void {
+    const toRemove: string[] = [];
+    
+    this.notifications.forEach((notification, id) => {
+      if (notification.type === type && !notification.persistent) {
         toRemove.push(id);
       }
     });

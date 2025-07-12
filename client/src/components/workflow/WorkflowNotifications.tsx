@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { workflowNotificationService, WorkflowNotification } from "@/services/workflow/workflowNotificationService";
 import { useToast } from "@/hooks/use-toast";
+import { Trash2 } from "lucide-react";
 
 const WorkflowNotifications: React.FC = () => {
   const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
@@ -89,34 +90,49 @@ const WorkflowNotifications: React.FC = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            {unreadCount > 0 ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
-            Workflow Notifications
-            {unreadCount > 0 && (
-              <Badge variant="destructive">{unreadCount}</Badge>
-            )}
-          </CardTitle>
-          <div className="flex gap-2">
-            {unreadCount > 0 && (
-              <Button onClick={handleMarkAllAsRead} size="sm" variant="outline">
-                <CheckCheck className="h-4 w-4 mr-2" />
+      <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              {unreadCount > 0 ? (
+                <BellRing className="h-5 w-5 text-orange-500" />
+              ) : (
+                <Bell className="h-5 w-5" />
+              )}
+              Workflow Notifications
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {unreadCount}
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMarkAllAsRead}
+                disabled={unreadCount === 0}
+              >
+                <CheckCheck className="h-4 w-4 mr-1" />
                 Mark All Read
               </Button>
-            )}
-            {notifications.length > 10 && (
-              <Button 
-                onClick={() => setShowAll(!showAll)} 
-                size="sm" 
-                variant="ghost"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  workflowNotificationService.dismissAllNotifications();
+                  toast({
+                    title: "Notifications Cleared",
+                    description: "All notifications have been dismissed.",
+                  });
+                }}
+                disabled={notifications.length === 0}
               >
-                {showAll ? "Show Less" : `Show All (${notifications.length})`}
+                <Trash2 className="h-4 w-4 mr-1" />
+                Clear All
               </Button>
-            )}
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent>
         {notifications.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -162,7 +178,7 @@ const WorkflowNotifications: React.FC = () => {
                             </Badge>
                           )}
                         </div>
-                        
+
                         {/* Notification Actions */}
                         {notification.actions && notification.actions.length > 0 && (
                           <div className="flex gap-2 mt-2">
@@ -180,7 +196,7 @@ const WorkflowNotifications: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Notification Controls */}
                     <div className="flex gap-1 ml-2">
                       {!notification.read && (
