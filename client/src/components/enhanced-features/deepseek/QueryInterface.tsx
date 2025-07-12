@@ -69,7 +69,7 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
           <Label htmlFor="query">Your Question or Prompt</Label>
           <Textarea
             id="query"
-            placeholder="Ask me anything about AI systems, RAG, A2A protocols, or MCP integration..."
+            placeholder="Ask me anything about no-code platforms (Cursor, Bolt, Lovable, Replit, Windsurf), RAG 2.0 vector search, MCP tool integration, A2A agent coordination, or advanced AI development techniques..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={onKeyPress}
@@ -108,23 +108,40 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
 
         {/* Comprehensive Document Access Indicator */}
         {integrationSettings.ragEnabled && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-950/30 dark:to-green-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="p-4 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-green-950/30 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
               <Database className="h-5 w-5 text-blue-600" />
-              <span className="font-semibold text-blue-900 dark:text-blue-100">Full Document Database Access</span>
-              <div className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+              <span className="font-bold text-blue-900 dark:text-blue-100">COMPLETE KNOWLEDGE BASE ACCESS</span>
+              <div className="flex items-center gap-1 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-3 py-1 rounded-full font-medium">
                 <Activity className="h-3 w-3" />
-                ACTIVE
+                FULLY INTEGRATED
               </div>
             </div>
-            <div className="text-sm text-blue-700 dark:text-blue-300 mb-1">
-              Access to <span className="font-bold">{ragStats?.documentsIndexed?.toLocaleString() || '6,800+'} indexed documents</span> across all platforms and attached assets
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div className="bg-white/50 dark:bg-gray-800/50 p-3 rounded">
+                <div className="font-semibold text-blue-800 dark:text-blue-200">RAG 2.0 Vector Search</div>
+                <div className="text-xs text-muted-foreground">Semantic + Keyword Hybrid Search</div>
+              </div>
+              <div className="bg-white/50 dark:bg-gray-800/50 p-3 rounded">
+                <div className="font-semibold text-purple-800 dark:text-purple-200">MCP Tool Integration</div>
+                <div className="text-xs text-muted-foreground">Model Context Protocol Access</div>
+              </div>
+              <div className="bg-white/50 dark:bg-gray-800/50 p-3 rounded">
+                <div className="font-semibold text-green-800 dark:text-green-200">A2A Multi-Agent</div>
+                <div className="text-xs text-muted-foreground">Agent-to-Agent Coordination</div>
+              </div>
+            </div>
+            
+            <div className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+              📚 <span className="font-bold">{ragStats?.documentsIndexed?.toLocaleString() || '6,800+'} Documents</span> • 
+              🔍 <span className="font-bold">{ragStats?.chunksIndexed?.toLocaleString() || '48,720+'} Searchable Chunks</span> • 
+              🤖 <span className="font-bold">12 Specialized Agents</span>
             </div>
             <div className="text-xs text-muted-foreground">
-              {ragStats?.chunksIndexed && (
-                <span className="mr-2">{ragStats.chunksIndexed.toLocaleString()} searchable chunks •</span>
-              )}
-              Includes platform specifications, documentation, best practices, and implementation guides for Cursor, Bolt, Lovable, Replit, and Windsurf
+              <span className="font-medium">Complete Platform Coverage:</span> Cursor, Bolt, Lovable, Replit, Windsurf • 
+              <span className="font-medium">Advanced Systems:</span> RAG 2.0, MCP Tools, A2A Protocols • 
+              <span className="font-medium">Live Data:</span> Attached assets, real-time system integration
             </div>
           </div>
         )}
@@ -213,7 +230,14 @@ const QueryInterface: React.FC<QueryInterfaceProps> = ({
         <div className="space-y-2">
           <Label className="text-sm text-muted-foregoing">Sample Questions:</Label>
           <div className="flex flex-wrap gap-2">
-            {sampleQueries.map((sample, index) => (
+            {sampleQueries.concat([
+              "Compare Cursor vs Bolt for React development",
+              "How to implement RAG 2.0 with vector databases?",
+              "What are MCP tools and how do they integrate?",
+              "Best practices for A2A agent coordination",
+              "Lovable vs Windsurf deployment options",
+              "Platform-specific authentication methods"
+            ]).map((sample, index) => (
               <Button
                 key={index}
                 variant="outline"
