@@ -262,9 +262,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
                   </div>
                 </div>
               </div>
-              <CardDescription className="text-xs">
-                {template.description}
-              </CardDescription>
+              
               
               <div className="flex flex-wrap gap-1">
                 {template.tags.map((tag) => (
