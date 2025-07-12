@@ -35,22 +35,23 @@ export const platformIntegrations = pgTable("platform_integrations", {
   id: serial("id").primaryKey(),
   platformId: integer("platform_id").references(() => platforms.id),
   serviceName: text("service_name").notNull(),
-  serviceType: text("service_type"), // deployment, backend, auth, etc.
-  integrationDetails: text("integration_details"),
-  isNative: boolean("is_native").default(false),
-  metadata: json("metadata"),
+  serviceType: text("service_type"), // Add missing service_type column
+  description: text("description"),
+  setupComplexity: text("setup_complexity"),
+  apiRequired: boolean("api_required").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 export const platformPricing = pgTable("platform_pricing", {
   id: serial("id").primaryKey(),
   platformId: integer("platform_id").references(() => platforms.id),
-  planName: text("plan_name").notNull(),
-  pricePerMonth: text("price_per_month"), // Store as text to handle "Custom", "Free", etc.
-  features: text("features").array(), // Array of feature names
-  limits: json("limits"), // Usage limits as JSON
-  isPopular: boolean("is_popular").default(false),
+  tierName: text("tier_name").notNull(),
+  price: text("price").notNull(),
+  features: text("features").array(),
+  limits: text("limits"), // Add missing limits column
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 export const platformCapabilities = pgTable("platform_capabilities", {
