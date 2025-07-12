@@ -185,6 +185,12 @@ export class VectorStore {
     const { topK = 5, minSimilarity = 0.0 } = options;
 
     try {
+      // Validate queryEmbedding
+      if (!queryEmbedding || !Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        console.warn('[VectorStore] Invalid query embedding provided, returning empty results');
+        return [];
+      }
+
       const queryVector = `[${queryEmbedding.join(',')}]`;
       const results = await this.db
         .select({
@@ -208,7 +214,7 @@ export class VectorStore {
       }));
     } catch (error) {
       console.error('Failed to search vector store:', error);
-      throw error;
+      return [];
     }
   }
 

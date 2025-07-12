@@ -241,8 +241,17 @@ export class HybridSearchEngine {
       // Generate embedding for query
       const queryEmbedding = await this.embeddingService.generateEmbedding(query);
       
+      // Validate embedding
+      if (!queryEmbedding || (!Array.isArray(queryEmbedding) && (!queryEmbedding.embedding || !Array.isArray(queryEmbedding.embedding)))) {
+        console.warn('[HybridSearchEngine] Invalid embedding generated, skipping semantic search');
+        return [];
+      }
+      
+      // Use the embedding array directly or from the wrapper object
+      const embeddingArray = Array.isArray(queryEmbedding) ? queryEmbedding : queryEmbedding.embedding;
+      
       // Search vector store
-      return await this.vectorStore.search(queryEmbedding.embedding, {
+      return await this.vectorStore.search(embeddingArray, {
         topK: options.topK,
         minSimilarity: options.minSimilarity
       });
