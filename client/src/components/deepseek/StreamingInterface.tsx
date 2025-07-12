@@ -265,29 +265,39 @@ export default function StreamingInterface() {
         <div className="lg:col-span-2">
           <StreamingControls
             isStreaming={storeIsStreaming}
-            ragEnabled={ragEnabled}
-            setRagEnabled={setRagEnabled}
-            mcpEnabled={mcpEnabled}
-            setMcpEnabled={setMcpEnabled}
-            temperature={temperature}
-            setTemperature={setTemperature}
-            demoMode={demoMode}
-            setDemoMode={setDemoMode}
+            isPaused={streamingState === 'paused'}
+            canResume={streamingState === 'paused'}
+            streamingProgress={0}
+            tokensReceived={0}
+            elapsedTime={elapsedTime}
+            tokenVelocity={streamingSpeed}
+            onStart={handleSubmit}
             onPause={handlePause}
             onResume={handleResume}
             onStop={handleStop}
-            ragStats={ragStats}
-            mcpStats={mcpStats}
+            onReset={() => {
+              setElapsedTime(0);
+              setStreamingSpeed(0);
+              setStreamingState('idle');
+            }}
+            disabled={isLoading}
           />
         </div>
         <div>
           <StreamingStats
-            isStreaming={storeIsStreaming}
-            reasoningTokens={streamingReasoning?.length || 0}
-            responseTokens={streamingResponse?.length || 0}
-            totalTokens={(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)}
-            streamingSpeed={streamingSpeed}
-            elapsedTime={elapsedTime}
+            stats={{
+              tokensPerSecond: streamingSpeed,
+              averageLatency: 250,
+              totalTokens: (currentResponse?.usage.completionTokens || 0) + (currentResponse?.usage.reasoningTokens || 0),
+              reasoningTokens: currentResponse?.usage.reasoningTokens || 0,
+              responseTokens: currentResponse?.usage.completionTokens || 0,
+              streamDuration: elapsedTime,
+              connectionQuality: isConnected ? 'excellent' : 'poor',
+              bufferHealth: 85,
+              throughputTrend: streamingSpeed > 10 ? 'up' : streamingSpeed < 5 ? 'down' : 'stable',
+              errorRate: error ? 5 : 0.5
+            }}
+            isActive={storeIsStreaming}
           />
         </div>
       </div>

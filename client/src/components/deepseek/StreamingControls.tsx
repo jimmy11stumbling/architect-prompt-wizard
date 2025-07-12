@@ -1,169 +1,209 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// Slider component removed - using simple range input
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Square, Settings, Database, Network, Bot } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { 
+  Play, 
+  Pause, 
+  Square, 
+  RotateCcw,
+  Settings,
+  Activity,
+  Zap,
+  Clock
+} from 'lucide-react';
 
 interface StreamingControlsProps {
   isStreaming: boolean;
-  ragEnabled: boolean;
-  setRagEnabled: (enabled: boolean) => void;
-  mcpEnabled: boolean;
-  setMcpEnabled: (enabled: boolean) => void;
-  temperature: number;
-  setTemperature: (temp: number) => void;
-  demoMode: boolean;
-  setDemoMode: (enabled: boolean) => void;
-  onPause?: () => void;
-  onResume?: () => void;
-  onStop?: () => void;
-  ragStats?: any;
-  mcpStats?: any;
+  isPaused: boolean;
+  canResume: boolean;
+  streamingProgress: number;
+  tokensReceived: number;
+  elapsedTime: number;
+  tokenVelocity: number;
+  onStart: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onStop: () => void;
+  onReset: () => void;
+  disabled?: boolean;
 }
 
-export function StreamingControls({
+export default function StreamingControls({
   isStreaming,
-  ragEnabled,
-  setRagEnabled,
-  mcpEnabled,
-  setMcpEnabled,
-  temperature,
-  setTemperature,
-  demoMode,
-  setDemoMode,
+  isPaused,
+  canResume,
+  streamingProgress,
+  tokensReceived,
+  elapsedTime,
+  tokenVelocity,
+  onStart,
   onPause,
   onResume,
   onStop,
-  ragStats,
-  mcpStats
+  onReset,
+  disabled = false
 }: StreamingControlsProps) {
+  
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusBadge = () => {
+    if (isStreaming && !isPaused) {
+      return <Badge className="bg-green-100 text-green-800">Streaming</Badge>;
+    } else if (isPaused) {
+      return <Badge className="bg-yellow-100 text-yellow-800">Paused</Badge>;
+    } else if (canResume) {
+      return <Badge className="bg-blue-100 text-blue-800">Ready to Resume</Badge>;
+    } else {
+      return <Badge variant="secondary">Stopped</Badge>;
+    }
+  };
+
+  const getProgressColor = () => {
+    if (isPaused) return 'bg-yellow-500';
+    if (isStreaming) return 'bg-green-500';
+    return 'bg-blue-500';
+  };
+
   return (
-    <Card className="border-gray-700 bg-gray-800">
-      <CardHeader>
-        <CardTitle className="text-sm flex items-center gap-2 text-white">
-          <Settings className="h-4 w-4" />
-          Streaming Controls
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Streaming Actions */}
-        <div className="flex items-center gap-2">
+    <div className="bg-white border rounded-lg p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Activity className="h-5 w-5 text-blue-500" />
+          <span className="font-medium">Streaming Controls</span>
+          {getStatusBadge()}
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Clock className="h-4 w-4" />
+          {formatTime(elapsedTime)}
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span>Progress</span>
+          <span>{streamingProgress.toFixed(1)}%</span>
+        </div>
+        <div className="relative">
+          <Progress 
+            value={streamingProgress} 
+            className="h-2"
+          />
+          {isStreaming && !isPaused && (
+            <div className="absolute top-0 left-0 h-2 w-full rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-transparent via-white to-transparent opacity-50 animate-pulse"></div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-600">Tokens Received</span>
+          <span className="font-medium">{tokensReceived.toLocaleString()}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-600">Velocity</span>
+          <div className="flex items-center gap-1">
+            <Zap className="h-3 w-3 text-orange-500" />
+            <span className="font-medium">{tokenVelocity.toFixed(1)} t/s</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Control Buttons */}
+      <div className="flex items-center gap-2">
+        {!isStreaming && !canResume && (
           <Button
+            onClick={onStart}
+            disabled={disabled}
+            className="flex items-center gap-2"
             size="sm"
-            variant="outline"
-            onClick={onPause}
-            disabled={!isStreaming}
-            className="flex items-center gap-1"
           >
-            <Pause className="h-3 w-3" />
+            <Play className="h-4 w-4" />
+            Start Stream
+          </Button>
+        )}
+        
+        {isStreaming && !isPaused && (
+          <Button
+            onClick={onPause}
+            disabled={disabled}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Pause className="h-4 w-4" />
             Pause
           </Button>
+        )}
+        
+        {isPaused && canResume && (
           <Button
-            size="sm"
-            variant="outline"
             onClick={onResume}
-            disabled={!isStreaming}
-            className="flex items-center gap-1"
+            disabled={disabled}
+            className="flex items-center gap-2"
+            size="sm"
           >
-            <Play className="h-3 w-3" />
+            <Play className="h-4 w-4" />
             Resume
           </Button>
+        )}
+        
+        {(isStreaming || isPaused || canResume) && (
           <Button
-            size="sm"
-            variant="destructive"
             onClick={onStop}
-            disabled={!isStreaming}
-            className="flex items-center gap-1"
+            disabled={disabled}
+            variant="destructive"
+            size="sm"
+            className="flex items-center gap-2"
           >
-            <Square className="h-3 w-3" />
+            <Square className="h-4 w-4" />
             Stop
           </Button>
-        </div>
+        )}
+        
+        <Button
+          onClick={onReset}
+          disabled={disabled || isStreaming}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Reset
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </Button>
+      </div>
 
-        {/* Integration Controls */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Switch 
-                id="rag-enabled"
-                checked={ragEnabled}
-                onCheckedChange={setRagEnabled}
-                disabled={isStreaming}
-              />
-              <Label htmlFor="rag-enabled" className="flex items-center gap-1 text-sm">
-                <Database className="h-4 w-4" />
-                RAG 2.0
-              </Label>
-            </div>
-            {ragStats && (
-              <Badge variant="outline" className="text-xs">
-                {ragStats.documentsIndexed} docs
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Switch 
-                id="mcp-enabled"
-                checked={mcpEnabled}
-                onCheckedChange={setMcpEnabled}
-                disabled={isStreaming}
-              />
-              <Label htmlFor="mcp-enabled" className="flex items-center gap-1 text-sm">
-                <Network className="h-4 w-4" />
-                MCP Hub
-              </Label>
-            </div>
-            {mcpStats && (
-              <Badge variant="outline" className="text-xs">
-                {mcpStats.totalAssets} assets
-              </Badge>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Switch 
-                id="demo-mode"
-                checked={demoMode}
-                onCheckedChange={setDemoMode}
-                disabled={isStreaming}
-              />
-              <Label htmlFor="demo-mode" className="flex items-center gap-1 text-sm">
-                <Bot className="h-4 w-4" />
-                Demo Mode
-              </Label>
-            </div>
-            <Badge variant={demoMode ? "default" : "outline"} className="text-xs">
-              {demoMode ? "Demo" : "Live"}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Temperature Control */}
-        <div className="space-y-2">
-          <Label className="text-sm flex items-center justify-between">
-            <span>Temperature</span>
-            <span className="text-xs text-gray-400">{temperature.toFixed(1)}</span>
-          </Label>
-          <input
-            type="range"
-            value={temperature}
-            onChange={(e) => setTemperature(parseFloat(e.target.value))}
-            min={0}
-            max={2}
-            step={0.1}
-            disabled={isStreaming}
-            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-          />
-        </div>
-      </CardContent>
-    </Card>
+      {/* Status Indicator */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className={`w-2 h-2 rounded-full ${
+          isStreaming && !isPaused ? 'bg-green-500 animate-pulse' : 
+          isPaused ? 'bg-yellow-500' : 
+          'bg-gray-300'
+        }`}></div>
+        <span>
+          {isStreaming && !isPaused ? 'Live streaming in progress' :
+           isPaused ? 'Stream paused - ready to resume' :
+           canResume ? 'Stream available for resumption' :
+           'Ready to start new stream'}
+        </span>
+      </div>
+    </div>
   );
 }
-
-export default StreamingControls;
