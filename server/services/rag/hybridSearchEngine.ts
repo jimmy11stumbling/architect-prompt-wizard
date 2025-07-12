@@ -58,7 +58,7 @@ export class HybridSearchEngine {
   private chunkIndex: Map<string, DocumentChunk> = new Map(); // chunk ID -> chunk
   private initialized = false;
 
-  constructor(connectionString: string) {
+  constructor(connectionString?: string) {
     this.vectorStore = new VectorStore(connectionString);
     this.embeddingService = EmbeddingService.getInstance();
   }
