@@ -1,6 +1,6 @@
 
 import React from "react";
-import { SavedPrompt } from "@/services/db/supabasePromptService";
+import { SavedPrompt } from "@/services/api/promptService";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { SavedPrompt, supabasePromptService } from "@/services/db/supabasePromptService";
+import { SavedPrompt, promptService } from "@/services/api/promptService";
 import { useToast } from "@/hooks/use-toast";
 
 export const usePromptManagement = () => {
@@ -13,7 +13,7 @@ export const usePromptManagement = () => {
   const loadPrompts = async () => {
     try {
       setIsLoading(true);
-      const allPrompts = await supabasePromptService.getAllPrompts();
+      const allPrompts = await promptService.getAllPrompts();
       setPrompts(allPrompts);
       setFilteredPrompts(allPrompts);
     } catch (error) {
@@ -32,7 +32,7 @@ export const usePromptManagement = () => {
     if (!id) return;
     
     try {
-      await supabasePromptService.deletePrompt(id);
+      await promptService.deletePrompt(id);
       setPrompts(prompts.filter(p => p.id !== id));
       toast({
         title: "Prompt Deleted",
@@ -51,7 +51,7 @@ export const usePromptManagement = () => {
   const handlePromptUse = async (prompt: SavedPrompt) => {
     try {
       if (prompt.id) {
-        await supabasePromptService.incrementUsage(prompt.id);
+        await promptService.incrementUsage(prompt.id);
       }
       navigator.clipboard.writeText(prompt.prompt);
       toast({

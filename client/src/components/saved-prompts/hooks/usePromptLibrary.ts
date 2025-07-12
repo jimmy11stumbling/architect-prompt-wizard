@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { SavedPrompt, PromptCategory, PromptStats, supabasePromptService } from "@/services/db/supabasePromptService";
+import { SavedPrompt, PromptCategory, PromptStats, promptService } from "@/services/api/promptService";
 import { useToast } from "@/hooks/use-toast";
 
 export const usePromptLibrary = (prompts: SavedPrompt[]) => {
@@ -21,9 +21,9 @@ export const usePromptLibrary = (prompts: SavedPrompt[]) => {
     try {
       setIsLoading(true);
       const [categoriesData, statsData, featuredData] = await Promise.all([
-        supabasePromptService.getCategories(),
-        supabasePromptService.getStats(),
-        supabasePromptService.getFeaturedPrompts()
+        promptService.getCategories(),
+        promptService.getStats(),
+        promptService.getFeaturedPrompts()
       ]);
       
       setCategories(categoriesData);
@@ -54,7 +54,7 @@ export const usePromptLibrary = (prompts: SavedPrompt[]) => {
 
   const handleExport = async () => {
     try {
-      const exportData = await supabasePromptService.exportPrompts();
+      const exportData = await promptService.exportPrompts();
       const blob = new Blob([exportData], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -84,7 +84,7 @@ export const usePromptLibrary = (prompts: SavedPrompt[]) => {
 
     try {
       const text = await file.text();
-      const importedCount = await supabasePromptService.importPrompts(text);
+      const importedCount = await promptService.importPrompts(text);
       
       toast({
         title: "Import Complete",

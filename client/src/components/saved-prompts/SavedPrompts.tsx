@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { SavedPrompt } from "@/services/db/supabasePromptService";
+import { SavedPrompt } from "@/services/api/promptService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { usePromptManagement } from "./hooks/usePromptManagement";

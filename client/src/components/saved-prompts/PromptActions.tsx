@@ -1,6 +1,6 @@
 
 import React from "react";
-import { SavedPrompt } from "@/services/db/supabasePromptService";
+import { SavedPrompt } from "@/services/api/promptService";
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu, 

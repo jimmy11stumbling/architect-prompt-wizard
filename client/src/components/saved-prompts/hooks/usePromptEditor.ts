@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { SavedPrompt, supabasePromptService } from "@/services/db/supabasePromptService";
+import { SavedPrompt, promptService } from "@/services/api/promptService";
 import { useToast } from "@/hooks/use-toast";
 
 export const usePromptEditor = (prompt?: SavedPrompt | null, onSave?: () => void, onClose?: () => void) => {
@@ -53,13 +53,13 @@ export const usePromptEditor = (prompt?: SavedPrompt | null, onSave?: () => void
       } as SavedPrompt;
 
       if (prompt?.id) {
-        await supabasePromptService.updatePrompt(prompt.id, promptData);
+        await promptService.updatePrompt(prompt.id, promptData);
         toast({
           title: "Prompt Updated",
           description: "Your prompt has been updated successfully",
         });
       } else {
-        await supabasePromptService.savePrompt(promptData);
+        await promptService.savePrompt(promptData);
         toast({
           title: "Prompt Saved",
           description: "Your new prompt has been saved successfully",

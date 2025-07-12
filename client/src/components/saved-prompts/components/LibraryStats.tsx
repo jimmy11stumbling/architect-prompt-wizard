@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Database, Users, TrendingUp, Star } from "lucide-react";
-import { PromptStats } from "@/services/db/supabasePromptService";
+import { PromptStats } from "@/services/api/promptService";
 
 interface LibraryStatsProps {
   stats: PromptStats;

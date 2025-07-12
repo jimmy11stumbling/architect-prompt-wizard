@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { SavedPrompt, supabasePromptService } from "@/services/db/supabasePromptService";
+import { SavedPrompt, promptService } from "@/services/api/promptService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Database } from "lucide-react";
@@ -28,7 +28,7 @@ const SavedPrompts: React.FC = () => {
   const loadPrompts = async () => {
     try {
       setIsLoading(true);
-      const allPrompts = await supabasePromptService.getAllPrompts();
+      const allPrompts = await promptService.getAllPrompts();
       setPrompts(allPrompts);
       setFilteredPrompts(allPrompts);
     } catch (error) {
@@ -65,7 +65,7 @@ const SavedPrompts: React.FC = () => {
     if (!id) return;
     
     try {
-      await supabasePromptService.deletePrompt(id);
+      await promptService.deletePrompt(id);
       setPrompts(prompts.filter(p => p.id !== id));
       toast({
         title: "Prompt Deleted",
@@ -114,7 +114,7 @@ const SavedPrompts: React.FC = () => {
   const handlePromptUse = async (prompt: SavedPrompt) => {
     try {
       if (prompt.id) {
-        await supabasePromptService.incrementUsage(prompt.id);
+        await promptService.incrementUsage(prompt.id);
       }
       handleCopy(prompt.prompt);
       toast({
