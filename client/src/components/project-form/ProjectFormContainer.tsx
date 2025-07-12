@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProjectSpec } from "@/types/ipa-types";
-import { TextAreaField, TechStackSection, AdvancedFeaturesSection, QuickFillButton, ProjectFormValidation } from "./";
+import { TechStackSection, AdvancedFeaturesSection, QuickFillButton, ProjectFormValidation } from "./";
 import { useProjectSpec } from "./hooks/useProjectSpec";
 
 interface ProjectFormContainerProps {
