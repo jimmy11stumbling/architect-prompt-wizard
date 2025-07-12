@@ -81,12 +81,12 @@ export class HybridSearchEngine {
 
     try {
       console.log(`Starting indexing of ${documents.length} documents...`);
-      
+
       // Extract all text content for embedding initialization
       const allTexts = documents.flatMap(doc => 
         doc.chunks.map(chunk => chunk.content)
       );
-      
+
       // Initialize embedding service with all content
       await this.embeddingService.initialize(allTexts);
 
@@ -105,19 +105,19 @@ export class HybridSearchEngine {
   private async indexSingleDocument(document: ProcessedDocument): Promise<void> {
     try {
       const vectorDocuments: VectorDocument[] = [];
-      
+
       // Process each chunk
       for (const chunk of document.chunks) {
         // Store in local indices
         this.documentIndex.set(chunk.id, document);
         this.chunkIndex.set(chunk.id, chunk);
-        
+
         // Build keyword index
         await this.indexChunkKeywords(chunk);
-        
+
         // Generate embedding for vector store
         const embeddingResult = await this.embeddingService.generateEmbedding(chunk.content);
-        
+
         vectorDocuments.push({
           id: chunk.id,
           content: chunk.content,
@@ -134,7 +134,7 @@ export class HybridSearchEngine {
 
       // Add to vector store
       await this.vectorStore.addDocuments(vectorDocuments);
-      
+
     } catch (error) {
       console.error(`Failed to index document ${document.id}:`, error);
       throw error;
@@ -145,9 +145,9 @@ export class HybridSearchEngine {
     // Tokenize and process keywords
     const tokenizer = new natural.WordTokenizer();
     const stemmer = natural.PorterStemmer;
-    
+
     const tokens = tokenizer.tokenize(chunk.content.toLowerCase()) || [];
-    
+
     // Process tokens
     const processedTokens = tokens
       .filter(token => 
@@ -190,10 +190,10 @@ export class HybridSearchEngine {
     try {
       // Perform semantic search
       const semanticResults = await this.performSemanticSearch(query, { topK: topK * 2, minSimilarity });
-      
+
       // Perform keyword search
       const keywordResults = await this.performKeywordSearch(query, { topK: topK * 2 });
-      
+
       // Combine and score results
       const combinedResults = await this.combineResults(
         semanticResults,
@@ -212,7 +212,7 @@ export class HybridSearchEngine {
       finalResults = finalResults.slice(0, topK);
 
       const searchTime = Date.now() - startTime;
-      
+
       // Generate search suggestions
       const suggestions = await this.generateSuggestions(query);
 
@@ -240,16 +240,16 @@ export class HybridSearchEngine {
     try {
       // Generate embedding for query
       const queryEmbedding = await this.embeddingService.generateEmbedding(query);
-      
+
       // Validate embedding
       if (!queryEmbedding || (!Array.isArray(queryEmbedding) && (!queryEmbedding.embedding || !Array.isArray(queryEmbedding.embedding)))) {
         console.warn('[HybridSearchEngine] Invalid embedding generated, skipping semantic search');
         return [];
       }
-      
+
       // Use the embedding array directly or from the wrapper object
       const embeddingArray = Array.isArray(queryEmbedding) ? queryEmbedding : queryEmbedding.embedding;
-      
+
       // Search vector store
       return await this.vectorStore.search(embeddingArray, {
         topK: options.topK,
@@ -266,7 +266,7 @@ export class HybridSearchEngine {
       // Tokenize query
       const tokenizer = new natural.WordTokenizer();
       const stemmer = natural.PorterStemmer;
-      
+
       const queryTokens = (tokenizer.tokenize(query.toLowerCase()) || [])
         .filter(token => 
           !natural.stopwords.includes(token) && 
@@ -368,11 +368,11 @@ export class HybridSearchEngine {
       bestScore: number;
       bestScores: any;
     }>();
-    
+
     for (const [chunkId, scores] of combinedScores.entries()) {
       const chunk = this.chunkIndex.get(chunkId);
       const document = this.documentIndex.get(chunkId);
-      
+
       if (!chunk || !document) continue;
 
       // Apply filters
@@ -381,7 +381,7 @@ export class HybridSearchEngine {
       }
 
       const finalScore = (scores.semanticScore * weights.semantic) + (scores.keywordScore * weights.keyword);
-      
+
       // Check if this is the best chunk for this document
       const existing = documentResults.get(document.id);
       if (!existing || finalScore > existing.bestScore) {
@@ -423,37 +423,37 @@ export class HybridSearchEngine {
     if (filters.category && document.metadata.category !== filters.category) {
       return false;
     }
-    
+
     if (filters.source && document.metadata.source !== filters.source) {
       return false;
     }
-    
+
     if (filters.documentType && document.metadata.type !== filters.documentType) {
       return false;
     }
-    
+
     if (filters.platform && !document.metadata.source?.toLowerCase().includes(filters.platform.toLowerCase())) {
       return false;
     }
-    
+
     if (filters.dateRange) {
       const docDate = new Date(document.metadata.processedAt);
       if (docDate < filters.dateRange.start || docDate > filters.dateRange.end) {
         return false;
       }
     }
-    
+
     return true;
   }
 
   private async rerankResults(query: string, results: SearchResult[]): Promise<SearchResult[]> {
     // Simple reranking based on query term density and position
     const queryTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 2);
-    
+
     return results.map(result => {
       let rerankingBoost = 0;
       const content = result.chunk.content.toLowerCase();
-      
+
       // Boost for query terms in the beginning of chunk
       const firstThird = content.substring(0, content.length / 3);
       for (const term of queryTerms) {
@@ -461,12 +461,12 @@ export class HybridSearchEngine {
           rerankingBoost += 0.1;
         }
       }
-      
+
       // Boost for exact phrase matches
       if (content.includes(query.toLowerCase())) {
         rerankingBoost += 0.2;
       }
-      
+
       // Boost for document title matches
       const title = result.document.title.toLowerCase();
       for (const term of queryTerms) {
@@ -474,7 +474,7 @@ export class HybridSearchEngine {
           rerankingBoost += 0.15;
         }
       }
-      
+
       return {
         ...result,
         score: result.score + rerankingBoost
@@ -484,11 +484,11 @@ export class HybridSearchEngine {
 
   private async generateSuggestions(query: string, limit = 5): Promise<string[]> {
     const suggestions: string[] = [];
-    
+
     // Extract key terms from indexed vocabulary
     const embeddingStats = this.embeddingService.getVocabularyStats();
     const queryWords = query.toLowerCase().split(/\s+/);
-    
+
     // Find related terms from vocabulary
     for (const term of embeddingStats.topTerms) {
       if (term.length > 3 && !queryWords.includes(term)) {
@@ -500,10 +500,10 @@ export class HybridSearchEngine {
           }
         }
       }
-      
+
       if (suggestions.length >= limit) break;
     }
-    
+
     return suggestions;
   }
 
@@ -516,7 +516,7 @@ export class HybridSearchEngine {
   }> {
     const vectorStats = await this.vectorStore.getStats();
     const embeddingStats = this.embeddingService.getVocabularyStats();
-    
+
     return {
       totalDocuments: this.documentIndex.size,
       totalChunks: this.chunkIndex.size,

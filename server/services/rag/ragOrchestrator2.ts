@@ -78,6 +78,9 @@ export interface IndexingProgress {
   errors?: string[];
 }
 
+// Use shared vector store instance
+let vectorStoreInstance: VectorStore | null = null;
+
 export class RAGOrchestrator2 {
   private static instance: RAGOrchestrator2;
   private hybridSearchEngine: HybridSearchEngine;
@@ -88,15 +91,14 @@ export class RAGOrchestrator2 {
   private indexedDocuments: ProcessedDocument[] = [];
 
   private constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error("DATABASE_URL environment variable is required");
+    // Use singleton instance to prevent multiple database connections
+    if (!vectorStoreInstance) {
+      vectorStoreInstance = new VectorStore();
     }
-    
-    this.hybridSearchEngine = new HybridSearchEngine(connectionString);
-    this.documentProcessor = DocumentProcessor.getInstance();
-    this.vectorStore = new VectorStore(connectionString);
+    this.vectorStore = vectorStoreInstance;
     this.embeddingService = EmbeddingService.getInstance();
+    this.hybridSearchEngine = new HybridSearchEngine();
+    this.documentProcessor = DocumentProcessor.getInstance();
   }
 
   static getInstance(): RAGOrchestrator2 {
@@ -114,11 +116,11 @@ export class RAGOrchestrator2 {
 
     try {
       console.log('Initializing RAG 2.0 system...');
-      
+
       // Initialize all components
       await this.vectorStore.initialize();
       await this.hybridSearchEngine.initialize();
-      
+
       this.isInitialized = true;
       console.log('RAG 2.0 system initialized successfully');
     } catch (error) {
@@ -148,7 +150,7 @@ export class RAGOrchestrator2 {
       });
 
       const attachedAssetDocs = await this.processAttachedAssets();
-      
+
       // Stage 2: Process platform data from database
       progressCallback?.({
         stage: 'processing',
@@ -159,10 +161,10 @@ export class RAGOrchestrator2 {
       });
 
       const platformDocs = await this.processPlatformData();
-      
+
       // Stage 3: Process knowledge base content
       const knowledgeBaseDocs = await this.processKnowledgeBaseData();
-      
+
       // Combine all documents
       const allDocuments = [...attachedAssetDocs, ...platformDocs, ...knowledgeBaseDocs];
       this.indexedDocuments = allDocuments;
@@ -231,7 +233,7 @@ export class RAGOrchestrator2 {
 
         // Create comprehensive platform document
         const content = this.buildPlatformContent(platform, features, integrations, pricing);
-        
+
         const processedDoc = await this.documentProcessor.processDocument(content, {
           id: `platform_${platform.name.toLowerCase().replace(/\s+/g, '_')}`,
           title: `${platform.name} Platform Guide`,
@@ -362,13 +364,13 @@ export class RAGOrchestrator2 {
       };
 
       const searchResponse = await this.hybridSearchEngine.search(searchQuery);
-      
+
       // Convert search results to RAG results
       const ragResults = this.convertToRAGResults(searchResponse);
-      
+
       // Build context from results
       const context = this.buildContext(ragResults, ragQuery.context);
-      
+
       // Compress context if needed
       const compressedContext = this.compressContext(context);
 
@@ -426,19 +428,19 @@ export class RAGOrchestrator2 {
    */
   private buildContext(results: RAGResult[], additionalContext?: string): string {
     let context = '';
-    
+
     if (additionalContext) {
       context += `${additionalContext}\n\n`;
     }
-    
+
     context += '## Relevant Information\n\n';
-    
+
     for (const result of results.slice(0, 5)) {
       context += `### ${result.title}\n`;
       context += `${result.content}\n`;
       context += `*Source: ${result.metadata.source}*\n\n`;
     }
-    
+
     return context;
   }
 
@@ -451,7 +453,7 @@ export class RAGOrchestrator2 {
     if (words.length <= maxTokens) {
       return context;
     }
-    
+
     // Take first part and most relevant sentences
     const compressed = words.slice(0, maxTokens).join(' ');
     return compressed + '...\n\n[Context truncated for length]';
@@ -476,9 +478,9 @@ export class RAGOrchestrator2 {
     try {
       const embeddingStats = this.embeddingService.getVocabularyStats();
       const suggestions: string[] = [];
-      
+
       const queryWords = partialQuery.toLowerCase().split(/\s+/);
-      
+
       // Find related terms from vocabulary
       for (const term of embeddingStats.topTerms) {
         if (term.length > 3 && !queryWords.includes(term)) {
@@ -489,10 +491,10 @@ export class RAGOrchestrator2 {
             }
           }
         }
-        
+
         if (suggestions.length >= limit) break;
       }
-      
+
       return suggestions;
     } catch (error) {
       console.error('Failed to get suggestions:', error);
@@ -547,16 +549,16 @@ export class RAGOrchestrator2 {
   extractKeyPhrases(content: string): string[] {
     // Use compromise to extract key phrases
     const doc = require('compromise')(content);
-    
+
     // Extract nouns and noun phrases
     const nouns = doc.nouns().out('array');
     const topics = doc.topics().out('array');
-    
+
     // Combine and filter
     const phrases = [...nouns, ...topics]
       .filter(phrase => phrase.length > 3 && phrase.length < 50)
       .slice(0, 10);
-    
+
     return phrases;
   }
 

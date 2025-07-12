@@ -4,6 +4,7 @@ import { cosineDistance, desc } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { EmbeddingService } from './embeddingService';
 import { db, pool } from '../../db';
+import { connectionMonitor } from './connectionMonitor';
 
 // Vector database schema for embeddings
 export const vectorDocuments = pgTable('vector_documents', {
@@ -48,19 +49,22 @@ export class VectorStore {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        console.log(`Initializing vector store... (${4 - retries}/3)`);
+    return connectionMonitor.acquireConnection('vector-store-init', async () => {
+      if (this.initialized) return; // Double-check after acquiring connection
+      
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          console.log(`Initializing vector store... (${4 - retries}/3)`);
 
-        // Test database connection with timeout
-        const connectionPromise = this.db.execute(sql`SELECT 1`);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database connection timeout')), 15000)
-        );
-        
-        await Promise.race([connectionPromise, timeoutPromise]);
-        console.log('Database connection successful');
+          // Test database connection with timeout
+          const connectionPromise = this.db.execute(sql`SELECT 1`);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Database connection timeout')), 15000)
+          );
+          
+          await Promise.race([connectionPromise, timeoutPromise]);
+          console.log('Database connection successful');
 
         // Enable pgvector extension (may fail if not available, but that's okay)
         try {
@@ -131,12 +135,11 @@ export class VectorStore {
           return;
         }
 
-        // Wait before retry - using shared connection, no need to recreate
-
         // Wait before retry with exponential backoff
         await new Promise(resolve => setTimeout(resolve, (4 - retries) * 3000));
       }
     }
+    });
   }
 
   async addDocuments(documents: VectorDocument[]): Promise<void> {

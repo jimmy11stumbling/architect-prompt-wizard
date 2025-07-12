@@ -28,14 +28,21 @@ export interface RAGIndexingProgress {
   currentItem?: string;
 }
 
+// Singleton vector store instance
+let vectorStoreInstance: VectorStore | null = null;
+
 export class RAGOrchestrator {
   private embeddingService: EmbeddingService;
   private vectorStore: VectorStore;
   private isInitialized = false;
 
   constructor(apiKey?: string) {
+    // Use singleton instance to prevent multiple database connections
+    if (!vectorStoreInstance) {
+      vectorStoreInstance = new VectorStore();
+    }
     this.embeddingService = new EmbeddingService(apiKey);
-    this.vectorStore = new VectorStore(this.embeddingService);
+    this.vectorStore = vectorStoreInstance;
   }
 
   /**
@@ -66,7 +73,7 @@ export class RAGOrchestrator {
       // Get all platforms and knowledge base entries
       const platforms = await storage.getAllPlatforms();
       const knowledgeBase = await storage.getAllKnowledgeBase();
-      
+
       const totalItems = platforms.length + knowledgeBase.length;
       let processedItems = 0;
 
@@ -151,12 +158,12 @@ export class RAGOrchestrator {
 
       // Perform hybrid search for better results
       const results = await this.vectorStore.hybridSearch(ragQuery.query, searchOptions);
-      
+
       const searchTime = Date.now() - startTime;
 
       // Build context from search results
       const context = this.buildContext(results, ragQuery.context);
-      
+
       // Extract unique sources
       const sourceSet = new Set(results.map(r => r.document.metadata.source));
       const sources = Array.from(sourceSet);
@@ -237,7 +244,7 @@ export class RAGOrchestrator {
     try {
       console.log("Clearing existing embeddings...");
       await this.vectorStore.clearAll();
-      
+
       console.log("Starting re-indexing...");
       await this.indexAllData(progressCallback);
     } catch (error) {
@@ -257,7 +264,7 @@ export class RAGOrchestrator {
     }
 
     context += "Retrieved Information:\n";
-    
+
     results.forEach((result, index) => {
       const metadata = result.document.metadata;
       context += `\n[Source ${index + 1}] ${metadata.platform || metadata.category || "Unknown"}:\n`;
@@ -274,10 +281,10 @@ export class RAGOrchestrator {
   private extractKeyPhrases(content: string): string[] {
     // Simple extraction of phrases - could be enhanced with NLP
     const phrases: string[] = [];
-    
+
     // Extract sentences
     const sentences = content.split(/[.!?]+/).map(s => s.trim());
-    
+
     // Extract noun phrases (simplified)
     sentences.forEach(sentence => {
       const words = sentence.split(/\s+/);
