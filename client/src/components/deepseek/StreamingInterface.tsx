@@ -407,17 +407,41 @@ export default function StreamingInterface() {
       </div>
 
       {/* Query Input */}
-      <Card className="border-gray-700 bg-gray-800">
+      <Card className={`border-gray-700 transition-all duration-300 ${
+        isLoading || storeIsStreaming 
+          ? 'bg-gradient-to-br from-gray-800 via-purple-900/20 to-gray-800 border-purple-500/50 shadow-lg shadow-purple-400/20' 
+          : 'bg-gray-800'
+      }`}>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 text-white">
-            <Zap className="h-5 w-5 text-yellow-400" />
+            <div className="relative">
+              <Zap className={`h-5 w-5 text-yellow-400 transition-all duration-300 ${
+                isLoading || storeIsStreaming ? 'animate-pulse scale-110' : ''
+              }`} />
+              {(isLoading || storeIsStreaming) && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+              )}
+            </div>
             <span>Query Input</span>
+            {(isLoading || storeIsStreaming) && (
+              <div className="flex items-center gap-2 ml-4">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+                <span className="text-sm text-purple-300 animate-pulse">
+                  {isLoading && !storeIsStreaming ? 'Initializing...' : 'Processing...'}
+                </span>
+              </div>
+            )}
             <div className="ml-auto flex gap-2">
               <Button
                 variant={demoMode ? "default" : "outline"}
                 size="sm"
                 onClick={() => setDemoMode(!demoMode)}
                 className="text-xs"
+                disabled={isLoading || storeIsStreaming}
               >
                 <Zap className="h-3 w-3 mr-1" />
                 DEMO {demoMode ? 'ON' : 'OFF'}
@@ -427,6 +451,7 @@ export default function StreamingInterface() {
                 size="sm"
                 onClick={() => setRagEnabled(!ragEnabled)}
                 className="text-xs"
+                disabled={isLoading || storeIsStreaming}
               >
                 <Database className="h-3 w-3 mr-1" />
                 RAG {ragEnabled ? 'ON' : 'OFF'}
@@ -436,6 +461,7 @@ export default function StreamingInterface() {
                 size="sm"
                 onClick={() => setMcpEnabled(!mcpEnabled)}
                 className="text-xs"
+                disabled={isLoading || storeIsStreaming}
               >
                 <Network className="h-3 w-3 mr-1" />
                 MCP {mcpEnabled ? 'ON' : 'OFF'}
@@ -444,18 +470,90 @@ export default function StreamingInterface() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Textarea
-            placeholder="Ask DeepSeek anything..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="min-h-[100px] bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-            disabled={isLoading || storeIsStreaming}
-          />
+          <div className="relative">
+            <Textarea
+              placeholder="Ask DeepSeek anything..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className={`min-h-[100px] transition-all duration-300 text-white placeholder:text-gray-400 ${
+                isLoading || storeIsStreaming 
+                  ? 'bg-gray-700/50 border-purple-500/50 shadow-inner shadow-purple-400/20' 
+                  : 'bg-gray-700 border-gray-600'
+              }`}
+              disabled={isLoading || storeIsStreaming}
+            />
+            
+            {/* Loading Overlay */}
+            {(isLoading || storeIsStreaming) && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent pointer-events-none">
+                <div className="absolute top-2 right-2 flex items-center gap-2 bg-gray-800/90 rounded-lg px-3 py-1.5 border border-purple-500/30">
+                  <Loader2 className="h-3 w-3 animate-spin text-purple-400" />
+                  <span className="text-xs text-purple-300">
+                    {isLoading && !storeIsStreaming ? 'Preparing...' :
+                     storeIsStreaming && !streamingReasoning && !streamingResponse ? 'Connecting...' :
+                     streamingReasoning && !streamingResponse ? 'Reasoning...' :
+                     streamingResponse ? 'Responding...' : 'Processing...'}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            {/* Animated Border Effect */}
+            {(isLoading || storeIsStreaming) && (
+              <div className="absolute inset-0 rounded-md pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 via-blue-500/30 to-purple-500/30 rounded-md opacity-50 animate-pulse"></div>
+              </div>
+            )}
+          </div>
+
+          {/* Enhanced Progress Indicator */}
+          {(isLoading || storeIsStreaming) && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                    isLoading && !storeIsStreaming ? 'bg-yellow-400 animate-pulse' :
+                    storeIsStreaming && !streamingReasoning && !streamingResponse ? 'bg-blue-400 animate-pulse' :
+                    streamingReasoning && !streamingResponse ? 'bg-orange-400 animate-pulse' :
+                    streamingResponse ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+                  }`} />
+                  <span className="text-gray-300">
+                    {isLoading && !storeIsStreaming ? 'Initializing services...' :
+                     storeIsStreaming && !streamingReasoning && !streamingResponse ? 'Establishing connection...' :
+                     streamingReasoning && !streamingResponse ? 'AI reasoning in progress...' :
+                     streamingResponse ? 'Generating response...' : 'Processing query...'}
+                  </span>
+                </div>
+                <div className="text-purple-300 font-mono text-xs">
+                  {elapsedTime}s
+                </div>
+              </div>
+              
+              <div className="relative">
+                <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                  <div className={`h-full transition-all duration-500 ${
+                    isLoading && !storeIsStreaming ? 'w-1/4 bg-gradient-to-r from-yellow-400 to-orange-400' :
+                    storeIsStreaming && !streamingReasoning && !streamingResponse ? 'w-1/2 bg-gradient-to-r from-blue-400 to-purple-400' :
+                    streamingReasoning && !streamingResponse ? 'w-3/4 bg-gradient-to-r from-orange-400 to-red-400' :
+                    streamingResponse ? 'w-full bg-gradient-to-r from-green-400 to-emerald-400' : 'w-1/3 bg-gradient-to-r from-gray-400 to-gray-500'
+                  }`}>
+                    <div className="h-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">
-              Press Ctrl+Enter to submit • {query.length} characters
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <span>Press Ctrl+Enter to submit • {query.length} characters</span>
+              {(isLoading || storeIsStreaming) && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-purple-400" />
+                  <span className="text-purple-300">Processing active</span>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -464,6 +562,9 @@ export default function StreamingInterface() {
                 onClick={handleClear}
                 disabled={isLoading || storeIsStreaming}
                 size="sm"
+                className={`transition-all duration-300 ${
+                  isLoading || storeIsStreaming ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600'
+                }`}
               >
                 Clear
               </Button>
@@ -471,13 +572,22 @@ export default function StreamingInterface() {
               <Button 
                 onClick={handleSubmit}
                 disabled={isLoading || storeIsStreaming || !query.trim()}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className={`transition-all duration-300 ${
+                  isLoading || storeIsStreaming 
+                    ? 'bg-purple-600/50 cursor-not-allowed' 
+                    : 'bg-purple-600 hover:bg-purple-700 hover:scale-105'
+                } text-white`}
               >
                 {(isLoading || storeIsStreaming) ? (
-                  <>
+                  <div className="flex items-center">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    {storeIsStreaming ? 'Streaming...' : 'Processing...'}
-                  </>
+                    <span className="animate-pulse">
+                      {isLoading && !storeIsStreaming ? 'Initializing...' :
+                       storeIsStreaming && !streamingReasoning && !streamingResponse ? 'Connecting...' :
+                       streamingReasoning && !streamingResponse ? 'Reasoning...' :
+                       streamingResponse ? 'Streaming...' : 'Processing...'}
+                    </span>
+                  </div>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />
