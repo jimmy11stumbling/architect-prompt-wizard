@@ -175,4 +175,94 @@ router.post('/stream', async (req, res) => {
   }
 });
 
+// Demo endpoint for testing streaming without API key
+router.post('/demo-stream', async (req, res) => {
+  try {
+    const { messages } = req.body;
+    
+    // Set headers for Server-Sent Events
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+    
+    console.log('🎭 Demo streaming mode activated');
+    
+    // Demo response simulating real streaming with visual indicators
+    const demoResponse = `🧠 **DeepSeek Reasoner Analysis**
+
+Based on your query "${messages[messages.length - 1]?.content}", let me provide a comprehensive analysis:
+
+**🔍 RAG 2.0 Context Analysis:**
+- Accessing ${Math.floor(Math.random() * 500) + 1500} indexed documents
+- Hybrid search combining semantic + keyword matching
+- Real-time context relevance scoring: 94.2%
+
+**🔗 MCP Protocol Integration:**
+- Model Context Protocol successfully initialized
+- 7 tools available: filesystem, web search, database queries
+- Resource access: ✅ Platform docs, API specs, configurations
+
+**🤝 A2A Coordination Active:**
+- Agent-to-agent communication established
+- Multi-agent collaboration patterns enabled
+- Distributed reasoning across specialized agents
+
+**💡 Key Insights:**
+1. **Architecture Integration**: Your system successfully combines RAG 2.0, MCP, and A2A protocols
+2. **Real-time Processing**: Token-by-token streaming with visual feedback indicators
+3. **Context Awareness**: Full access to ${Math.floor(Math.random() * 200) + 1600} documents across 5 platforms
+
+**📊 Performance Metrics:**
+- Response latency: 45ms average
+- Context retrieval: 2.3s
+- Token generation: 20 tokens/second
+- Memory efficiency: 89%
+
+This demonstrates the complete integration of advanced AI reasoning with real-time streaming capabilities! 🚀`;
+
+    const words = demoResponse.split(' ');
+    let wordIndex = 0;
+    
+    const streamInterval = setInterval(() => {
+      if (wordIndex < words.length) {
+        const word = words[wordIndex];
+        const token = wordIndex === 0 ? word : ` ${word}`;
+        
+        res.write(`data: ${JSON.stringify({
+          choices: [{
+            delta: {
+              content: token
+            }
+          }]
+        })}\n\n`);
+        
+        wordIndex++;
+      } else {
+        clearInterval(streamInterval);
+        res.write(`data: ${JSON.stringify({
+          choices: [{
+            finish_reason: 'stop'
+          }],
+          usage: {
+            prompt_tokens: 85,
+            completion_tokens: words.length,
+            total_tokens: 85 + words.length,
+            reasoning_tokens: 0
+          }
+        })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      }
+    }, 80); // Stream at ~12 tokens per second for realistic feel
+    
+  } catch (error) {
+    console.error('Demo streaming error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

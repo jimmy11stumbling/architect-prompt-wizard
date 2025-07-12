@@ -206,6 +206,101 @@ export class DeepSeekService {
     }
   }
 
+  static async processDemoStreaming(query: string): Promise<void> {
+    const store = useDeepSeekStore.getState();
+    
+    store.setLoading(true);
+    store.setStreaming(true);
+    store.setError(null);
+    store.clearStreamingContent();
+    
+    const messages = [
+      { role: 'user', content: query }
+    ];
+    
+    try {
+      console.log('Starting demo streaming...');
+      
+      const response = await fetch('/api/deepseek/demo-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Demo stream failed: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No demo stream available');
+      }
+
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i].trim();
+          if (part.startsWith('data:')) {
+            const jsonStr = part.slice(5).trim();
+            if (jsonStr === '[DONE]') {
+              const finalResponse = {
+                reasoning: '',
+                response: fullResponse,
+                usage: {
+                  promptTokens: 45,
+                  completionTokens: fullResponse.split(' ').length,
+                  totalTokens: 45 + fullResponse.split(' ').length,
+                  reasoningTokens: 0
+                },
+                processingTime: 3000
+              };
+              
+              // Add messages to conversation
+              const userMessage = { role: 'user', content: query };
+              const assistantMessage = { role: 'assistant', content: fullResponse };
+              store.addMessage(userMessage);
+              store.addMessage(assistantMessage);
+              
+              store.setResponse(finalResponse);
+              store.setStreaming(false);
+              store.setLoading(false);
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.choices?.[0]?.delta?.content) {
+                const token = parsed.choices[0].delta.content;
+                fullResponse += token;
+                store.appendStreamingResponse(token);
+              }
+            } catch (parseError) {
+              console.warn('Demo JSON parse error:', parseError);
+            }
+          }
+        }
+        
+        buffer = parts[parts.length - 1];
+      }
+    } catch (error) {
+      console.error('Demo streaming error:', error);
+      store.setError(error instanceof Error ? error.message : 'Demo failed');
+      store.setStreaming(false);
+      store.setLoading(false);
+    }
+  }
+
   static clearConversation(): void {
     const store = useDeepSeekStore.getState();
     store.clearConversation();

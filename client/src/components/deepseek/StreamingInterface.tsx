@@ -15,6 +15,8 @@ export default function StreamingInterface() {
   const [mcpEnabled, setMcpEnabled] = useState(true);
   const [ragStats, setRagStats] = useState(null);
   const [mcpStats, setMcpStats] = useState(null);
+  const [demoMode, setDemoMode] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
 
   const { 
     isLoading, 
@@ -100,6 +102,19 @@ export default function StreamingInterface() {
       setQuery('');
     } catch (error) {
       console.error('Query failed:', error);
+      // Show error with helpful message about API key
+      console.log('DeepSeek API authentication failed. Please check your API key.');
+    }
+  };
+
+  const handleDemoSubmit = async () => {
+    if (!query.trim() || isLoading || storeIsStreaming) return;
+
+    try {
+      await DeepSeekService.processDemoStreaming(query);
+      setQuery('');
+    } catch (error) {
+      console.error('Demo query failed:', error);
     }
   };
 
@@ -264,6 +279,7 @@ export default function StreamingInterface() {
               >
                 Clear
               </Button>
+
               <Button 
                 onClick={handleSubmit}
                 disabled={isLoading || storeIsStreaming || !query.trim()}
