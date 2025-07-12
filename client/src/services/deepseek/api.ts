@@ -171,7 +171,7 @@ export class DeepSeekApi {
     onResponseToken: (token: string) => void,
     onComplete: (response: DeepSeekResponse) => void
   ): Promise<void> {
-
+    try {
       // Ultra-fast stream processing with immediate updates
       const reader = response.body?.getReader();
       if (!reader) {
@@ -214,16 +214,12 @@ export class DeepSeekApi {
 
                   // Immediate reasoning token processing
                   if (delta.reasoning_content) {
-                    useDeepSeekStore.getState().addReasoningToken(delta.reasoning_content);
-                    // Force re-render
-                    setTimeout(() => {}, 0);
+                    onReasoningToken(delta.reasoning_content);
                   }
 
                   // Immediate response token processing
                   if (delta.content) {
-                    useDeepSeekStore.getState().addResponseToken(delta.content);
-                    // Force re-render
-                    setTimeout(() => {}, 0);
+                    onResponseToken(delta.content);
                   }
                 }
 
@@ -239,16 +235,7 @@ export class DeepSeekApi {
       }
     } catch (error) {
       console.error('❌ Streaming error:', error);
-
-      // Fallback to fast demo on any error
-      console.log('🎬 Falling back to high-speed demo streaming...');
-      await this.startFastDemoStreaming(
-        request.messages[request.messages.length - 1]?.content || 'Error fallback',
-        onReasoningToken,
-        onResponseToken,
-        onComplete,
-        onError
-      );
+      throw error;
     }
   }
 
