@@ -27,8 +27,8 @@ export class WorkflowNotificationService {
   private notifications = new Map<string, WorkflowNotification>();
   private subscribers = new Set<(notifications: WorkflowNotification[]) => void>();
   private notificationThrottle = new Map<string, number>();
-  private readonly THROTTLE_DELAY = 5000; // 5 seconds
-  private readonly MAX_NOTIFICATIONS = 10;
+  private readonly THROTTLE_DELAY = 30000; // 30 seconds - only one notification per expert per 30 seconds
+  private readonly MAX_NOTIFICATIONS = 5; // Reduce max notifications
 
   static getInstance(): WorkflowNotificationService {
     if (!WorkflowNotificationService.instance) {
@@ -45,6 +45,11 @@ export class WorkflowNotificationService {
   }
 
   private handleRealTimeEventThrottled(event: any) {
+    // Only process completion events and errors, not streaming tokens
+    if (event.source === "deepseek-reasoner" && event.status === "streaming") {
+      return; // Skip streaming tokens
+    }
+    
     const eventKey = `${event.source}-${event.status}-${event.data?.workflowId || 'unknown'}`;
     const now = Date.now();
     
@@ -77,6 +82,18 @@ export class WorkflowNotificationService {
         break;
       case "workflow-monitoring":
         this.handleMonitoringEvent(event);
+        break;
+      case "deepseek-reasoner":
+        this.handleDeepSeekEvent(event);
+        break;
+      case "rag-service":
+        this.handleRAGEvent(event);
+        break;
+      case "a2a-service":
+        this.handleA2AEvent(event);
+        break;
+      case "mcp-service":
+        this.handleMCPEvent(event);
         break;
     }
   }
@@ -206,6 +223,102 @@ export class WorkflowNotificationService {
         message: message,
         workflowId: "system",
         persistent: false
+      });
+    }
+  }
+
+  private handleDeepSeekEvent(event: any) {
+    const { status, message, data } = event;
+
+    if (status === "completed") {
+      this.addNotification({
+        type: "success",
+        title: "DeepSeek Reasoner",
+        message: "Advanced reasoning and analysis completed successfully",
+        workflowId: data.workflowId || "deepseek-reasoner",
+        executionId: data.executionId,
+        persistent: false
+      });
+    } else if (status === "error") {
+      this.addNotification({
+        type: "error",
+        title: "DeepSeek Reasoner Error",
+        message: message || "DeepSeek reasoning failed",
+        workflowId: data.workflowId || "deepseek-reasoner",
+        executionId: data.executionId,
+        persistent: true
+      });
+    }
+  }
+
+  private handleRAGEvent(event: any) {
+    const { status, message, data } = event;
+
+    if (status === "completed") {
+      this.addNotification({
+        type: "success",
+        title: "RAG Database Expert",
+        message: `Knowledge retrieval completed - found ${data.documentsFound || 0} relevant documents`,
+        workflowId: data.workflowId || "rag-service",
+        executionId: data.executionId,
+        persistent: false
+      });
+    } else if (status === "error") {
+      this.addNotification({
+        type: "error",
+        title: "RAG Database Expert Error",
+        message: message || "Knowledge retrieval failed",
+        workflowId: data.workflowId || "rag-service",
+        executionId: data.executionId,
+        persistent: true
+      });
+    }
+  }
+
+  private handleA2AEvent(event: any) {
+    const { status, message, data } = event;
+
+    if (status === "completed") {
+      this.addNotification({
+        type: "success",
+        title: "A2A Agent Coordinator",
+        message: `Agent coordination completed - ${data.agentsInvolved || 0} agents participated`,
+        workflowId: data.workflowId || "a2a-service",
+        executionId: data.executionId,
+        persistent: false
+      });
+    } else if (status === "error") {
+      this.addNotification({
+        type: "error",
+        title: "A2A Agent Coordinator Error",
+        message: message || "Agent coordination failed",
+        workflowId: data.workflowId || "a2a-service",
+        executionId: data.executionId,
+        persistent: true
+      });
+    }
+  }
+
+  private handleMCPEvent(event: any) {
+    const { status, message, data } = event;
+
+    if (status === "completed") {
+      this.addNotification({
+        type: "success",
+        title: "MCP Tool Manager",
+        message: `Tool execution completed - ${data.toolsExecuted || 0} tools used`,
+        workflowId: data.workflowId || "mcp-service",
+        executionId: data.executionId,
+        persistent: false
+      });
+    } else if (status === "error") {
+      this.addNotification({
+        type: "error",
+        title: "MCP Tool Manager Error",
+        message: message || "Tool execution failed",
+        workflowId: data.workflowId || "mcp-service",
+        executionId: data.executionId,
+        persistent: true
       });
     }
   }

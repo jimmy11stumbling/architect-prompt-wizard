@@ -28,7 +28,7 @@ export class RealTimeResponseService {
     };
 
     this.responses.unshift(fullResponse);
-    
+
     // Keep only the most recent responses
     if (this.responses.length > this.maxResponses) {
       this.responses = this.responses.slice(0, this.maxResponses);
@@ -68,7 +68,7 @@ export class RealTimeResponseService {
 
   subscribe(listener: (response: RealTimeResponse) => void): () => void {
     this.listeners.add(listener);
-    
+
     // Return unsubscribe function
     return () => {
       this.listeners.delete(listener);
@@ -96,10 +96,10 @@ export class RealTimeResponseService {
     this.responses.forEach(response => {
       // Count by status
       responsesByStatus[response.status] = (responsesByStatus[response.status] || 0) + 1;
-      
+
       // Count by source
       responsesBySource[response.source] = (responsesBySource[response.source] || 0) + 1;
-      
+
       // Count recent activity
       if (response.timestamp > recentThreshold) {
         recentActivity++;
