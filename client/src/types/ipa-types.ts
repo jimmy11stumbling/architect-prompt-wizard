@@ -1,16 +1,15 @@
-
 export interface ProjectSpec {
   // Platform Selection
   targetPlatform: PlatformType;
   platformSpecificConfig: PlatformConfig;
-  
+
   // Core Project Details
   projectDescription: string;
   frontendTechStack: TechStack[];
   backendTechStack: TechStack[];
   customFrontendTech: string[];
   customBackendTech: string[];
-  
+
   // AI Features
   a2aIntegrationDetails: string;
   additionalFeatures: string;
@@ -19,7 +18,7 @@ export interface ProjectSpec {
   mcpType: MCPType;
   customMcpType: string;
   advancedPromptDetails: string;
-  
+
   // Deployment & Auth
   deploymentPreference?: string;
   authenticationMethod?: string;
@@ -34,8 +33,8 @@ export type PlatformType =
   | "base44"
   | "rork"
   | "v0"
-  | "claude-code"
-  | "gemini-cli";
+  | "claudecode"
+  | "geminicli";
 
 export interface PlatformConfig {
   // Platform-specific features and constraints
@@ -44,7 +43,7 @@ export interface PlatformConfig {
   deploymentOptions: string[];
   limitations: string[];
   bestPractices: string[];
-  
+
   // Platform-specific prompt optimizations
   promptStyle: "conversational" | "structured" | "code-focused" | "visual-first";
   contextPreferences: string[];

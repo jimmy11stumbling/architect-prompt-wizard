@@ -73,6 +73,56 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
         promptStyle: "structured",
         contextPreferences: ["Database development", "Agent coordination", "MCP protocols"],
         outputFormat: "detailed"
+      },
+      base44: {
+        supportedFeatures: ["Built-in Database", "User Authentication", "Instant Deployment", "GitHub Integration"],
+        preferredTechStack: ["React", "Node.js", "Built-in DB"],
+        deploymentOptions: ["Base44 Cloud", "Custom Hosting"],
+        limitations: ["Platform-specific ecosystem", "Limited customization"],
+        bestPractices: ["Use conversational prompts", "Leverage built-in features", "Focus on rapid prototyping"],
+        promptStyle: "conversational",
+        contextPreferences: ["Application lifecycle", "Non-technical users", "Production deployment"],
+        outputFormat: "visual"
+      },
+      rork: {
+        supportedFeatures: ["React Native", "Expo Toolchain", "Cross-platform", "App Store Publishing"],
+        preferredTechStack: ["React Native", "Expo", "TypeScript"],
+        deploymentOptions: ["App Store", "Google Play", "Expo Go"],
+        limitations: ["Mobile-first only", "React Native constraints"],
+        bestPractices: ["Use mobile-first design", "Leverage Expo ecosystem", "Focus on cross-platform"],
+        promptStyle: "visual",
+        contextPreferences: ["Mobile development", "Cross-platform", "App publishing"],
+        outputFormat: "step-by-step"
+      },
+      v0: {
+        supportedFeatures: ["UI Component Generation", "Framework Support", "Design Mockups", "Iterative Refinement"],
+        preferredTechStack: ["React", "Vue", "Svelte", "HTML/CSS"],
+        deploymentOptions: ["Vercel", "Netlify", "Custom"],
+        limitations: ["UI-focused only", "Component-based approach"],
+        bestPractices: ["Use natural language prompts", "Leverage design mockups", "Iterate through chat"],
+        promptStyle: "conversational",
+        contextPreferences: ["UI components", "Design systems", "Visual elements"],
+        outputFormat: "visual"
+      },
+      claudecode: {
+        supportedFeatures: ["Security-First", "Terminal Access", "GitHub Integration", "MCP Support"],
+        preferredTechStack: ["Python", "JavaScript", "TypeScript", "Any Language"],
+        deploymentOptions: ["Custom", "GitHub Actions", "CI/CD"],
+        limitations: ["Terminal-based", "Security restrictions"],
+        bestPractices: ["Use granular permissions", "Leverage MCP integrations", "Focus on security"],
+        promptStyle: "structured",
+        contextPreferences: ["Security", "Terminal operations", "Code generation"],
+        outputFormat: "detailed"
+      },
+      geminicli: {
+        supportedFeatures: ["ReAct Architecture", "Built-in Tools", "Web Search", "Open Source"],
+        preferredTechStack: ["Python", "JavaScript", "Any Language"],
+        deploymentOptions: ["Self-hosted", "Cloud", "Custom"],
+        limitations: ["Terminal-based", "Open source dependencies"],
+        bestPractices: ["Use ReAct patterns", "Leverage built-in tools", "Extend with MCP"],
+        promptStyle: "structured",
+        contextPreferences: ["Terminal commands", "Web search", "File operations"],
+        outputFormat: "step-by-step"
       }
     };
 
@@ -124,6 +174,51 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
       category: "Agentic IDE",
       strengths: ["Agent workflows", "MCP protocol", "Database tools", "AI coordination"],
       idealFor: "Database applications, enterprise development, complex workflows"
+    },
+    {
+      type: "base44" as PlatformType,
+      name: "Base44",
+      description: "All-in-one AI platform for non-technical users to build production apps",
+      icon: <Cloud className="h-6 w-6" />,
+      category: "All-in-One No-Code",
+      strengths: ["Built-in database", "User authentication", "Instant deployment", "GitHub integration"],
+      idealFor: "Non-technical users, rapid prototyping, production apps"
+    },
+    {
+      type: "rork" as PlatformType,
+      name: "Rork",
+      description: "Mobile-first AI platform for native iOS and Android apps",
+      icon: <Smartphone className="h-6 w-6" />,
+      category: "Mobile-First Platform",
+      strengths: ["React Native", "Cross-platform", "App Store publishing", "Expo toolchain"],
+      idealFor: "Mobile apps, cross-platform development, app store deployment"
+    },
+    {
+      type: "v0" as PlatformType,
+      name: "V0 by Vercel",
+      description: "UI component generator from natural language and design mockups",
+      icon: <Palette className="h-6 w-6" />,
+      category: "UI Component Generator",
+      strengths: ["UI generation", "Framework support", "Design mockups", "Iterative refinement"],
+      idealFor: "UI components, design systems, rapid prototyping"
+    },
+    {
+      type: "claudecode" as PlatformType,
+      name: "Claude Code",
+      description: "Security-first terminal CLI tool for agentic coding",
+      icon: <Code className="h-6 w-6" />,
+      category: "Security-First CLI",
+      strengths: ["Security-first", "Terminal access", "GitHub integration", "MCP support"],
+      idealFor: "Secure development, terminal workflows, enterprise security"
+    },
+    {
+      type: "geminicli" as PlatformType,
+      name: "Gemini CLI",
+      description: "Open-source terminal AI agent with ReAct architecture",
+      icon: <Zap className="h-6 w-6" />,
+      category: "Open-Source Terminal",
+      strengths: ["ReAct architecture", "Built-in tools", "Web search", "Open source"],
+      idealFor: "Terminal automation, web search, open-source projects"
     }
   ];
 

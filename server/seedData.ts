@@ -85,7 +85,7 @@ export async function seedPlatformData() {
 
     const geminiCLIPlatform = await storage.createPlatform({
       name: "Gemini CLI",
-      description: "Google's open-source, terminal-based AI agent using ReAct loop and built-in tools for complex development tasks",
+      description: "Google's open-source terminal-based AI agent using ReAct loop architecture for reasoning and acting",
       category: "Open-Source CLI Agent",
       website: "https://github.com/google/gemini-cli"
     });
@@ -547,26 +547,26 @@ export async function seedPlatformData() {
       { platformId: boltPlatform.id, serviceName: "Expo", serviceType: "mobile", isNative: true, integrationDetails: "Mobile app development platform" },
       { platformId: boltPlatform.id, serviceName: "Figma (via Anima)", serviceType: "design", isNative: true, integrationDetails: "Design-to-code conversion" },
       { platformId: boltPlatform.id, serviceName: "Stripe", serviceType: "payment", isNative: true, integrationDetails: "Payment processing integration" },
-      
+
       // Cursor integrations
       { platformId: cursorPlatform.id, serviceName: "OpenAI", serviceType: "ai-model", isNative: true, integrationDetails: "GPT-4, GPT-4o, o1, o3 series models" },
       { platformId: cursorPlatform.id, serviceName: "Anthropic", serviceType: "ai-model", isNative: true, integrationDetails: "Claude series models including 3.5 Sonnet" },
       { platformId: cursorPlatform.id, serviceName: "Google", serviceType: "ai-model", isNative: true, integrationDetails: "Gemini models including 2.5 Pro" },
       { platformId: cursorPlatform.id, serviceName: "xAI", serviceType: "ai-model", isNative: true, integrationDetails: "Grok models series" },
-      
+
       // Lovable integrations
       { platformId: lovablePlatform.id, serviceName: "GitHub", serviceType: "version-control", isNative: true, integrationDetails: "Deep real-time two-way sync" },
       { platformId: lovablePlatform.id, serviceName: "Supabase", serviceType: "backend", isNative: true, integrationDetails: "Comprehensive backend integration" },
       { platformId: lovablePlatform.id, serviceName: "Stripe", serviceType: "payment", isNative: true, integrationDetails: "Native payment processing" },
       { platformId: lovablePlatform.id, serviceName: "Replicate", serviceType: "ai-media", isNative: true, integrationDetails: "AI-generated media (images, video, audio)" },
       { platformId: lovablePlatform.id, serviceName: "Builder.io", serviceType: "design", isNative: false, integrationDetails: "Figma import capability" },
-      
+
       // Replit integrations
       { platformId: replitPlatform.id, serviceName: "PostgreSQL", serviceType: "database", isNative: true, integrationDetails: "Managed PostgreSQL database" },
       { platformId: replitPlatform.id, serviceName: "Expo", serviceType: "mobile", isNative: true, integrationDetails: "Mobile app development and deployment" },
       { platformId: replitPlatform.id, serviceName: "Netlify", serviceType: "deployment", isNative: false, integrationDetails: "Static site deployment option" },
       { platformId: replitPlatform.id, serviceName: "GitHub", serviceType: "version-control", isNative: false, integrationDetails: "Repository integration" },
-      
+
       // Windsurf integrations
       { platformId: windsurfPlatform.id, serviceName: "Neon", serviceType: "database", isNative: true, integrationDetails: "PostgreSQL via MCP server" },
       { platformId: windsurfPlatform.id, serviceName: "Prisma", serviceType: "orm", isNative: true, integrationDetails: "Database ORM via MCP server" },
@@ -581,7 +581,7 @@ export async function seedPlatformData() {
       { platformId: base44Platform.id, serviceName: "Amazon S3", serviceType: "storage", isNative: true, integrationDetails: "Cloud storage integration for file management" },
       { platformId: base44Platform.id, serviceName: "Twilio SendGrid", serviceType: "email", isNative: true, integrationDetails: "Email service integration for transactional emails" },
       { platformId: base44Platform.id, serviceName: "OpenAI", serviceType: "ai-model", isNative: true, integrationDetails: "AI model integration for enhanced capabilities" },
-      
+
       // Rork integrations
       { platformId: rorkPlatform.id, serviceName: "Supabase", serviceType: "backend", isNative: false, integrationDetails: "Experimental backend functionality and data persistence" },
       { platformId: rorkPlatform.id, serviceName: "Firebase", serviceType: "backend", isNative: false, integrationDetails: "Google Firebase backend integration" },
@@ -589,17 +589,17 @@ export async function seedPlatformData() {
       { platformId: rorkPlatform.id, serviceName: "Expo Go", serviceType: "testing", isNative: true, integrationDetails: "Real-time testing on physical devices via QR code" },
       { platformId: rorkPlatform.id, serviceName: "Apple App Store", serviceType: "deployment", isNative: true, integrationDetails: "iOS app publishing and distribution" },
       { platformId: rorkPlatform.id, serviceName: "Google Play Store", serviceType: "deployment", isNative: true, integrationDetails: "Android app publishing and distribution" },
-      
+
       // V0 by Vercel integrations
       { platformId: v0Platform.id, serviceName: "Vercel", serviceType: "deployment", isNative: true, integrationDetails: "Seamless one-click deployment to Vercel platform" },
       { platformId: v0Platform.id, serviceName: "Next.js", serviceType: "framework", isNative: true, integrationDetails: "Deep integration with Next.js applications and deployment" },
       { platformId: v0Platform.id, serviceName: "Figma", serviceType: "design", isNative: false, integrationDetails: "Design mockup import and component generation" },
-      
+
       // Claude Code integrations
       { platformId: claudeCodePlatform.id, serviceName: "GitHub", serviceType: "version-control", isNative: true, integrationDetails: "Direct GitHub orchestration from terminal" },
       { platformId: claudeCodePlatform.id, serviceName: "PostgreSQL", serviceType: "database", isNative: true, integrationDetails: "Database management through MCP tools" },
       { platformId: claudeCodePlatform.id, serviceName: "MCP Protocol", serviceType: "integration", isNative: true, integrationDetails: "Model Context Protocol for external tool access" },
-      
+
       // Gemini CLI integrations
       { platformId: geminiCLIPlatform.id, serviceName: "Google Search", serviceType: "search", isNative: true, integrationDetails: "Built-in web search capabilities for context gathering" },
       { platformId: geminiCLIPlatform.id, serviceName: "MCP Protocol", serviceType: "integration", isNative: true, integrationDetails: "Extensible via Model Context Protocol" },
@@ -621,23 +621,23 @@ export async function seedPlatformData() {
       { platformId: boltPlatform.id, planName: "Pro", pricePerMonth: "$18-20", features: ["All Personal features", "Unlimited file uploads", "CORS APIs", "Localhost connection"], limits: { tokens: "10M/month" } },
       { platformId: boltPlatform.id, planName: "Teams", pricePerMonth: "$55-60", features: ["All Pro features", "Team collaboration", "Private repos", "Team management"], limits: { members: "up to 10" } },
       { platformId: boltPlatform.id, planName: "Enterprise", pricePerMonth: "Custom", features: ["All Teams features", "WebContainer API", "GitLab/Bitbucket", "Custom security"], limits: { members: "10+" } },
-      
+
       // Cursor pricing
       { platformId: cursorPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic AI features", "Limited requests"], limits: { requests: "200/month" } },
       { platformId: cursorPlatform.id, planName: "Pro", pricePerMonth: "$20", features: ["Unlimited autocomplete", "500 premium requests", "GPT-4", "Claude"], limits: { premiumRequests: "500/month", files: "50K" } },
       { platformId: cursorPlatform.id, planName: "Business", pricePerMonth: "$40", features: ["All Pro features", "Privacy mode", "Admin features"], limits: { files: "250K", enforced: "privacy" } },
-      
+
       // Lovable pricing
       { platformId: lovablePlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Public projects", "Basic AI"], limits: { credits: "30/month", projects: "public only" } },
       { platformId: lovablePlatform.id, planName: "Pro", pricePerMonth: "$25-30", features: ["Private projects", "Custom domains", "Remove badge"], limits: { credits: "100/month", editors: "3/project" } },
       { platformId: lovablePlatform.id, planName: "Teams", pricePerMonth: "$30+", features: ["All Pro features", "Team workspaces", "Shared credits"], limits: { seats: "20", credits: "shared pool" } },
       { platformId: lovablePlatform.id, planName: "Enterprise", pricePerMonth: "Custom", features: ["Custom support", "SSO", "Data training opt-out"], limits: { custom: "tailored" } },
-      
+
       // Replit pricing
       { platformId: replitPlatform.id, planName: "Starter", pricePerMonth: "Free", features: ["Basic Replit", "Public repls"], limits: { compute: "limited", storage: "1GB" } },
       { platformId: replitPlatform.id, planName: "Core", pricePerMonth: "$1+", features: ["Autoscale deployments", "Static deployments", "AI features"], limits: { deployment: "100 GiB transfer" } },
       { platformId: replitPlatform.id, planName: "Reserved VM", pricePerMonth: "$10+", features: ["Always-on applications", "High uptime", "Dedicated resources"], limits: { uptime: "99.9%" } },
-      
+
       // Windsurf pricing
       { platformId: windsurfPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic AI features", "Local indexing"], limits: { credits: "limited" } },
       { platformId: windsurfPlatform.id, planName: "Pro", pricePerMonth: "TBD", features: ["Advanced AI", "Cascade agent", "Premium models"], limits: { credits: "extended" } }
@@ -650,22 +650,23 @@ export async function seedPlatformData() {
       { platformId: base44Platform.id, planName: "Builder", pricePerMonth: "$29", features: ["Unlimited apps", "GitHub integration", "Custom domains", "Priority support"], limits: { apps: "unlimited", integrations: "full" } },
       { platformId: base44Platform.id, planName: "Business", pricePerMonth: "$99", features: ["All Builder features", "Team collaboration", "Advanced analytics", "SSO"], limits: { team: "10 users", analytics: "advanced" } },
       { platformId: base44Platform.id, planName: "Enterprise", pricePerMonth: "Custom", features: ["All Business features", "Custom security", "Dedicated support", "SLA"], limits: { custom: "tailored", sla: "99.9%" } },
-      
+
       // Rork pricing
-      { platformId: rorkPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic app generation", "In-browser testing", "Limited projects"], limits: { projects: "3", builds: "10/month" } },
+      { platformId: rorkPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic app generation", "In-browser testing", "Limited projects"], limits:```text
+{ projects: "3", builds: "10/month" } },
       { platformId: rorkPlatform.id, planName: "Pro", pricePerMonth: "$19", features: ["Unlimited projects", "App Store publishing", "Advanced features", "Priority support"], limits: { projects: "unlimited", builds: "unlimited" } },
       { platformId: rorkPlatform.id, planName: "Team", pricePerMonth: "$49", features: ["All Pro features", "Team collaboration", "Shared workspace", "Admin controls"], limits: { team: "5 users", shared: "workspace" } },
-      
+
       // V0 by Vercel pricing
       { platformId: v0Platform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic component generation", "Limited requests", "Personal use"], limits: { requests: "200/month", usage: "personal" } },
       { platformId: v0Platform.id, planName: "Pro", pricePerMonth: "$20", features: ["Unlimited generations", "Advanced models", "Commercial use", "Priority support"], limits: { generations: "unlimited", models: "advanced" } },
       { platformId: v0Platform.id, planName: "Team", pricePerMonth: "$60", features: ["All Pro features", "Team workspaces", "Shared components", "Analytics"], limits: { team: "unlimited", analytics: "detailed" } },
-      
+
       // Claude Code pricing
       { platformId: claudeCodePlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic Claude access", "Limited requests", "Standard models"], limits: { requests: "1000/month", models: "claude-3-haiku" } },
       { platformId: claudeCodePlatform.id, planName: "Pro", pricePerMonth: "$20", features: ["Claude 3.7 Sonnet", "Increased limits", "MCP tools", "Priority access"], limits: { requests: "unlimited", models: "sonnet" } },
       { platformId: claudeCodePlatform.id, planName: "Team", pricePerMonth: "$60", features: ["All Pro features", "Team management", "Usage analytics", "Custom MCP"], limits: { team: "unlimited", mcp: "custom" } },
-      
+
       // Gemini CLI pricing
       { platformId: geminiCLIPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Gemini 2.5 Pro", "1M token context", "Built-in tools", "Open source"], limits: { tokens: "1M context", usage: "generous" } },
       { platformId: geminiCLIPlatform.id, planName: "Pro", pricePerMonth: "$0-5", features: ["Enhanced limits", "Priority access", "Advanced tools", "Support"], limits: { enhanced: "limits", priority: "access" } }

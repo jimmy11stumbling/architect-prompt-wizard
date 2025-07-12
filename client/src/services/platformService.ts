@@ -84,7 +84,12 @@ class PlatformService {
       'Cursor': 'cursor',
       'Lovable 2.0': 'lovable',
       'Replit': 'replit',
-      'Windsurf (Codeium)': 'windsurf'
+      'Windsurf (Codeium)': 'windsurf',
+      'Base44': 'base44',
+      'Rork': 'rork',
+      'V0 by Vercel': 'v0',
+      'Claude Code': 'claudecode',
+      'Gemini CLI': 'geminicli'
     };
     return mapping[dbName] || 'cursor';
   }
@@ -140,6 +145,56 @@ class PlatformService {
         promptStyle: "structured",
         contextPreferences: ["Database development", "Agent coordination", "MCP protocols"],
         outputFormat: "detailed"
+      },
+      base44: {
+        supportedFeatures: features.map(f => f.featureName),
+        preferredTechStack: ["React", "Node.js", "Built-in Database"],
+        deploymentOptions: ["Base44 Cloud", "Custom Hosting"],
+        limitations: ["Platform-specific ecosystem", "Limited customization"],
+        bestPractices: ["Use conversational prompts", "Leverage built-in features", "Focus on rapid deployment"],
+        promptStyle: "conversational",
+        contextPreferences: ["Application lifecycle", "Non-technical users", "Production deployment"],
+        outputFormat: "visual"
+      },
+      rork: {
+        supportedFeatures: features.map(f => f.featureName),
+        preferredTechStack: ["React Native", "Expo", "TypeScript"],
+        deploymentOptions: ["App Store", "Google Play", "Expo Go"],
+        limitations: ["Mobile-first only", "React Native constraints"],
+        bestPractices: ["Use mobile-first design", "Leverage Expo ecosystem", "Focus on cross-platform"],
+        promptStyle: "visual",
+        contextPreferences: ["Mobile development", "Cross-platform", "App publishing"],
+        outputFormat: "step-by-step"
+      },
+      v0: {
+        supportedFeatures: features.map(f => f.featureName),
+        preferredTechStack: ["React", "Vue", "Svelte", "HTML/CSS"],
+        deploymentOptions: ["Vercel", "Netlify", "Custom"],
+        limitations: ["UI-focused only", "Component-based approach"],
+        bestPractices: ["Use natural language prompts", "Leverage design mockups", "Iterate through chat"],
+        promptStyle: "conversational",
+        contextPreferences: ["UI components", "Design systems", "Visual elements"],
+        outputFormat: "visual"
+      },
+      claudecode: {
+        supportedFeatures: features.map(f => f.featureName),
+        preferredTechStack: ["Python", "JavaScript", "TypeScript", "Any Language"],
+        deploymentOptions: ["Custom", "GitHub Actions", "CI/CD"],
+        limitations: ["Terminal-based", "Security restrictions"],
+        bestPractices: ["Use granular permissions", "Leverage MCP integrations", "Focus on security"],
+        promptStyle: "structured",
+        contextPreferences: ["Security", "Terminal operations", "Code generation"],
+        outputFormat: "detailed"
+      },
+      geminicli: {
+        supportedFeatures: features.map(f => f.featureName),
+        preferredTechStack: ["Python", "JavaScript", "Any Language"],
+        deploymentOptions: ["Self-hosted", "Cloud", "Custom"],
+        limitations: ["Terminal-based", "Open source dependencies"],
+        bestPractices: ["Use ReAct patterns", "Leverage built-in tools", "Extend with MCP"],
+        promptStyle: "structured",
+        contextPreferences: ["Terminal commands", "Web search", "File operations"],
+        outputFormat: "step-by-step"
       }
     };
 
@@ -177,7 +232,37 @@ class PlatformService {
 - Multi-agent development workflows
 - Model Context Protocol (MCP) integrations
 - Database-centric development patterns
-- Advanced AI coordination and automation`
+- Advanced AI coordination and automation`,
+
+      base44: `Build using Base44's all-in-one platform focusing on:
+- Built-in database and authentication systems
+- Non-technical user accessibility
+- Rapid application deployment
+- Conversational AI development interface`,
+
+      rork: `Create mobile applications using Rork's platform with:
+- React Native and Expo toolchain
+- Cross-platform iOS and Android development
+- App Store publishing capabilities
+- Visual and text prompt support`,
+
+      v0: `Generate UI components using V0's system featuring:
+- Natural language to UI component conversion
+- Multi-framework support (React, Vue, Svelte)
+- Design mockup interpretation
+- Iterative refinement through chat`,
+
+      claudecode: `Develop using Claude Code's security-first approach with:
+- Terminal-based AI assistance
+- Granular permissions and access control
+- GitHub and database orchestration
+- Model Context Protocol integrations`,
+
+      geminicli: `Build automation tools using Gemini CLI's capabilities including:
+- ReAct loop architecture for reasoning and acting
+- Built-in tools for web search and file operations
+- Terminal command execution
+- Open-source extensibility via MCP`
     };
 
     return templates[platformType];
