@@ -106,6 +106,23 @@ export class DeepSeekService {
     }
   }
 
+  static stopStreaming(): void {
+    const store = useDeepSeekStore.getState();
+    store.setStreaming(false);
+    store.setError(null);
+    console.log('DeepSeek streaming stopped by user');
+  }
+
+  static pauseStreaming(): void {
+    // TODO: Implement actual pause logic
+    console.log('DeepSeek streaming paused (not yet implemented)');
+  }
+
+  static resumeStreaming(): void {
+    // TODO: Implement actual resume logic
+    console.log('DeepSeek streaming resumed (not yet implemented)');
+  }
+
   static async processQuery(
     query: string,
     options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}

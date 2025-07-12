@@ -29,6 +29,9 @@ export default function StreamingInterface() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [streamingSpeed, setStreamingSpeed] = useState(0);
   const [isConnected, setIsConnected] = useState(true);
+  const [lastTokenCount, setLastTokenCount] = useState(0);
+  const [speedTimer, setSpeedTimer] = useState<NodeJS.Timeout | null>(null);
+  const [streamingState, setStreamingState] = useState<'idle' | 'paused' | 'active'>('idle');
 
   const { 
     isLoading, 
@@ -106,6 +109,36 @@ export default function StreamingInterface() {
     return () => clearInterval(interval);
   }, [storeIsStreaming, startTime]);
 
+  // Calculate streaming speed (tokens per second)
+  useEffect(() => {
+    if (storeIsStreaming && streamingState === 'active') {
+      const timer = setInterval(() => {
+        const currentTokenCount = (streamingReasoning?.length || 0) + (streamingResponse?.length || 0);
+        const tokensThisSecond = currentTokenCount - lastTokenCount;
+        setStreamingSpeed(Math.max(0, tokensThisSecond));
+        setLastTokenCount(currentTokenCount);
+      }, 1000);
+      
+      setSpeedTimer(timer);
+      return () => clearInterval(timer);
+    } else {
+      if (speedTimer) {
+        clearInterval(speedTimer);
+        setSpeedTimer(null);
+      }
+      setStreamingSpeed(0);
+    }
+  }, [storeIsStreaming, streamingState, streamingReasoning, streamingResponse, lastTokenCount, speedTimer]);
+
+  // Update streaming state
+  useEffect(() => {
+    if (storeIsStreaming) {
+      setStreamingState('active');
+    } else {
+      setStreamingState('idle');
+    }
+  }, [storeIsStreaming]);
+
   // Load system stats on mount
   useEffect(() => {
     const loadStats = async () => {
@@ -127,11 +160,17 @@ export default function StreamingInterface() {
     if (!query.trim() || isLoading || storeIsStreaming) return;
 
     try {
-      await DeepSeekService.processQueryStreaming(query, { 
-        ragEnabled,
-        mcpEnabled,
-        temperature 
-      });
+      setIsConnected(true);
+      // Use demo mode if enabled
+      if (demoMode) {
+        await DeepSeekService.processDemoStreaming(query);
+      } else {
+        await DeepSeekService.processQueryStreaming(query, { 
+          ragEnabled,
+          mcpEnabled,
+          temperature 
+        });
+      }
       setQuery('');
     } catch (error) {
       console.error('Query failed:', error);
@@ -139,6 +178,26 @@ export default function StreamingInterface() {
       // Show error with helpful message about API key
       console.log('DeepSeek API authentication failed. Please check your API key.');
     }
+  };
+
+  // Streaming Control Functions
+  const handlePause = () => {
+    setStreamingState('paused');
+    // TODO: Implement actual pause logic in DeepSeekService
+    console.log('Streaming paused');
+  };
+
+  const handleResume = () => {
+    setStreamingState('active');
+    // TODO: Implement actual resume logic in DeepSeekService
+    console.log('Streaming resumed');
+  };
+
+  const handleStop = () => {
+    setStreamingState('idle');
+    // TODO: Implement actual stop logic in DeepSeekService
+    DeepSeekService.stopStreaming();
+    console.log('Streaming stopped');
   };
 
   const handleCopyMessage = async (content: string) => {
@@ -177,10 +236,13 @@ export default function StreamingInterface() {
   };
 
   const getCurrentStage = () => {
+    if (error) return 'error';
     if (!storeIsStreaming) return 'idle';
+    if (streamingState === 'paused') return 'idle';
     if (streamingReasoning && !streamingResponse) return 'reasoning';
     if (streamingResponse) return 'responding';
-    return 'connecting';
+    if (storeIsStreaming) return 'connecting';
+    return 'complete';
   };
 
   return (
@@ -211,6 +273,9 @@ export default function StreamingInterface() {
             setTemperature={setTemperature}
             demoMode={demoMode}
             setDemoMode={setDemoMode}
+            onPause={handlePause}
+            onResume={handleResume}
+            onStop={handleStop}
             ragStats={ragStats}
             mcpStats={mcpStats}
           />
@@ -611,7 +676,7 @@ export default function StreamingInterface() {
         reasoningTokens={streamingReasoning?.length || 0}
         responseTokens={streamingResponse?.length || 0}
         elapsedTime={elapsedTime}
-        error={error}
+        error={error || undefined}
       />
     </div>
   );
