@@ -44,7 +44,7 @@ export default function StreamingControls({
   onReset,
   disabled = false
 }: StreamingControlsProps) {
-  
+
   console.log('StreamingControls state:', {
     isStreaming,
     isPaused,
@@ -52,7 +52,7 @@ export default function StreamingControls({
     tokensReceived,
     disabled
   });
-  
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -141,7 +141,7 @@ export default function StreamingControls({
             Start Stream
           </Button>
         )}
-        
+
         {isStreaming && !isPaused && (
           <Button
             onClick={() => {
@@ -157,7 +157,7 @@ export default function StreamingControls({
             Pause
           </Button>
         )}
-        
+
         {isPaused && canResume && (
           <Button
             onClick={() => {
@@ -172,7 +172,7 @@ export default function StreamingControls({
             Resume
           </Button>
         )}
-        
+
         {(isStreaming || isPaused || canResume) && (
           <Button
             onClick={() => {
@@ -188,7 +188,7 @@ export default function StreamingControls({
             Stop
           </Button>
         )}
-        
+
         <Button
           onClick={() => {
             console.log('Reset button clicked');
@@ -202,7 +202,7 @@ export default function StreamingControls({
           <RotateCcw className="h-4 w-4" />
           Reset
         </Button>
-        
+
         <Button
           variant="ghost"
           size="sm"

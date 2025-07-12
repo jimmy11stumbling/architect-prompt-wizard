@@ -571,7 +571,7 @@ export default function StreamingInterface() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Token Counter */}
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>Tokens received: {(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)}</span>
@@ -733,7 +733,7 @@ export default function StreamingInterface() {
                   {storeIsStreaming && streamingReasoning && (
                     <div className="ml-auto flex items-center gap-1">
                       <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-orange-300">Thinking...</span>
+                      <span className="text-xs text-orange-300>Thinking...</span>
                     </div>
                   )}
                 </CardTitle>
