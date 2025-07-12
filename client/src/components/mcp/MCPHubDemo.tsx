@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { mcpHubService } from "@/services/mcp/mcpHubService";
 import { useToast } from "@/hooks/use-toast";
-// API service functions
+// Enhanced API service functions
 const apiService = {
   async getStats() {
     const response = await fetch('/api/mcp-hub/stats');
@@ -62,6 +62,58 @@ const apiService = {
         includeContent: true
       })
     });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+
+  // New MCP Tools API functions
+  async semanticSearch(query: string, categories: string[] = [], maxResults: number = 5) {
+    const response = await fetch('/api/mcp-tools/semantic-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, categories, maxResults, includeContent: true })
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+
+  async analyzeDocument(filename: string, analysisType: string = 'summary') {
+    const response = await fetch('/api/mcp-tools/analyze-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, analysisType })
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+
+  async buildKnowledgeGraph(categories: string[] = [], includeRelationships: boolean = true) {
+    const response = await fetch('/api/mcp-tools/build-knowledge-graph', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories, includeRelationships })
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+
+  async extractContent(filenames: string[], extractionType: string = 'excerpt', maxLength: number = 1000) {
+    const response = await fetch('/api/mcp-tools/extract-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filenames, extractionType, maxLength })
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error);
+    return result.data;
+  },
+
+  async getAssetsByCategory(category: string) {
+    const response = await fetch(`/api/mcp-hub/category/${category}`);
     const result = await response.json();
     if (!result.success) throw new Error(result.error);
     return result.data;

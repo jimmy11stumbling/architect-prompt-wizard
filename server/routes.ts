@@ -18,6 +18,7 @@ import promptsRouter from "./routes/prompts";
 import workflowsRouter from "./routes/workflows";
 import attachedAssetsRouter from "./routes/attachedAssets";
 import mcpHubRouter from "./routes/mcpHub";
+import mcpToolsRouter from "./routes/mcpTools";
 import ragEnhancedRouter from "./routes/ragEnhanced";
 import directDocumentAccessRouter from "./routes/directDocumentAccess";
 import { RAGOrchestrator2 } from "./services/rag/ragOrchestrator2";
@@ -81,6 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/attached-assets', attachedAssetsRouter);
   app.use('/api/workflows', optionalAuthMiddleware, workflowsRouter);
   app.use('/api/mcp-hub', mcpHubRouter);
+  app.use('/api/mcp-tools', mcpToolsRouter);
 
   // Platform management routes
   app.get("/api/platforms", async (req, res) => {

@@ -126,25 +126,26 @@ export class AttachedAssetsMCPService {
       .sort((a, b) => (b.metadata?.relevanceScore || 0) - (a.metadata?.relevanceScore || 0))
       .slice(0, maxAssets);
 
-    // Load content if requested
+    // Build context data
     const contextData: Record<string, string> = {};
     if (includeContent) {
       for (const asset of relevantAssets) {
         try {
-          const content = await this.getAssetContent(asset.filename);
-          contextData[asset.filename] = content;
+          contextData[asset.filename] = await this.getAssetContent(asset.filename);
         } catch (error) {
-          console.error(`Failed to load content for ${asset.filename}:`, error);
+          contextData[asset.filename] = `[Error loading content: ${error}]`;
         }
       }
     }
+
+    const categoriesFound = [...new Set(relevantAssets.map(asset => asset.metadata?.category || 'general'))];
 
     return {
       relevantAssets,
       contextData,
       metadata: {
-        totalAssets: relevantAssets.length,
-        categoriesFound: [...new Set(relevantAssets.map(a => a.metadata?.category || 'general'))],
+        totalAssets: assets.length,
+        categoriesFound,
         searchQuery,
         relevanceThreshold
       }
