@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, Zap, Database, Network, Wrench } from "lucide-react";
-import { DeepSeekReasonerPanel } from "@/components/enhanced-features/DeepSeekReasonerPanel";
+import DeepSeekReasonerPanel from "@/components/enhanced-features/DeepSeekReasonerPanel";
 import AttachedAssetsPanel from "@/components/deepseek/AttachedAssetsPanel";
 import DeepDiveAssetsExplorer from "@/components/deepseek/DeepDiveAssetsExplorer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
