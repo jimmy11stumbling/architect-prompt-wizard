@@ -430,6 +430,52 @@ export class DeepSeekReasonerService {
   setApiKey(apiKey: string): void {
     ApiKeyManager.setApiKey(apiKey);
   }
+
+  async queryWithReasoning(
+    query: string,
+    context?: Record<string, any>
+  ): Promise<{
+    reasoning: string;
+    response: string;
+    confidence: number;
+    tokens: number;
+  }> {
+    try {
+      this.validateQuery(query);
+
+      // Add length validation to prevent context overflow
+      if (query.length > 8000) {
+        throw new Error('Query too long - maximum 8000 characters');
+      }
+
+      const result = await this.apiClient.generateResponse({
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful AI assistant. Provide clear, coherent responses."
+          },
+          {
+            role: "user", 
+            content: query
+          }
+        ],
+        enableReasoning: true,
+        context,
+        maxTokens: 4000, // Prevent runaway generation
+        temperature: 0.1 // Reduce randomness for stability
+      });
+
+      // Validate response structure
+      if (!result.response || typeof result.response !== 'string') {
+        throw new Error('Invalid response structure from DeepSeek');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('DeepSeek reasoning query failed:', error);
+      throw new Error(`Reasoning failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 export const deepseekReasonerService = DeepSeekReasonerService.getInstance();
