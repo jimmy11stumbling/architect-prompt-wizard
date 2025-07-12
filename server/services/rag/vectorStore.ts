@@ -1,10 +1,9 @@
-import { Pool } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
 import { sql } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-core';
 import { cosineDistance, desc } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { EmbeddingService } from './embeddingService';
+import { db, pool } from '../../db';
 
 // Vector database schema for embeddings
 export const vectorDocuments = pgTable('vector_documents', {
@@ -36,29 +35,13 @@ export interface VectorSearchOptions {
 }
 
 export class VectorStore {
-  private db: ReturnType<typeof drizzle>;
-  private pool: Pool;
+  private db: typeof db;
   private initialized = false;
   private embeddingService: EmbeddingService;
 
-  constructor(connectionString: string) {
-    this.pool = new Pool({ 
-      connectionString,
-      max: 5, // Reduced max connections to prevent overload
-      min: 1,  // Keep minimum 1 connection alive
-      maxUses: 1000, // Reduced to prevent connection issues
-      maxLifetime: 300000, // 5 minute max lifetime
-      idleTimeout: 60000, // 60 second idle timeout
-      connectionTimeoutMillis: 10000, // Increased timeout
-      allowExitOnIdle: true
-    });
-    
-    // Add error handling for pool events
-    this.pool.on('error', (err: any) => {
-      console.warn('[VectorStore] Pool error handled:', err.message);
-    });
-
-    this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
+  constructor(connectionString?: string) {
+    // Use shared database connection
+    this.db = db;
     this.embeddingService = EmbeddingService.getInstance();
   }
 
@@ -148,26 +131,7 @@ export class VectorStore {
           return;
         }
 
-        // Close existing connections before retry
-        try {
-          await this.pool.end();
-        } catch (closeError) {
-          console.warn('Error closing pool during retry:', closeError);
-        }
-
-        // Recreate pool for retry
-        this.pool = new Pool({ 
-          connectionString: process.env.DATABASE_URL || '',
-          max: 3,
-          min: 1,
-          maxUses: 500,
-          maxLifetime: 180000,
-          idleTimeout: 30000,
-          connectionTimeoutMillis: 8000,
-          allowExitOnIdle: true
-        });
-
-        this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
+        // Wait before retry - using shared connection, no need to recreate
 
         // Wait before retry with exponential backoff
         await new Promise(resolve => setTimeout(resolve, (4 - retries) * 3000));
@@ -458,6 +422,7 @@ export class VectorStore {
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
+    // Don't close shared pool - it's managed by the main app
+    console.log('VectorStore close called - shared pool remains open');
   }
 }

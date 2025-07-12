@@ -11,5 +11,21 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Single shared pool instance with better error handling
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  max: 3, // Reduced connection pool size
+  min: 1,
+  maxUses: 500,
+  maxLifetime: 180000, // 3 minutes
+  idleTimeout: 30000,
+  connectionTimeoutMillis: 8000,
+  allowExitOnIdle: true
+});
+
+// Add error handling for pool events
+pool.on('error', (err: any) => {
+  console.warn('[Database] Pool error handled:', err?.message || 'Unknown error');
+});
+
 export const db = drizzle({ client: pool, schema });
