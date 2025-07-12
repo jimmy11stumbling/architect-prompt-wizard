@@ -249,37 +249,35 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredTemplates.map((template) => (
-          <Card key={template.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  {template.icon}
-                  <div>
-                    <h3 className="text-sm font-semibold">{template.name}</h3>
-                    <Badge variant="outline" className="text-xs mt-1">
-                      {template.category}
-                    </Badge>
-                  </div>
+          <Card key={template.id} className="hover:shadow-lg transition-shadow p-6 space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                {template.icon}
+                <div>
+                  <h3 className="text-sm font-semibold">{template.name}</h3>
+                  <Badge variant="outline" className="text-xs mt-1">
+                    {template.category}
+                  </Badge>
                 </div>
               </div>
-              
-              
-              <div className="flex flex-wrap gap-1">
-                {template.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
+            </div>
+            
+            
+            <div className="flex flex-wrap gap-1">
+              {template.tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
 
-              <Button
-                size="sm"
-                className="w-full text-xs"
-                onClick={() => onSelectTemplate(template.spec)}
-              >
-                Use This Template
-              </Button>
-            </CardContent>
+            <Button
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => onSelectTemplate(template.spec)}
+            >
+              Use This Template
+            </Button>
           </Card>
         ))}
       </div>
