@@ -249,7 +249,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredTemplates.map((template) => (
-          <Card key={template.id} className="hover:shadow-lg transition-shadow p-6 space-y-3">
+          <div key={template.id} className="hover:shadow-lg transition-shadow p-6 space-y-3 rounded-lg border border-border bg-card">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 {template.icon}
@@ -278,7 +278,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
             >
               Use This Template
             </Button>
-          </Card>
+          </div>
         ))}
       </div>
     </div>
