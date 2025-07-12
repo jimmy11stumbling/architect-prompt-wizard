@@ -25,6 +25,52 @@ router.post('/stream', async (req, res) => {
 
     console.log('Making DeepSeek streaming API call with', messages.length, 'messages');
 
+    // Enhanced RAG context retrieval
+    let enhancedMessages = [...messages];
+    if (ragContext && messages.length > 0) {
+      const lastUserMessage = messages[messages.length - 1];
+      if (lastUserMessage.role === 'user') {
+        try {
+          console.log('🔍 Performing enhanced RAG search for:', lastUserMessage.content);
+          
+          // Multi-strategy RAG search
+          const ragResponse = await fetch(`http://localhost:5000/api/rag/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              query: lastUserMessage.content,
+              limit: 15,
+              threshold: 0.2
+            })
+          });
+
+          if (ragResponse.ok) {
+            const ragData = await ragResponse.json();
+            console.log(`📚 RAG found ${ragData.results?.length || 0} relevant documents`);
+            
+            if (ragData.results && ragData.results.length > 0) {
+              // Build comprehensive context
+              const contextChunks = ragData.results.map((result: any, index: number) => {
+                return `[Document ${index + 1}] ${result.metadata?.platform || 'Unknown'}: ${result.content}`;
+              }).join('\n\n');
+
+              const contextMessage = {
+                role: 'system',
+                content: `# Relevant Documentation Context\n\nYou have access to the following indexed documentation and resources:\n\n${contextChunks}\n\n# Instructions\nUse this context to provide accurate, specific answers. Reference specific platforms, features, or documentation when relevant. If the context doesn't contain relevant information, acknowledge this and provide general guidance.`
+              };
+
+              enhancedMessages = [contextMessage, ...messages];
+              console.log('📖 Added RAG context with', ragData.results.length, 'documents');
+            }
+          } else {
+            console.warn('⚠️ RAG search failed, proceeding without context');
+          }
+        } catch (ragError) {
+          console.error('❌ RAG context error:', ragError);
+        }
+      }
+    }
+
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -33,7 +79,7 @@ router.post('/stream', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'deepseek-reasoner',
-        messages,
+        messages: enhancedMessages,
         stream: true,
         max_tokens: 8192,
         temperature: 0.1

@@ -540,108 +540,109 @@ export class RAGService {
     };
   }
 
-  async query(ragQuery: RAGQuery): Promise<RAGResponse> {
-    const startTime = Date.now();
-
-    realTimeResponseService.addResponse({
-      source: "rag-service",
-      status: "processing",
-      message: "Executing RAG query with semantic search",
-      data: { query: ragQuery.query, limit: ragQuery.limit || 5 }
-    });
+  async query(options: {
+    query: string;
+    limit?: number;
+    threshold?: number;
+    platform?: string;
+  }): Promise<{
+    results: SearchResult[];
+    totalResults: number;
+    searchTime: number;
+  }> {
+    const controller = createSafeAbortController('rag-service', 'query');
 
     try {
-      // Simulate semantic search with enhanced scoring
-      const searchResults = await this.performSemanticSearch(ragQuery);
-      const processingTime = Date.now() - startTime;
+      console.log('🔄 [rag-service] Executing RAG query with semantic search', {
+        query: options.query,
+        limit: options.limit || 10
+      });
 
-      realTimeResponseService.addResponse({
-        source: "rag-service",
-        status: "success",
-        message: `RAG query completed - found ${searchResults.length} relevant documents`,
-        data: { 
-          resultsCount: searchResults.length, 
-          processingTime,
-          topScore: searchResults[0]?.relevanceScore || 0
+      // Try multiple search strategies for better document retrieval
+      let bestResults: any = { results: [], totalResults: 0, searchTime: 0 };
+
+      // Strategy 1: Standard semantic search
+      try {
+        const response = await fetch('/api/rag/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: options.query,
+            limit: options.limit || 10,
+            threshold: Math.max(0.1, options.threshold || 0.3), // Lower threshold for more results
+            platform: options.platform
+          }),
+          signal: controller.signal
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          bestResults = data;
+          console.log('📊 Standard search found:', data.results?.length || 0, 'documents');
         }
+      } catch (searchError) {
+        console.warn('⚠️ Standard search failed:', searchError);
+      }
+
+      // Strategy 2: If few results, try broader keyword search
+      if (bestResults.results.length < 3) {
+        try {
+          const broadResponse = await fetch('/api/direct-document-access/direct-search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: options.query,
+              limit: options.limit || 10
+            }),
+            signal: controller.signal
+          });
+
+          if (broadResponse.ok) {
+            const broadData = await broadResponse.json();
+            if (broadData.results && broadData.results.length > bestResults.results.length) {
+              console.log('📊 Broad search found more results:', broadData.results.length);
+              bestResults = {
+                results: broadData.results.map((r: any) => ({
+                  ...r,
+                  similarity: 0.5, // Default similarity for direct search
+                  metadata: r.metadata || {}
+                })),
+                totalResults: broadData.totalFound || broadData.results.length,
+                searchTime: 0
+              };
+            }
+          }
+        } catch (broadError) {
+          console.warn('⚠️ Broad search failed:', broadError);
+        }
+      }
+
+      console.log('🔄 [rag-service] RAG query completed - found relevant documents', {
+        resultsCount: bestResults.results?.length || 0,
+        processingTime: bestResults.searchTime || 0,
+        topScore: bestResults.results?.[0]?.similarity || 0
       });
 
       return {
-        results: searchResults,
-        query: ragQuery.query,
-        totalResults: searchResults.length,
-        processingTime,
-        scores: searchResults.map(r => r.relevanceScore),
-        searchTime: processingTime
+        results: bestResults.results || [],
+        totalResults: bestResults.totalResults || 0,
+        searchTime: bestResults.searchTime || 0
       };
-
     } catch (error) {
-      realTimeResponseService.addResponse({
-        source: "rag-service",
-        status: "error",
-        message: `RAG query failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        data: { query: ragQuery.query, error: error instanceof Error ? error.message : "Unknown error" }
-      });
+      if (error.name === 'AbortError') {
+        console.log('[SafeAbort] rag-service query aborted due to timeout after 5000ms');
+        throw new Error('RAG search timed out');
+      }
+
+      console.error('❌ [rag-service] RAG query failed:', error);
       throw error;
+    } finally {
+      controller.cleanup?.();
     }
-  }
-
-  private async performSemanticSearch(ragQuery: RAGQuery): Promise<RAGResult[]> {
-    const query = ragQuery.query.toLowerCase();
-    const limit = ragQuery.limit || 5;
-
-    // Enhanced semantic matching simulation
-    const results: RAGResult[] = this.documents
-      .map(doc => {
-        let relevanceScore = 0;
-
-        // Title matching (high weight)
-        if (doc.title.toLowerCase().includes(query)) {
-          relevanceScore += 0.8;
-        }
-
-        // Content matching (medium weight)
-        const queryWords = query.split(' ');
-        const contentWords = doc.content.toLowerCase().split(' ');
-        const matchingWords = queryWords.filter(word => 
-          contentWords.some(contentWord => contentWord.includes(word))
-        );
-        relevanceScore += (matchingWords.length / queryWords.length) * 0.6;
-
-        // Tag matching (medium weight)
-        const matchingTags = doc.tags.filter(tag => 
-          tag.toLowerCase().includes(query) || query.includes(tag.toLowerCase())
-        );
-        relevanceScore += (matchingTags.length / doc.tags.length) * 0.5;
-
-        // Category matching (low weight)
-        if (doc.category.toLowerCase().includes(query.split(' ')[0])) {
-          relevanceScore += 0.3;
-        }
-
-        // Boost recent documents slightly
-        const daysSinceUpdate = (Date.now() - doc.lastUpdated) / (1000 * 60 * 60 * 24);
-        if (daysSinceUpdate < 30) {
-          relevanceScore += 0.1;
-        }
-
-        return {
-          id: doc.id,
-          title: doc.title,
-          content: doc.content,
-          category: doc.category,
-          relevanceScore: Math.min(relevanceScore, 1.0), // Cap at 1.0
-          metadata: doc.metadata
-        };
-      })
-      .filter(result => result.relevanceScore > (ragQuery.threshold || 0.1))
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, limit);
-
-    // Simulate processing delay for realism
-    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 700));
-
-    return results;
   }
 
   async addDocument(document: Omit<RAGDocument, 'id' | 'lastUpdated'>): Promise<string> {
