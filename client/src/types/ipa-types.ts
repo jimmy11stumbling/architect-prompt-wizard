@@ -30,7 +30,12 @@ export type PlatformType =
   | "cursor" 
   | "lovable"
   | "replit"
-  | "windsurf";
+  | "windsurf"
+  | "base44"
+  | "rork"
+  | "v0"
+  | "claude-code"
+  | "gemini-cli";
 
 export interface PlatformConfig {
   // Platform-specific features and constraints
@@ -284,6 +289,11 @@ export type AgentName =
   | "ReplitOptimizationAgent" 
   | "WindsurfOptimizationAgent"
   | "LovableOptimizationAgent"
+  | "Base44OptimizationAgent"
+  | "RorkOptimizationAgent"
+  | "V0OptimizationAgent"
+  | "ClaudeCodeOptimizationAgent"
+  | "GeminiCLIOptimizationAgent"
   | "QualityAssuranceAgent";
 
 // Type alias for compatibility

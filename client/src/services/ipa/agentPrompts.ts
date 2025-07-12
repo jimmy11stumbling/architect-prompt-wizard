@@ -445,6 +445,61 @@ CRITICAL MANDATE:
 - Optimize for the platform's native development workflow and best practices
 - Leverage platform-specific integrations and services as documented`,
 
+    "Base44OptimizationAgent": `${baseContext}
+
+As the Base44 Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE FOR BASE44:
+- Leverage Base44's built-in database system to eliminate external service dependencies
+- Optimize for conversational app generation and instant deployment capabilities
+- Utilize built-in user authentication and GitHub integration features
+- Design for Base44's all-in-one platform approach and hosting infrastructure
+- Reference specific Base44 pricing tiers and feature limitations from documentation`,
+
+    "RorkOptimizationAgent": `${baseContext}
+
+As the Rork Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE FOR RORK:
+- Optimize for React Native and Expo mobile app generation workflow
+- Leverage visual prompt support including screenshots and mockups
+- Utilize in-browser emulator and Expo Go testing capabilities
+- Design for App Store and Google Play Store publishing pipeline
+- Integrate experimental backend functionality with Supabase, Firebase, and Airtable`,
+
+    "V0OptimizationAgent": `${baseContext}
+
+As the V0 by Vercel Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE FOR V0:
+- Optimize for UI component generation from natural language and design mockups
+- Leverage V0's iterative refinement via chat interface capabilities
+- Utilize multi-framework support (React, Vue, Svelte, HTML/CSS)
+- Integrate seamlessly with Vercel platform for one-click deployment
+- Leverage proprietary v0-1.0-md model for framework-aware generation`,
+
+    "ClaudeCodeOptimizationAgent": `${baseContext}
+
+As the Claude Code Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE FOR CLAUDE CODE:
+- Optimize for terminal-based CLI interface and security-first approach
+- Leverage granular permissions and access control features
+- Utilize MCP extensibility for external tool integration
+- Design for direct GitHub and database orchestration capabilities
+- Access Claude 3.7 Sonnet and Claude 4 Opus models appropriately`,
+
+    "GeminiCLIOptimizationAgent": `${baseContext}
+
+As the Gemini CLI Platform Optimization Agent, you must create platform-specific optimizations based ONLY on the authentic platform documentation provided above. 
+
+CRITICAL MANDATE FOR GEMINI CLI:
+- Optimize for ReAct loop architecture with reasoning and acting capabilities
+- Leverage built-in tools (grep, file I/O, web search, terminal execution)
+- Utilize generous free tier with Gemini 2.5 Pro and 1M token context
+- Design for open-source extensibility and community contributions
+- Integrate MCP protocol for external tool connections`,
+
     "QualityAssuranceAgent": `${baseContext}
 
 As the Quality Assurance Agent for ${spec.targetPlatform?.toUpperCase()}, ensure code quality, testing strategies, and production readiness specifically aligned with this platform's deployment requirements, testing frameworks, and quality standards.`

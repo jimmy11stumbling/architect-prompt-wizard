@@ -24,7 +24,12 @@ export const platformAgents: Record<string, AgentName> = {
   "cursor": "CursorOptimizationAgent", 
   "replit": "ReplitOptimizationAgent",
   "windsurf": "WindsurfOptimizationAgent",
-  "lovable": "LovableOptimizationAgent"
+  "lovable": "LovableOptimizationAgent",
+  "base44": "Base44OptimizationAgent",
+  "rork": "RorkOptimizationAgent",
+  "v0": "V0OptimizationAgent",
+  "claude-code": "ClaudeCodeOptimizationAgent",
+  "gemini-cli": "GeminiCLIOptimizationAgent"
 };
 
 // Dynamic agent list generation based on target platform

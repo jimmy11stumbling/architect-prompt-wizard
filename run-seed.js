@@ -1,17 +1,18 @@
-const { execSync } = require('child_process');
+import { execSync } from 'child_process';
 
 // Function to run seeding
 async function runSeeding() {
   try {
-    console.log('Running seeding...');
+    console.log('Running comprehensive platform seeding...');
     
-    // Create basic test data
-    const result = execSync('npx tsx -e "import { storage } from \'./server/storage.ts\'; console.log(\'Database connection test:\', typeof storage);"', { encoding: 'utf8' });
-    console.log('Database connection test passed:', result);
+    // Run the actual seeding function
+    const result = execSync('npx tsx -e "import { seedPlatformData } from \'./server/seedData.ts\'; await seedPlatformData();"', { encoding: 'utf8' });
+    console.log('Seeding output:', result);
     
-    console.log('Seeding completed successfully!');
+    console.log('Comprehensive seeding completed successfully!');
   } catch (error) {
     console.error('Error during seeding:', error);
+    console.error('Error output:', error.toString());
   }
 }
 
