@@ -19,6 +19,7 @@ import workflowsRouter from "./routes/workflows";
 import attachedAssetsRouter from "./routes/attachedAssets";
 import mcpHubRouter from "./routes/mcpHub";
 import ragEnhancedRouter from "./routes/ragEnhanced";
+import directDocumentAccessRouter from "./routes/directDocumentAccess";
 import { RAGOrchestrator2 } from "./services/rag/ragOrchestrator2";
 import { VectorStore } from "./services/rag/vectorStore";
 
@@ -1133,6 +1134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Enhanced RAG routes
   app.use("/api/rag-enhanced", ragEnhancedRouter);
+  app.use("/api/documents", directDocumentAccessRouter);
 
   // Basic RAG search endpoint for DeepSeek integration
   app.post("/api/rag/search", async (req, res) => {

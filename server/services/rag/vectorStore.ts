@@ -185,16 +185,17 @@ export class VectorStore {
     const { topK = 5, minSimilarity = 0.0 } = options;
 
     try {
+      const queryVector = `[${queryEmbedding.join(',')}]`;
       const results = await this.db
         .select({
           id: vectorDocuments.documentId,
           content: vectorDocuments.content,
           metadata: vectorDocuments.metadata,
-          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector)`
+          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector})`
         })
         .from(vectorDocuments)
-        .where(sql`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector) > ${minSimilarity}`)
-        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector)`))
+        .where(sql`${vectorDocuments.embedding} IS NOT NULL AND 1 - (${vectorDocuments.embedding} <=> ${queryVector}) > ${minSimilarity}`)
+        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector})`))
         .limit(topK);
 
       return results.map(result => ({
@@ -234,16 +235,17 @@ export class VectorStore {
       }
 
       // Perform vector similarity search
+      const queryVector = `[${queryEmbedding.join(',')}]`;
       const results = await this.db
         .select({
           id: vectorDocuments.documentId,
           content: vectorDocuments.content,
           metadata: vectorDocuments.metadata,
-          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector)`
+          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector})`
         })
         .from(vectorDocuments)
         .where(sql`${vectorDocuments.embedding} IS NOT NULL`)
-        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector)`))
+        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector})`))
         .limit(limit);
 
       console.log(`[VectorStore] Vector search found ${results.length} results`);
