@@ -723,17 +723,78 @@ export default function StreamingInterface() {
             </Card>
           )}
 
-          {/* Final Response - Show whenever there's streaming content */}
-          {(storeIsStreaming || streamingResponse || currentResponse?.response) && (
-            <Card className="border-gray-700 bg-gray-800">
+          {/* Reasoning Display - Show when reasoning is available */}
+          {(storeIsStreaming || streamingReasoning || currentResponse?.reasoning) && (
+            <Card className="border-orange-500/50 bg-gradient-to-br from-orange-900/20 to-yellow-900/20">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-white">
-                  <Brain className="h-5 w-5 text-purple-400" />
-                  Response
-                  {storeIsStreaming && (
+                  <Brain className="h-5 w-5 text-orange-400" />
+                  🧠 AI Reasoning Process
+                  {storeIsStreaming && streamingReasoning && (
                     <div className="ml-auto flex items-center gap-1">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-muted-foreground">Live Streaming</span>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-orange-300">Thinking...</span>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div 
+                  ref={reasoningRef}
+                  className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-orange-600/30 text-orange-100 leading-relaxed min-h-[150px]"
+                  style={{ 
+                    maxHeight: '400px', 
+                    overflowY: 'auto',
+                    backgroundColor: '#1a1612',
+                    color: '#fef3c7'
+                  }}
+                >
+                  {streamingReasoning ? (
+                    <div>
+                      <TypewriterEffect 
+                        text={streamingReasoning}
+                        speed={30}
+                        showCursor={true}
+                        className="text-orange-100"
+                      />
+                      <div className="flex items-center gap-2 mt-2 text-orange-400">
+                        <Brain className="h-4 w-4 animate-pulse" />
+                        <span className="text-xs">Reasoning tokens: {streamingReasoning.length}</span>
+                      </div>
+                    </div>
+                  ) : currentResponse?.reasoning ? (
+                    <div className="text-orange-100">
+                      {currentResponse.reasoning}
+                    </div>
+                  ) : storeIsStreaming ? (
+                    <div className="flex flex-col items-center justify-center h-24 text-orange-300">
+                      <Brain className="h-6 w-6 animate-pulse mb-2" />
+                      <span className="italic">DeepSeek AI is reasoning...</span>
+                      <div className="text-xs mt-1 text-center text-orange-400">
+                        Chain-of-thought process will appear here
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-orange-300 italic text-center">
+                      💭 Reasoning process will be displayed during streaming
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Response Display - Show whenever there's streaming content */}
+          {(storeIsStreaming || streamingResponse || currentResponse?.response) && (
+            <Card className="border-green-500/50 bg-gradient-to-br from-green-900/20 to-blue-900/20">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-white">
+                  <MessageSquare className="h-5 w-5 text-green-400" />
+                  📝 Final Response
+                  {storeIsStreaming && streamingResponse && (
+                    <div className="ml-auto flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-300">Responding...</span>
                     </div>
                   )}
                 </CardTitle>
@@ -741,7 +802,7 @@ export default function StreamingInterface() {
               <CardContent>
                 <div 
                   ref={responseContentRef}
-                  className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white leading-relaxed min-h-[200px]"
+                  className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-green-600/30 text-white leading-relaxed min-h-[200px]"
                   style={{ 
                     maxHeight: '600px', 
                     overflowY: 'auto',
@@ -757,7 +818,7 @@ export default function StreamingInterface() {
                         showCursor={true}
                         className="text-white"
                       />
-                      <div className="flex items-center gap-2 mt-2 text-purple-400">
+                      <div className="flex items-center gap-2 mt-2 text-green-400">
                         <MessageSquare className="h-4 w-4 animate-pulse" />
                         <span className="text-xs">Response tokens: {streamingResponse.length}</span>
                       </div>
@@ -765,14 +826,14 @@ export default function StreamingInterface() {
                   ) : storeIsStreaming ? (
                     <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                       <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                      <span className="italic">DeepSeek Reasoner connecting...</span>
+                      <span className="italic">Waiting for response...</span>
                       <div className="text-xs mt-1 text-center">
-                        Waiting for response tokens to begin streaming
+                        Response will stream after reasoning completes
                       </div>
                       <div className="flex gap-1 mt-2">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   ) : (

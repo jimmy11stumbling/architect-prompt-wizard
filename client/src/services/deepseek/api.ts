@@ -74,13 +74,13 @@ export class DeepSeekApi {
 
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split("\n\n");
-        
+
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts[i].trim();
           if (part.startsWith("data:")) {
             const jsonStr = part.slice(5).trim();
             if (jsonStr === "[DONE]") return;
-            
+
             try {
               const parsed = JSON.parse(jsonStr);
               const token = parsed.choices?.[0]?.delta?.content;
@@ -124,14 +124,14 @@ export class DeepSeekApi {
       if (!response.ok) {
         const errorText = await response.text();
         console.warn(`⚠️ DeepSeek API failed: ${response.status} - ${errorText}`);
-        
+
         // If authentication fails, automatically fall back to demo streaming
         if (response.status === 401 || errorText.includes('Authentication Fails') || errorText.includes('governor')) {
           console.log('🎬 Authentication failed, automatically switching to demo streaming...');
-          
+
           // Import and call demo streaming directly with proper callbacks
           const { DeepSeekService } = await import('./service');
-          
+
           // Start demo streaming with the same callbacks
           await this.startDemoStreaming(
             request.messages[request.messages.length - 1]?.content || 'Demo query',
@@ -142,7 +142,7 @@ export class DeepSeekApi {
           );
           return;
         }
-        
+
         throw new Error(`Stream request failed: ${response.status} - ${errorText}`);
       }
 
@@ -174,7 +174,7 @@ export class DeepSeekApi {
 
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');
-          
+
           for (let i = 0; i < parts.length - 1; i++) {
             const part = parts[i].trim();
             if (part.startsWith('data:')) {
@@ -192,43 +192,68 @@ export class DeepSeekApi {
 
               try {
                 const parsed = JSON.parse(jsonStr);
-                console.log('Received streaming data:', parsed);
 
-                if (parsed.error) {
-                  throw new Error(parsed.error);
-                }
+                if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
+                  const delta = parsed.choices[0].delta;
 
-                if (parsed.choices && parsed.choices[0]) {
-                  const choice = parsed.choices[0];
-                  const delta = choice.delta;
+                  // Handle reasoning content
+                  if (delta.reasoning_content) {
+                    fullReasoning += delta.reasoning_content;
+                    onReasoningToken(delta.reasoning_content);
+                  }
 
-                  if (delta) {
-                    // Handle reasoning content for deepseek-reasoner
-                    if (delta.reasoning_content) {
-                      const reasoningToken = delta.reasoning_content;
-                      fullReasoning += reasoningToken;
-                      onReasoningToken(reasoningToken);
+                  // Handle response content
+                  if (delta.content) {
+                    fullResponse += delta.content;
+                    onResponseToken(delta.content);
+                  }
+
+                  // Handle completion
+                  if (parsed.choices[0].finish_reason === 'stop') {
+                    processingTime = Date.now() - startTime;
+
+                    if (parsed.usage) {
+                      usage = {
+                        promptTokens: parsed.usage.prompt_tokens || 0,
+                        completionTokens: parsed.usage.completion_tokens || 0,
+                        totalTokens: parsed.usage.total_tokens || 0,
+                        reasoningTokens: parsed.usage.reasoning_tokens || 0
+                      };
                     }
-                    
-                    // Handle response content for deepseek-chat
-                    if (delta.content) {
-                      const responseToken = delta.content;
-                      fullResponse += responseToken;
-                      onResponseToken(responseToken);
+
+                    // For DeepSeek Reasoner, reasoning might be available in the final response
+                    // If we didn't get reasoning during streaming, try to extract it from the message
+                    if (!fullReasoning && parsed.choices[0].message?.reasoning_content) {
+                      const reasoningContent = parsed.choices[0].message.reasoning_content;
+                      fullReasoning = reasoningContent;
+
+                      // Simulate token-by-token reasoning display for better UX
+                      const reasoningTokens = reasoningContent.split('');
+                      for (let i = 0; i < reasoningTokens.length; i++) {
+                        setTimeout(() => {
+                          onReasoningToken(reasoningTokens[i]);
+                        }, i * 10); // 100 tokens per second simulation
+                      }
                     }
                   }
                 }
-                
-                // Update usage statistics if available
-                if (parsed.usage) {
-                  usage = parsed.usage;
+
+                // Handle case where reasoning is provided as a separate message or field
+                if (parsed.reasoning_content && !fullReasoning) {
+                  fullReasoning = parsed.reasoning_content;
+                  const reasoningTokens = parsed.reasoning_content.split('');
+                  for (let i = 0; i < reasoningTokens.length; i++) {
+                    setTimeout(() => {
+                      onReasoningToken(reasoningTokens[i]);
+                    }, i * 15); // Slower reasoning display
+                  }
                 }
               } catch (parseError) {
-                console.warn('JSON parse error:', parseError);
+                console.warn('JSON parse error:', parseError, 'Raw:', jsonStr);
               }
             }
           }
-          
+
           buffer = parts[parts.length - 1];
         }
       } catch (streamError) {
@@ -251,21 +276,21 @@ export class DeepSeekApi {
   ): Promise<void> {
     try {
       console.log('🎬 Starting demo token-by-token streaming...');
-      
+
       // Simulate reasoning phase
       const reasoningText = `Let me think about "${query}"...\n\nFirst, I need to understand what the user is asking for. This appears to be a question about streaming functionality.\n\nThe key components involved are:\n1. Real-time token streaming\n2. Visual feedback systems\n3. Authentication handling\n4. Demo mode capabilities\n\nBased on this analysis, I should provide a comprehensive response that addresses the streaming visualization features.`;
-      
+
       const reasoningTokens = reasoningText.split('');
-      
+
       // Stream reasoning tokens
       for (let i = 0; i < reasoningTokens.length; i++) {
         onReasoningToken(reasoningTokens[i]);
         await new Promise(resolve => setTimeout(resolve, 20)); // 50 tokens/second
       }
-      
+
       // Small pause between reasoning and response
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Simulate response phase  
       const responseText = `The StreamingInterface component is specifically designed for **real-time token-by-token streaming visualization** of DeepSeek Reasoner responses.
 
@@ -283,13 +308,13 @@ export class DeepSeekApi {
 Once the API authentication is fixed, you'll get the same visual experience but with real DeepSeek reasoning and responses!`;
 
       const responseTokens = responseText.split('');
-      
+
       // Stream response tokens
       for (let i = 0; i < responseTokens.length; i++) {
         onResponseToken(responseTokens[i]);
         await new Promise(resolve => setTimeout(resolve, 25)); // 40 tokens/second
       }
-      
+
       // Complete the streaming
       onComplete({
         reasoning: reasoningText,
@@ -302,9 +327,9 @@ Once the API authentication is fixed, you'll get the same visual experience but 
         },
         processingTime: 8000
       });
-      
+
       console.log('✅ Demo streaming completed successfully!');
-      
+
     } catch (error) {
       console.error('❌ Demo streaming error:', error);
       onError(error instanceof Error ? error : new Error('Demo streaming failed'));
