@@ -1,6 +1,4 @@
-Adding token counting to the streaming service by updating how reasoning and response tokens are handled in the DeepSeekApi.streamQuery method.
-```
-```replit_final_file
+
 // DeepSeek Service - Business Logic
 import { DeepSeekApi } from './api';
 import { useDeepSeekStore } from './store';
