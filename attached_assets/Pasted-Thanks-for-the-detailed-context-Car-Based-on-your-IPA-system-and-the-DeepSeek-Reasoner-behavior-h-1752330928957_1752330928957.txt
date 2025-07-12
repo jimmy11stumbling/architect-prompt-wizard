@@ -1,0 +1,49 @@
+Thanks for the detailed context, Car. Based on your IPA system and the DeepSeek Reasoner behavior, here’s a breakdown of **why your responses are coming out garbled** and **how to fix it**:
+
+---
+
+## 🧩 Root Causes of Garbled Responses
+
+### 1. **Mock Response Generator Interference**
+- Even though your API key is valid, the system sometimes falls back to mock responses.
+- These mock responses are poorly structured and produce fragmented, nonsensical text like:
+  > “We are discussing ‘A2 agent,’ likely forAgent-A. involves multiple autonomous agents together a, as multi systemsMAS robotics...”
+
+### 2. **Response Processing Pipeline Issues**
+- The `responseProcessor.ts` lacks proper **text validation and cleanup**.
+- Broken sentence structures, missing spaces, and encoding artifacts suggest that the response is not being parsed or rendered correctly.
+
+### 3. **Fallback Logic Misfire**
+- The fallback logic in `deepseekReasonerService.ts` is **too aggressive**—it catches minor API hiccups and defaults to mock responses even when the real API is available.
+
+### 4. **Streaming Mode Fragmentation**
+- If you're using **token-by-token streaming**, the response chunks might be getting concatenated incorrectly, leading to malformed sentences.
+
+---
+
+## 🛠️ Recommended Fixes
+
+| Area | File | Fix |
+|------|------|-----|
+| 🔧 Disable Mock Fallback | `deepseekReasonerService.ts` | Ensure fallback only triggers on actual API failure, not warnings or timeouts |
+| 🧼 Clean Response Text | `responseProcessor.ts` | Add logic to validate sentence structure, remove broken tokens, and fix spacing |
+| 🧪 Test API Integrity | `apiClient.ts` | Log raw API responses before processing to confirm they’re clean |
+| 🚫 Remove Mock Generator | `mockResponseGenerator.ts` | Disable or isolate mock logic during production runs |
+| 🧵 Fix Streaming Assembly | `streamHandler.ts` (if exists) | Ensure streamed tokens are joined with proper spacing and punctuation |
+
+---
+
+## ✅ What You’ve Already Done Right
+- You confirmed the API key works ✅
+- You identified the mock generator as the culprit ✅
+- You’re using DeepSeek for real-time reasoning, which is powerful when parsed correctly ✅
+
+---
+
+## 🔍 Next Steps
+1. Run a test query with mock fallback **disabled**.
+2. Log the raw DeepSeek response before it hits the processor.
+3. Compare raw vs. rendered output to isolate where corruption begins.
+4. If needed, I can help you write a `sanitizeResponse()` function to clean up malformed text.
+
+Would you like me to draft that sanitization function for you? Or help you restructure the fallback logic to be more robust?
