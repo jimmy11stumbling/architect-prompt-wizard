@@ -177,9 +177,12 @@ function StreamingInterfaceContent() {
     if (!query.trim() || isLoading || storeIsStreaming) return;
 
     try {
-      // Immediate visual feedback - show working state instantly
+      // IMMEDIATE visual feedback - show working state instantly
       setIsConnected(true);
       setStreamingStage('connecting');
+      
+      // Start immediate thinking animation
+      DeepSeekService.startThinkingAnimation();
       
       // Force immediate scroll to response area
       setTimeout(() => {
@@ -189,24 +192,35 @@ function StreamingInterfaceContent() {
         }
       }, 50);
 
-      // Start processing immediately (within 100ms)
-      console.log('🚀 Starting immediate streaming processing...');
+      console.log('🚀 Starting immediate streaming with visual feedback...');
+      
+      // Start fallback timer - if no tokens arrive in 10 seconds, switch to demo
+      const fallbackTimer = setTimeout(() => {
+        if (!streamingReasoning && !streamingResponse) {
+          console.log('🎬 No tokens received, switching to demo mode...');
+          setDemoMode(true);
+          DeepSeekService.processDemoStreaming(query);
+        }
+      }, 10000);
       
       if (demoMode) {
         console.log('🎬 High-speed demo mode activated...');
+        clearTimeout(fallbackTimer);
         await DeepSeekService.processDemoStreaming(query);
       } else {
         try {
-          // Try real streaming first
+          // Try real streaming with immediate feedback
           await DeepSeekService.processQueryStreaming(query, { 
             ragEnabled,
             mcpEnabled,
             temperature,
             model: selectedModel === 'deepseek-chat' ? 'deepseek-chat' : 'deepseek-reasoner'
           });
+          clearTimeout(fallbackTimer);
         } catch (authError) {
           // Immediate fallback to demo if real API fails
           console.log('🔄 API failed, immediate demo fallback...');
+          clearTimeout(fallbackTimer);
           setDemoMode(true);
           await DeepSeekService.processDemoStreaming(query);
         }

@@ -1,10 +1,48 @@
-
 // DeepSeek Service - Business Logic
 import { DeepSeekApi } from './api';
 import { useDeepSeekStore } from './store';
 import { DeepSeekRequest, DeepSeekMessage } from './types';
 
-export class DeepSeekService {
+class DeepSeekService {
+  private static instance: DeepSeekService;
+  private apiKey: string | null = null;
+  private thinkingTimer: NodeJS.Timeout | null = null;
+
+  private constructor() {}
+
+  static getInstance(): DeepSeekService {
+    if (!DeepSeekService.instance) {
+      DeepSeekService.instance = new DeepSeekService();
+    }
+    return DeepSeekService.instance;
+  }
+
+  static startThinkingAnimation() {
+    console.log('🧠 Starting immediate thinking animation...');
+
+    // Start with immediate "connecting" feedback
+    const { addReasoningToken } = useDeepSeekStore.getState();
+    addReasoningToken('🔄 Connecting to DeepSeek AI...\n');
+
+    // Add progressive thinking dots
+    let dots = '';
+    const thinkingInterval = setInterval(() => {
+      dots += '.';
+      if (dots.length > 3) dots = '';
+
+      // Only show thinking if no real tokens have arrived
+      const state = useDeepSeekStore.getState();
+      if (state.streamingReasoning.length < 50) {
+        addReasoningToken(`\n🧠 AI is thinking${dots}`);
+      } else {
+        clearInterval(thinkingInterval);
+      }
+    }, 500);
+
+    // Clear after 15 seconds regardless
+    setTimeout(() => clearInterval(thinkingInterval), 15000);
+  }
+
   static async processQueryStreaming(
     query: string,
     options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean; model?: 'deepseek-chat' | 'deepseek-reasoner' } = {}
@@ -17,6 +55,9 @@ export class DeepSeekService {
       store.setStreaming(true);
       store.setError(null);
       store.clearStreamingContent();
+
+      // Start immediate thinking animation
+      DeepSeekService.startThinkingAnimation();
 
       // Enhanced query with RAG context if enabled
       let enhancedQuery = query;
@@ -84,7 +125,7 @@ export class DeepSeekService {
           },
           options.model
         );
-        
+
         // Complete the response
         const finalResponse = {
           reasoning: '',
@@ -97,7 +138,7 @@ export class DeepSeekService {
           },
           processingTime: Date.now() - Date.now()
         };
-        
+
         const assistantMessage: DeepSeekMessage = {
           role: 'assistant',
           content: finalResponse.response
@@ -362,3 +403,5 @@ export class DeepSeekService {
     store.reset();
   }
 }
+
+export { DeepSeekService };
