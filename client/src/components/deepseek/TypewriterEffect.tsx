@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 
 interface TypewriterEffectProps {
@@ -5,42 +6,58 @@ interface TypewriterEffectProps {
   speed?: number;
   showCursor?: boolean;
   className?: string;
+  onComplete?: () => void;
 }
 
-export function TypewriterEffect({ 
-  text, 
-  speed = 30, 
-  showCursor = true, 
-  className = "" 
+export default function TypewriterEffect({
+  text,
+  speed = 50,
+  showCursor = false,
+  className = '',
+  onComplete
 }: TypewriterEffectProps) {
-  const [displayText, setDisplayText] = useState('');
+  const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showCursorBlink, setShowCursorBlink] = useState(true);
 
   useEffect(() => {
     if (currentIndex < text.length) {
       const timeout = setTimeout(() => {
-        setDisplayText(prev => prev + text[currentIndex]);
-        setCurrentIndex(prev => prev + 1);
+        setDisplayedText(text.slice(0, currentIndex + 1));
+        setCurrentIndex(currentIndex + 1);
       }, speed);
 
       return () => clearTimeout(timeout);
+    } else if (onComplete && currentIndex === text.length) {
+      onComplete();
     }
-  }, [currentIndex, text, speed]);
+  }, [currentIndex, text, speed, onComplete]);
 
   // Reset when text changes
   useEffect(() => {
-    setDisplayText('');
+    setDisplayedText('');
     setCurrentIndex(0);
   }, [text]);
 
+  // Cursor blink effect
+  useEffect(() => {
+    if (showCursor) {
+      const interval = setInterval(() => {
+        setShowCursorBlink(prev => !prev);
+      }, 530);
+
+      return () => clearInterval(interval);
+    }
+  }, [showCursor]);
+
   return (
     <span className={className}>
-      {displayText}
+      {displayedText}
       {showCursor && (
-        <span className="animate-pulse text-blue-400 ml-1">▌</span>
+        <span className={`inline-block w-0.5 h-4 bg-current ml-0.5 ${showCursorBlink ? 'opacity-100' : 'opacity-0'} transition-opacity duration-100`}>
+          |
+        </span>
       )}
     </span>
   );
 }
-
-export default TypewriterEffect;

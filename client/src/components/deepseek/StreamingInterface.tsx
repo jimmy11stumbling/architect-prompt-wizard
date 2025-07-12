@@ -16,7 +16,7 @@ import StreamingHistory from './StreamingHistory';
 import StreamingStatusBar from './StreamingStatusBar';
 import StreamingErrorBoundary from './StreamingErrorBoundary';
 
-export default function StreamingInterface() {
+function StreamingInterfaceContent() {
   const [query, setQuery] = useState('');
   const [ragEnabled, setRagEnabled] = useState(true);
   const [mcpEnabled, setMcpEnabled] = useState(true);
@@ -733,7 +733,7 @@ export default function StreamingInterface() {
                   {storeIsStreaming && streamingReasoning && (
                     <div className="ml-auto flex items-center gap-1">
                       <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-orange-300>Thinking...</span>
+                      <span className="text-xs text-orange-300">Thinking...</span>
                     </div>
                   )}
                 </CardTitle>
@@ -751,12 +751,16 @@ export default function StreamingInterface() {
                 >
                   {streamingReasoning ? (
                     <div>
-                      <TypewriterEffect 
-                        text={streamingReasoning}
-                        speed={30}
-                        showCursor={true}
-                        className="text-orange-100"
-                      />
+                      {typeof TypewriterEffect !== 'undefined' ? (
+                        <TypewriterEffect 
+                          text={streamingReasoning}
+                          speed={30}
+                          showCursor={true}
+                          className="text-orange-100"
+                        />
+                      ) : (
+                        <div className="text-orange-100">{streamingReasoning}</div>
+                      )}
                       <div className="flex items-center gap-2 mt-2 text-orange-400">
                         <Brain className="h-4 w-4 animate-pulse" />
                         <span className="text-xs">Reasoning tokens: {streamingReasoning.length}</span>
@@ -812,12 +816,16 @@ export default function StreamingInterface() {
                 >
                   {streamingResponse ? (
                     <div>
-                      <TypewriterEffect 
-                        text={streamingResponse}
-                        speed={25}
-                        showCursor={true}
-                        className="text-white"
-                      />
+                      {typeof TypewriterEffect !== 'undefined' ? (
+                        <TypewriterEffect 
+                          text={streamingResponse}
+                          speed={25}
+                          showCursor={true}
+                          className="text-white"
+                        />
+                      ) : (
+                        <div className="text-white">{streamingResponse}</div>
+                      )}
                       <div className="flex items-center gap-2 mt-2 text-green-400">
                         <MessageSquare className="h-4 w-4 animate-pulse" />
                         <span className="text-xs">Response tokens: {streamingResponse.length}</span>
@@ -902,5 +910,13 @@ export default function StreamingInterface() {
         error={error || undefined}
       />
     </div>
+  );
+}
+
+export default function StreamingInterface() {
+  return (
+    <StreamingErrorBoundary>
+      <StreamingInterfaceContent />
+    </StreamingErrorBoundary>
   );
 }

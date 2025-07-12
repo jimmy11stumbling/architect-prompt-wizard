@@ -1,122 +1,101 @@
 import React from 'react';
-import { Brain, Zap, Clock, Activity, Cpu, MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Brain, MessageSquare, Activity, Zap } from 'lucide-react';
 
-export interface StreamingFeedbackProps {
+interface StreamingFeedbackProps {
   active: boolean;
-  stage?: 'connecting' | 'reasoning' | 'responding';
-  reasoningTokens?: number;
-  responseTokens?: number;
+  stage: 'connecting' | 'reasoning' | 'responding';
+  reasoningTokens: number;
+  responseTokens: number;
 }
 
-export default function StreamingFeedback({ 
-  active, 
-  stage = 'connecting', 
-  reasoningTokens = 0, 
-  responseTokens = 0 
+export default function StreamingFeedback({
+  active,
+  stage,
+  reasoningTokens,
+  responseTokens
 }: StreamingFeedbackProps) {
-  // Always show during any activity
   if (!active) return null;
 
   const getStageInfo = () => {
     switch (stage) {
+      case 'connecting':
+        return {
+          icon: Activity,
+          label: 'Establishing Connection',
+          color: 'text-blue-400',
+          bgColor: 'bg-blue-900/20',
+          borderColor: 'border-blue-500/50',
+          progress: 25
+        };
       case 'reasoning':
         return {
           icon: Brain,
-          color: 'text-blue-400',
-          bgColor: 'bg-blue-900/20',
-          borderColor: 'border-blue-500',
-          title: '🧠 Deep Reasoning in Progress',
-          subtitle: 'AI is analyzing and thinking through your request...',
-          tokens: reasoningTokens,
-          progress: Math.min((reasoningTokens / 500) * 100, 100)
+          label: 'Deep Reasoning in Progress',
+          color: 'text-orange-400',
+          bgColor: 'bg-orange-900/20',
+          borderColor: 'border-orange-500/50',
+          progress: 60
         };
       case 'responding':
         return {
-          icon: Zap,
-          color: 'text-purple-400',
-          bgColor: 'bg-purple-900/20',
-          borderColor: 'border-purple-500',
-          title: '✍️ Generating Response',
-          subtitle: 'Crafting the final answer based on reasoning...',
-          tokens: responseTokens,
-          progress: Math.min((responseTokens / 1000) * 100, 100)
+          icon: MessageSquare,
+          label: 'Generating Response',
+          color: 'text-green-400',
+          bgColor: 'bg-green-900/20',
+          borderColor: 'border-green-500/50',
+          progress: 90
         };
       default:
         return {
-          icon: Clock,
-          color: 'text-yellow-400',
-          bgColor: 'bg-yellow-900/20',
-          borderColor: 'border-yellow-500',
-          title: '🔗 Connecting to DeepSeek',
-          subtitle: 'Establishing connection with AI reasoning engine...',
-          tokens: 0,
-          progress: 25
+          icon: Activity,
+          label: 'Processing',
+          color: 'text-gray-400',
+          bgColor: 'bg-gray-900/20',
+          borderColor: 'border-gray-500/50',
+          progress: 0
         };
     }
   };
 
   const stageInfo = getStageInfo();
-  const IconComponent = stageInfo.icon;
+  const Icon = stageInfo.icon;
 
   return (
-    <Card className={`${stageInfo.borderColor} ${stageInfo.bgColor} animate-pulse`}>
-      <CardHeader className="pb-3">
-        <CardTitle className={`flex items-center gap-3 ${stageInfo.color}`}>
+    <Card className={`${stageInfo.bgColor} ${stageInfo.borderColor} shadow-lg`}>
+      <CardContent className="pt-6">
+        <div className="flex items-center gap-4">
           <div className="relative">
-            <IconComponent className="h-6 w-6 animate-spin" />
+            <Icon className={`h-8 w-8 ${stageInfo.color} animate-pulse`} />
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
           </div>
+
           <div className="flex-1">
-            <div className="text-lg font-semibold">{stageInfo.title}</div>
-            <div className="text-sm text-gray-300 font-normal">{stageInfo.subtitle}</div>
-          </div>
-          <Badge variant="secondary" className="animate-bounce">
-            LIVE
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-300">Processing Progress</span>
-            <span className={stageInfo.color}>{Math.round(stageInfo.progress)}%</span>
-          </div>
-          <Progress 
-            value={stageInfo.progress} 
-            className="h-2 bg-gray-700"
-          />
-        </div>
-
-        {/* Token Counters */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-800/50 border border-gray-600">
-            <Cpu className="h-4 w-4 text-blue-400" />
-            <div>
-              <div className="text-xs text-gray-400">Reasoning</div>
-              <div className="text-lg font-mono text-blue-400">{reasoningTokens}</div>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`font-semibold ${stageInfo.color}`}>
+                {stageInfo.label}
+              </span>
+              <Badge variant="outline" className={`${stageInfo.color} border-current`}>
+                {stage.charAt(0).toUpperCase() + stage.slice(1)}
+              </Badge>
             </div>
-          </div>
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-800/50 border border-gray-600">
-            <MessageSquare className="h-4 w-4 text-purple-400" />
-            <div>
-              <div className="text-xs text-gray-400">Response</div>
-              <div className="text-lg font-mono text-purple-400">{responseTokens}</div>
-            </div>
-          </div>
-        </div>
 
-        {/* Live Activity Indicator */}
-        <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-gray-800/30">
-          <Activity className="h-4 w-4 text-green-400 animate-pulse" />
-          <span className="text-sm text-green-400">Streaming Active</span>
-          <div className="flex gap-1 ml-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <Progress value={stageInfo.progress} className="h-2 mb-3" />
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-orange-400" />
+                <span className="text-gray-300">Reasoning:</span>
+                <span className="font-mono text-orange-400">{reasoningTokens}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-green-400" />
+                <span className="text-gray-300">Response:</span>
+                <span className="font-mono text-green-400">{responseTokens}</span>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>
