@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Code, Palette, Cloud, Bot, Rocket, Database, Globe, Smartphone, Brain } from "lucide-react";
@@ -250,20 +250,18 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredTemplates.map((template) => (
           <Card key={template.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
+            <CardContent className="space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   {template.icon}
                   <div>
-                    <CardTitle className="text-sm">{template.name}</CardTitle>
+                    <h3 className="text-sm font-semibold">{template.name}</h3>
                     <Badge variant="outline" className="text-xs mt-1">
                       {template.category}
                     </Badge>
                   </div>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
               <CardDescription className="text-xs">
                 {template.description}
               </CardDescription>
