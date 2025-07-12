@@ -23,8 +23,6 @@ import ragEnhancedRouter from "./routes/ragEnhanced";
 import directDocumentAccessRouter from "./routes/directDocumentAccess";
 import { RAGOrchestrator2 } from "./services/rag/ragOrchestrator2";
 import { VectorStore } from "./services/rag/vectorStore";
-import { db, vectorDocuments } from "./db";
-import { sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes (no auth middleware)
@@ -366,44 +364,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/agent-documentation", async (req, res) => {
     try {
       const { platform } = req.query;
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Documentation fetch timeout')), 5000)
-      );
-      
-      const dataPromise = mcpHub.getComprehensiveContext(platform as string);
-      const comprehensiveData = await Promise.race([dataPromise, timeoutPromise]) as any;
+      const comprehensiveData = await mcpHub.getComprehensiveContext(platform as string);
 
       // Convert to the format expected by existing agents
       const documentation = {
-        platforms: comprehensiveData.allPlatforms?.map(p => ({
+        platforms: comprehensiveData.allPlatforms.map(p => ({
           ...p.platform,
-          features: p.features || [],
-          integrations: p.integrations || [],
-          pricing: p.pricing || []
-        })) || [],
-        knowledgeBase: comprehensiveData.allPlatforms?.flatMap(p => p.knowledgeBase || []) || [],
-        technologies: comprehensiveData.technologies || {},
+          features: p.features,
+          integrations: p.integrations,
+          pricing: p.pricing
+        })),
+        knowledgeBase: comprehensiveData.allPlatforms.flatMap(p => p.knowledgeBase),
+        technologies: comprehensiveData.technologies,
         timestamp: new Date().toISOString()
       };
 
       res.json(documentation);
     } catch (error) {
       console.error("Error fetching agent documentation:", error);
-      
-      // Return minimal documentation instead of failing
-      res.json({
-        platforms: [],
-        knowledgeBase: [],
-        technologies: {
-          rag2: { description: "RAG 2.0 system", features: [], bestPractices: [], implementation: [], vectorDatabases: [] },
-          mcp: { description: "Model Context Protocol", tools: [], resources: [], bestPractices: [], protocols: [] },
-          a2a: { description: "Agent-to-Agent communication", protocols: [], patterns: [], bestPractices: [], coordination: [] }
-        },
-        timestamp: new Date().toISOString(),
-        error: "Partial data due to database issues"
-      });
+      res.status(500).json({ error: "Failed to fetch documentation" });
     }
   });
 
@@ -1250,7 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DeepSeek Streaming API endpoint
   app.post("/api/deepseek/stream", async (req, res) => {
     try {
-      const { messages, ragContext, model = 'deepseek-reasoner' } = req.body;
+      const { messages, ragContext, temperature = 0.1 } = req.body;
 
       if (!process.env.DEEPSEEK_API_KEY) {
         return res.status(400).json({ error: "DeepSeek API key not configured" });
@@ -1267,19 +1246,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Access-Control-Allow-Headers': 'Cache-Control'
       });
 
-      const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model,
-            messages: messages,
-            stream: true,
-            temperature: model === 'deepseek-chat' ? 0.7 : 0.1
-          })
-        });
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-reasoner',
+          messages,
+          max_tokens: 4096,
+          temperature,
+          stream: true,
+        }),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();

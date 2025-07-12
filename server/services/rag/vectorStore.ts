@@ -89,32 +89,11 @@ export class VectorStore {
       `);
         console.log('Vector documents table created/verified');
 
-        // Add performance indexes for RAG queries with better error handling
-        try {
-          await this.db.execute(sql`
-            CREATE INDEX IF NOT EXISTS idx_vector_documents_document_id ON vector_documents(document_id);
-          `);
-        } catch (error) {
-          console.warn('Index idx_vector_documents_document_id already exists or failed to create');
-        }
-
-        try {
-          await this.db.execute(sql`
-            CREATE INDEX IF NOT EXISTS idx_vector_documents_created_at ON vector_documents(created_at DESC);
-          `);
-        } catch (error) {
-          console.warn('Index idx_vector_documents_created_at already exists or failed to create');
-        }
-        
         // Create text search index for better performance
-        try {
-          await this.db.execute(sql`
-            CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
-            ON vector_documents USING gin(to_tsvector('english', content))
-          `);
-        } catch (error) {
-          console.warn('Text search index already exists or failed to create');
-        }
+        await this.db.execute(sql`
+        CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
+        ON vector_documents USING gin(to_tsvector('english', content))
+      `);
 
         // Create optimized indexes for similarity search
         try {
@@ -124,22 +103,22 @@ export class VectorStore {
             ON vector_documents USING ivfflat (embedding vector_cosine_ops)
             WITH (lists = 1000)
           `);
-
+          
           // Additional indexes for metadata filtering
           await this.db.execute(sql`
             CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
             ON vector_documents USING gin(metadata)
           `);
-
+          
           // Composite index for document_id lookups
           await this.db.execute(sql`
             CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
             ON vector_documents (document_id, created_at DESC)
           `);
-
+          
           console.log('Optimized vector indexes created');
         } catch (indexError) {
-          console.warn('Vector indexes not created (pgvector not available or already exist)');
+          console.warn('Vector indexes not created (pgvector not available)');
         }
 
         this.initialized = true;
@@ -167,7 +146,7 @@ export class VectorStore {
       // Process in batches of 50 for better performance
       const batchSize = 50;
       const batches = [];
-
+      
       for (let i = 0; i < documents.length; i += batchSize) {
         batches.push(documents.slice(i, i + batchSize));
       }
@@ -177,7 +156,7 @@ export class VectorStore {
         const documentsToInsert = await Promise.all(
           batch.map(async (doc) => {
             let embedding = doc.embedding;
-
+            
             if (!embedding) {
               embedding = await this.embeddingService.generateEmbedding(doc.content);
             }
@@ -295,11 +274,11 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     const { limit = 10 } = options;
-
+    
     // Create cache key
     const cacheKey = `${queryEmbedding.slice(0, 10).join(',')}_${limit}`;
     const cached = this.searchCache.get(cacheKey);
-
+    
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.results;
     }

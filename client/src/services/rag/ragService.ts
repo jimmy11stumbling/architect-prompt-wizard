@@ -327,7 +327,7 @@ export class RAGService {
 
         const timeoutId = setTimeout(() => {
           safeAbort();
-        }, 2000); // Reduced to 2 second timeout for faster fallback
+        }, 5000); // 5 second timeout
 
         try {
           const response = await fetch('/api/rag/search', {
@@ -389,45 +389,8 @@ export class RAGService {
             data: { error: errorMessage }
           });
 
-          // Prevent unhandled promise rejections for timeout errors
-          if (isTimeout) {
-            console.warn("[SafeAbort] RAG 2.0 search timeout, returning empty results");
-            return {
-              results: [],
-              query,
-              totalResults: 0,
-              searchTime: 5000,
-              sources: [],
-              searchStats: {
-                semanticResults: 0,
-                keywordResults: 0,
-                rerankingApplied: false,
-                documentsSearched: 0,
-                chunksSearched: 0
-              }
-            };
-          }
-
-          // Fallback to basic search for other errors
-          try {
-            return this.fallbackToBasicSearch(query, options);
-          } catch (fallbackError) {
-            console.error("Fallback RAG search also failed:", fallbackError);
-            return {
-              results: [],
-              query,
-              totalResults: 0,
-              searchTime: 0,
-              sources: [],
-              searchStats: {
-                semanticResults: 0,
-                keywordResults: 0,
-                rerankingApplied: false,
-                documentsSearched: 0,
-                chunksSearched: 0
-              }
-            };
-          }
+          // Fallback to basic search
+          return this.fallbackToBasicSearch(query, options);
         }
       } catch (error) {
         console.error("Outer search error:", error);

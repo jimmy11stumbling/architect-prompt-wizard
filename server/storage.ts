@@ -30,46 +30,46 @@ import {
   type InsertKnowledgeBase
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or, sql } from "drizzle-orm";
+import { eq, ilike, or } from "drizzle-orm";
 
 export interface IStorage {
   // User management
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
+  
   // Platform management
   getAllPlatforms(): Promise<Platform[]>;
   getPlatform(id: number): Promise<Platform | undefined>;
   createPlatform(platform: InsertPlatform): Promise<Platform>;
-
+  
   // Platform features
   getPlatformFeatures(platformId: number): Promise<PlatformFeature[]>;
   createPlatformFeature(feature: InsertPlatformFeature): Promise<PlatformFeature>;
-
+  
   // Platform integrations
   getPlatformIntegrations(platformId: number): Promise<PlatformIntegration[]>;
   createPlatformIntegration(integration: InsertPlatformIntegration): Promise<PlatformIntegration>;
-
+  
   // Platform pricing
   getPlatformPricing(platformId: number): Promise<PlatformPricing[]>;
   createPlatformPricing(pricing: InsertPlatformPricing): Promise<PlatformPricing>;
-
+  
   // Prompt generation
   createPromptGeneration(generation: InsertPromptGeneration): Promise<PromptGeneration>;
   getPromptGeneration(id: number): Promise<PromptGeneration | undefined>;
   getUserPromptGenerations(userId: number): Promise<PromptGeneration[]>;
-
+  
   // Saved prompts
   createSavedPrompt(prompt: InsertSavedPrompt): Promise<SavedPrompt>;
   getUserSavedPrompts(userId: number): Promise<SavedPrompt[]>;
   getPublicSavedPrompts(): Promise<SavedPrompt[]>;
-
+  
   // Workflows
   createWorkflow(workflow: InsertWorkflow): Promise<Workflow>;
   getUserWorkflows(userId: number): Promise<Workflow[]>;
   getWorkflowTemplates(): Promise<Workflow[]>;
-
+  
   // Knowledge base
   createKnowledgeBaseEntry(entry: InsertKnowledgeBase): Promise<KnowledgeBase>;
   searchKnowledgeBase(query: string, category?: string): Promise<KnowledgeBase[]>;
@@ -130,25 +130,7 @@ export class DatabaseStorage implements IStorage {
 
   // Platform integrations
   async getPlatformIntegrations(platformId: number): Promise<PlatformIntegration[]> {
-    try {
-      // Check if table exists and has the required columns
-      const result = await db.execute(sql`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'platform_integrations' 
-        AND column_name IN ('id', 'platform_id', 'integration_type', 'name')
-      `);
-      
-      if (result.rows.length < 4) {
-        console.warn('Platform integrations table missing required columns, returning empty array');
-        return [];
-      }
-      
-      return await db.select().from(platformIntegrations).where(eq(platformIntegrations.platformId, platformId));
-    } catch (error) {
-      console.warn('Platform integrations query failed:', error);
-      return [];
-    }
+    return await db.select().from(platformIntegrations).where(eq(platformIntegrations.platformId, platformId));
   }
 
   async createPlatformIntegration(integration: InsertPlatformIntegration): Promise<PlatformIntegration> {
@@ -161,25 +143,7 @@ export class DatabaseStorage implements IStorage {
 
   // Platform pricing
   async getPlatformPricing(platformId: number): Promise<PlatformPricing[]> {
-    try {
-      // Check if table exists and has the required columns
-      const result = await db.execute(sql`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'platform_pricing' 
-        AND column_name IN ('id', 'platform_id', 'tier_name', 'price')
-      `);
-      
-      if (result.rows.length < 4) {
-        console.warn('Platform pricing table missing required columns, returning empty array');
-        return [];
-      }
-      
-      return await db.select().from(platformPricing).where(eq(platformPricing.platformId, platformId));
-    } catch (error) {
-      console.warn('Platform pricing query failed:', error);
-      return [];
-    }
+    return await db.select().from(platformPricing).where(eq(platformPricing.platformId, platformId));
   }
 
   async createPlatformPricing(pricing: InsertPlatformPricing): Promise<PlatformPricing> {
@@ -253,7 +217,7 @@ export class DatabaseStorage implements IStorage {
 
   async searchKnowledgeBase(query: string, category?: string): Promise<KnowledgeBase[]> {
     const conditions = [];
-
+    
     // Add text search conditions
     if (query) {
       conditions.push(
@@ -263,16 +227,16 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
-
+    
     // Add category filter if provided
     if (category) {
       conditions.push(eq(knowledgeBase.category, category));
     }
-
+    
     if (conditions.length === 0) {
       return await db.select().from(knowledgeBase);
     }
-
+    
     return await db.select().from(knowledgeBase).where(
       conditions.length === 1 ? conditions[0] : or(...conditions)
     );
@@ -284,32 +248,3 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
-import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
-
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error('DATABASE_URL is not set');
-}
-
-// Configure connection pool with better timeout settings
-const pool = new Pool({ 
-  connectionString,
-  max: 5,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 15000,
-  acquireTimeoutMillis: 5000,
-  createTimeoutMillis: 10000
-});
-
-// Add error handling for pool
-pool.on('error', (err) => {
-  console.warn('Database pool error:', err.message);
-});
-
-export const db = drizzle({ client: pool, schema });

@@ -3,52 +3,13 @@ import { DeepSeekApi } from './api';
 import { useDeepSeekStore } from './store';
 import { DeepSeekRequest, DeepSeekMessage } from './types';
 
-class DeepSeekService {
-  private static instance: DeepSeekService;
-  private apiKey: string | null = null;
-  private thinkingTimer: NodeJS.Timeout | null = null;
-
-  private constructor() {}
-
-  static getInstance(): DeepSeekService {
-    if (!DeepSeekService.instance) {
-      DeepSeekService.instance = new DeepSeekService();
-    }
-    return DeepSeekService.instance;
-  }
-
-  static startThinkingAnimation() {
-    console.log('🧠 Starting immediate thinking animation...');
-
-    // Start with immediate "connecting" feedback
-    const { addReasoningToken } = useDeepSeekStore.getState();
-    addReasoningToken('🔄 Connecting to DeepSeek AI...\n');
-
-    // Add progressive thinking dots
-    let dots = '';
-    const thinkingInterval = setInterval(() => {
-      dots += '.';
-      if (dots.length > 3) dots = '';
-
-      // Only show thinking if no real tokens have arrived
-      const state = useDeepSeekStore.getState();
-      if (state.streamingReasoning.length < 50) {
-        addReasoningToken(`\n🧠 AI is thinking${dots}`);
-      } else {
-        clearInterval(thinkingInterval);
-      }
-    }, 500);
-
-    // Clear after 15 seconds regardless
-    setTimeout(() => clearInterval(thinkingInterval), 15000);
-  }
-
+export class DeepSeekService {
   static async processQueryStreaming(
     query: string,
-    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean; model?: 'deepseek-chat' | 'deepseek-reasoner' } = {}
+    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}
   ): Promise<void> {
     const store = useDeepSeekStore.getState();
-
+    
     try {
       // Set loading state
       store.setLoading(true);
@@ -56,12 +17,9 @@ class DeepSeekService {
       store.setError(null);
       store.clearStreamingContent();
 
-      // Start immediate thinking animation
-      DeepSeekService.startThinkingAnimation();
-
       // Enhanced query with RAG context if enabled
       let enhancedQuery = query;
-
+      
       if (options.ragEnabled) {
         try {
           // Import ragService dynamically to avoid circular dependencies
@@ -71,12 +29,12 @@ class DeepSeekService {
             rerankingEnabled: true,
             hybridWeight: { semantic: 0.7, keyword: 0.3 }
           });
-
+          
           if (ragResults.results.length > 0) {
             const contextChunks = ragResults.results.slice(0, 5).map(result => 
               `[${result.category}] ${result.title}: ${result.content.substring(0, 500)}...`
             ).join('\n\n');
-
+            
             enhancedQuery = `Context from RAG 2.0 Database (${ragResults.totalResults} documents found):\n\n${contextChunks}\n\n---\n\nUser Question: ${query}`;
           }
         } catch (ragError) {
@@ -90,7 +48,7 @@ class DeepSeekService {
         try {
           const { mcpHubService } = await import('@/services/mcp/mcpHubService');
           const mcpContext = await mcpHubService.getContextForPrompt(query, 3);
-
+          
           if (mcpContext && !mcpContext.includes('No relevant')) {
             enhancedQuery = `${mcpContext}\n\n---\n\n${enhancedQuery}`;
           }
@@ -115,63 +73,30 @@ class DeepSeekService {
         ragEnabled: options.ragEnabled || false
       };
 
-      // Use different streaming methods based on model
-      if (options.model === 'deepseek-chat') {
-        // For deepseek-chat, use direct token streaming
-        await DeepSeekApi.streamChatResponse(
-          [...store.conversation, userMessage],
-          (token: string) => {
-            store.appendStreamingResponse(token);
-          },
-          options.model
-        );
-
-        // Complete the response
-        const finalResponse = {
-          reasoning: '',
-          response: store.streamingResponse,
-          usage: {
-            promptTokens: enhancedQuery.length,
-            completionTokens: store.streamingResponse.length,
-            totalTokens: enhancedQuery.length + store.streamingResponse.length,
-            reasoningTokens: 0
-          },
-          processingTime: Date.now() - Date.now()
-        };
-
-        const assistantMessage: DeepSeekMessage = {
-          role: 'assistant',
-          content: finalResponse.response
-        };
-        store.addMessage(assistantMessage);
-        store.setResponse(finalResponse);
-        store.setStreaming(false);
-      } else {
-        // For deepseek-reasoner, use the existing streaming method
-        await DeepSeekApi.streamQuery(
-          request,
-          (reasoningToken: string) => {
-            store.appendStreamingReasoning(reasoningToken);
-          },
-          (responseToken: string) => {
-            store.appendStreamingResponse(responseToken);
-          },
-          (finalResponse) => {
-            // Add assistant message to conversation
-            const assistantMessage: DeepSeekMessage = {
-              role: 'assistant',
-              content: finalResponse.response
-            };
-            store.addMessage(assistantMessage);
-            store.setResponse(finalResponse);
-            store.setStreaming(false);
-          },
-          (error) => {
-            store.setError(error.message);
-            store.setStreaming(false);
-          }
-        );
-      }
+      // Stream the response
+      await DeepSeekApi.streamQuery(
+        request,
+        (reasoningToken: string) => {
+          store.appendStreamingReasoning(reasoningToken);
+        },
+        (responseToken: string) => {
+          store.appendStreamingResponse(responseToken);
+        },
+        (finalResponse) => {
+          // Add assistant message to conversation
+          const assistantMessage: DeepSeekMessage = {
+            role: 'assistant',
+            content: finalResponse.response
+          };
+          store.addMessage(assistantMessage);
+          store.setResponse(finalResponse);
+          store.setStreaming(false);
+        },
+        (error) => {
+          store.setError(error.message);
+          store.setStreaming(false);
+        }
+      );
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -181,29 +106,12 @@ class DeepSeekService {
     }
   }
 
-  static stopStreaming(): void {
-    const store = useDeepSeekStore.getState();
-    store.setStreaming(false);
-    store.setError(null);
-    console.log('DeepSeek streaming stopped by user');
-  }
-
-  static pauseStreaming(): void {
-    // TODO: Implement actual pause logic
-    console.log('DeepSeek streaming paused (not yet implemented)');
-  }
-
-  static resumeStreaming(): void {
-    // TODO: Implement actual resume logic
-    console.log('DeepSeek streaming resumed (not yet implemented)');
-  }
-
   static async processQuery(
     query: string,
     options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}
   ): Promise<void> {
     const store = useDeepSeekStore.getState();
-
+    
     try {
       // Set loading state
       store.setLoading(true);
@@ -211,7 +119,7 @@ class DeepSeekService {
 
       // Enhanced query with RAG context if enabled
       let enhancedQuery = query;
-
+      
       if (options.ragEnabled) {
         try {
           // Import ragService dynamically to avoid circular dependencies
@@ -221,12 +129,12 @@ class DeepSeekService {
             rerankingEnabled: true,
             hybridWeight: { semantic: 0.7, keyword: 0.3 }
           });
-
+          
           if (ragResults.results.length > 0) {
             const contextChunks = ragResults.results.slice(0, 5).map(result => 
               `[${result.category}] ${result.title}: ${result.content.substring(0, 500)}...`
             ).join('\n\n');
-
+            
             enhancedQuery = `Context from RAG 2.0 Database (${ragResults.totalResults} documents found):\n\n${contextChunks}\n\n---\n\nUser Question: ${query}`;
           }
         } catch (ragError) {
@@ -240,7 +148,7 @@ class DeepSeekService {
         try {
           const { mcpHubService } = await import('@/services/mcp/mcpHubService');
           const mcpContext = await mcpHubService.getContextForPrompt(query, 3);
-
+          
           if (mcpContext && !mcpContext.includes('No relevant')) {
             enhancedQuery = `${mcpContext}\n\n---\n\n${enhancedQuery}`;
           }
@@ -282,7 +190,7 @@ class DeepSeekService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       store.setError(errorMessage);
       console.error('DeepSeek query failed:', error);
-
+      
       // Don't re-throw - let the store handle the error state
     }
   }
@@ -300,19 +208,19 @@ class DeepSeekService {
 
   static async processDemoStreaming(query: string): Promise<void> {
     const store = useDeepSeekStore.getState();
-
+    
     store.setLoading(true);
     store.setStreaming(true);
     store.setError(null);
     store.clearStreamingContent();
-
+    
     const messages = [
       { role: 'user', content: query }
     ];
-
+    
     try {
       console.log('Starting demo streaming...');
-
+      
       const response = await fetch('/api/deepseek/demo-stream', {
         method: 'POST',
         headers: {
@@ -340,7 +248,7 @@ class DeepSeekService {
 
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split('\n\n');
-
+        
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts[i].trim();
           if (part.startsWith('data:')) {
@@ -357,13 +265,13 @@ class DeepSeekService {
                 },
                 processingTime: 3000
               };
-
+              
               // Add messages to conversation
               const userMessage = { role: 'user', content: query };
               const assistantMessage = { role: 'assistant', content: fullResponse };
               store.addMessage(userMessage);
               store.addMessage(assistantMessage);
-
+              
               store.setResponse(finalResponse);
               store.setStreaming(false);
               store.setLoading(false);
@@ -382,7 +290,7 @@ class DeepSeekService {
             }
           }
         }
-
+        
         buffer = parts[parts.length - 1];
       }
     } catch (error) {
@@ -403,5 +311,3 @@ class DeepSeekService {
     store.reset();
   }
 }
-
-export { DeepSeekService };

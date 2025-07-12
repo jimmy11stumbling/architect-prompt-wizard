@@ -70,75 +70,33 @@ export class MCPHub {
     console.log('MCP Hub: Rebuilding platform data cache...');
     
     try {
-      // Get all platforms and their related data with fallbacks
-      let platforms = [];
-      let knowledgeBase = [];
+      // Get all platforms and their related data
+      const platforms = await storage.getAllPlatforms();
+      const knowledgeBase = await storage.getAllKnowledgeBase();
       
-      try {
-        platforms = await storage.getAllPlatforms();
-      } catch (error) {
-        console.warn('Failed to fetch platforms:', error);
-        platforms = [];
-      }
-      
-      try {
-        knowledgeBase = await storage.getAllKnowledgeBase();
-      } catch (error) {
-        console.warn('Failed to fetch knowledge base:', error);
-        knowledgeBase = [];
-      }
-      
-      // Process platforms sequentially to reduce database load
-      const platformsData: MCPPlatformData[] = [];
-      
-      for (const platform of platforms) {
-        let features = [];
-        let integrations = [];
-        let pricing = [];
-        
-        try {
-          // Fetch data sequentially with individual error handling
-          try {
-            features = await storage.getPlatformFeatures(platform.id);
-          } catch (error) {
-            console.warn(`Failed to fetch features for platform ${platform.id}:`, error.message);
-            features = [];
-          }
-          
-          try {
-            integrations = await storage.getPlatformIntegrations(platform.id);
-          } catch (error) {
-            console.warn(`Failed to fetch integrations for platform ${platform.id}:`, error.message);
-            integrations = [];
-          }
-          
-          try {
-            pricing = await storage.getPlatformPricing(platform.id);
-          } catch (error) {
-            console.warn(`Failed to fetch pricing for platform ${platform.id}:`, error.message);
-            pricing = [];
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch data for platform ${platform.id}:`, error);
-        }
+      const platformsData: MCPPlatformData[] = await Promise.all(
+        platforms.map(async (platform) => {
+          const [features, integrations, pricing] = await Promise.all([
+            storage.getPlatformFeatures(platform.id),
+            storage.getPlatformIntegrations(platform.id),
+            storage.getPlatformPricing(platform.id)
+          ]);
 
-        // Get platform-specific knowledge base entries
-        const platformKnowledge = knowledgeBase.filter(kb => 
-          kb.title.toLowerCase().includes(platform.name.toLowerCase().split(' ')[0]) ||
-          kb.category?.toLowerCase().includes(platform.category?.toLowerCase() || '')
-        );
+          // Get platform-specific knowledge base entries
+          const platformKnowledge = knowledgeBase.filter(kb => 
+            kb.title.toLowerCase().includes(platform.name.toLowerCase().split(' ')[0]) ||
+            kb.category?.toLowerCase().includes(platform.category?.toLowerCase() || '')
+          );
 
-        platformsData.push({
-          platform,
-          features,
-          integrations,
-          pricing,
-          knowledgeBase: platformKnowledge
-        });
-        
-        // Small delay to prevent overwhelming the database
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+          return {
+            platform,
+            features,
+            integrations,
+            pricing,
+            knowledgeBase: platformKnowledge
+          };
+        })
+      );
 
       // Technology data with comprehensive information
       const technologies: MCPTechnologyData = {
@@ -253,37 +211,7 @@ export class MCPHub {
       
     } catch (error) {
       console.error('MCP Hub: Error rebuilding cache:', error);
-      
-      // Set minimal cache to prevent complete failure
-      this.cache = {
-        platforms: [],
-        technologies: {
-          rag2: {
-            description: "Advanced Retrieval-Augmented Generation",
-            features: [],
-            bestPractices: [],
-            implementation: [],
-            vectorDatabases: []
-          },
-          mcp: {
-            description: "Model Context Protocol",
-            tools: [],
-            resources: [],
-            bestPractices: [],
-            protocols: []
-          },
-          a2a: {
-            description: "Agent-to-Agent communication",
-            protocols: [],
-            patterns: [],
-            bestPractices: [],
-            coordination: []
-          }
-        },
-        platformMappings: {},
-        lastUpdated: new Date().toISOString()
-      };
-      this.cacheTimestamp = Date.now();
+      throw error;
     }
   }
 

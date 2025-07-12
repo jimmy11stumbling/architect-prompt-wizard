@@ -48,13 +48,7 @@ window.addEventListener('error', (event) => {
       event.error?.message?.includes('signal is aborted') ||
       event.error?.message?.includes('aborted without reason') ||
       event.error?.message?.includes('Failed to fetch') ||
-      event.error?.message?.includes('Authentication Fails') ||
-      event.error?.message?.includes('governor') ||
-      event.error?.message?.includes('DeepSeek API') ||
-      event.error?.message?.includes('WebSocket') ||
-      event.error?.message?.includes('Cannot set property message') ||
       event.error?.name === 'AbortError' ||
-      event.error?.name === 'TimeoutError' ||
       event.error instanceof TypeError ||
       event.error instanceof DOMException ||
       event.error.message?.includes('plugin:runtime-error-plugin') ||
@@ -62,7 +56,6 @@ window.addEventListener('error', (event) => {
       event.error.message?.includes('unknown runtime error')) {
     console.debug('Suppressed error:', event.error?.message || event.message);
     event.preventDefault();
-    event.stopPropagation();
   }
 });
 
