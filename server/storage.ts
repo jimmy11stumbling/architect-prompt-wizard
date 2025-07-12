@@ -30,7 +30,7 @@ import {
   type InsertKnowledgeBase
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or } from "drizzle-orm";
+import { eq, ilike, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User management
@@ -131,6 +131,19 @@ export class DatabaseStorage implements IStorage {
   // Platform integrations
   async getPlatformIntegrations(platformId: number): Promise<PlatformIntegration[]> {
     try {
+      // Check if table exists and has the required columns
+      const result = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'platform_integrations' 
+        AND column_name IN ('id', 'platform_id', 'integration_type', 'name')
+      `);
+      
+      if (result.rows.length < 4) {
+        console.warn('Platform integrations table missing required columns, returning empty array');
+        return [];
+      }
+      
       return await db.select().from(platformIntegrations).where(eq(platformIntegrations.platformId, platformId));
     } catch (error) {
       console.warn('Platform integrations query failed:', error);
@@ -149,6 +162,19 @@ export class DatabaseStorage implements IStorage {
   // Platform pricing
   async getPlatformPricing(platformId: number): Promise<PlatformPricing[]> {
     try {
+      // Check if table exists and has the required columns
+      const result = await db.execute(sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'platform_pricing' 
+        AND column_name IN ('id', 'platform_id', 'tier_name', 'price')
+      `);
+      
+      if (result.rows.length < 4) {
+        console.warn('Platform pricing table missing required columns, returning empty array');
+        return [];
+      }
+      
       return await db.select().from(platformPricing).where(eq(platformPricing.platformId, platformId));
     } catch (error) {
       console.warn('Platform pricing query failed:', error);
