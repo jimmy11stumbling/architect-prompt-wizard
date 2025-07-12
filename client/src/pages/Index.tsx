@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import ProjectSpecForm, { ProjectSpecFormHandle } from "@/components/ProjectSpecForm";
 import AgentWorkflow from "@/components/agent-workflow";
@@ -15,7 +14,11 @@ import TemplateApplicator from "@/components/templates/TemplateApplicator";
 import PlatformSelector from "@/components/platform/PlatformSelector";
 import PlatformTemplates from "@/components/platform/PlatformTemplates";
 import { ProjectSpec, PlatformType, PlatformConfig } from "@/types/ipa-types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, CheckCircle, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProjectGeneration } from "@/hooks/useProjectGeneration";
 import { realTimeResponseService } from "@/services/integration/realTimeResponseService";
@@ -34,7 +37,7 @@ const Index: React.FC = () => {
     outputFormat: "detailed"
   });
   const [currentProjectSpec, setCurrentProjectSpec] = useState<ProjectSpec | undefined>();
-  
+
   // Initialize and update project spec with selected platform
   useEffect(() => {
     const initialSpec: ProjectSpec = {
@@ -56,7 +59,7 @@ const Index: React.FC = () => {
       authenticationMethod: currentProjectSpec?.authenticationMethod || "JWT"
     };
     setCurrentProjectSpec(initialSpec);
-    
+
     // Also update the form ref if it exists
     if (projectFormRef.current) {
       projectFormRef.current.setSpec(initialSpec);
@@ -72,7 +75,7 @@ const Index: React.FC = () => {
     console.log(`Platform changed to: ${platform}`);
     setSelectedPlatform(platform);
     setPlatformConfig(config);
-    
+
     // Update the form with platform-specific defaults
     if (projectFormRef.current) {
       const currentSpec = projectFormRef.current.getSpec();
@@ -85,7 +88,7 @@ const Index: React.FC = () => {
       projectFormRef.current.setSpec(updatedSpec);
       setCurrentProjectSpec(updatedSpec); // Also update the local state
     }
-    
+
     toast({
       title: "Platform Selected",
       description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} platform configuration applied`,
@@ -94,15 +97,15 @@ const Index: React.FC = () => {
 
   const handleFormSpecChange = (spec: ProjectSpec) => {
     console.log("Index: Form spec changed", spec);
-    
+
     // Ensure the spec has a valid platform
     const validSpec = {
       ...spec,
       targetPlatform: spec.targetPlatform || selectedPlatform || 'cursor'
     };
-    
+
     setCurrentProjectSpec(validSpec);
-    
+
     // Update platform state if form changes platform
     if (validSpec.targetPlatform && validSpec.targetPlatform !== selectedPlatform) {
       console.log(`Platform changed in form from ${selectedPlatform} to ${validSpec.targetPlatform}`);
@@ -115,7 +118,7 @@ const Index: React.FC = () => {
       ...prev,
       [agentName]: ragContext
     }));
-    
+
     realTimeResponseService.addResponse({
       source: "rag-integration",
       status: "success",
@@ -134,12 +137,12 @@ const Index: React.FC = () => {
       ...spec,
       targetPlatform: spec.targetPlatform || selectedPlatform || 'cursor'
     };
-    
+
     console.log(`Submitting spec with platform: ${finalSpec.targetPlatform}`);
-    
+
     // Start the generation process
     handleStreamingSubmit(finalSpec);
-    
+
     // Scroll to the agent workflow section after a brief delay
     setTimeout(() => {
       if (agentWorkflowRef.current) {
@@ -153,19 +156,19 @@ const Index: React.FC = () => {
 
   const handleSelectTemplate = (spec: ProjectSpec) => {
     console.log("Index: Applying template from header", spec);
-    
+
     // Update platform state if template has platform info
     if (spec.targetPlatform) {
       setSelectedPlatform(spec.targetPlatform);
       setPlatformConfig(spec.platformSpecificConfig);
     }
-    
+
     if (projectFormRef.current) {
       projectFormRef.current.setSpec(spec);
     }
     setCurrentProjectSpec(spec);
     setActiveTab("create");
-    
+
     realTimeResponseService.addResponse({
       source: "template-selection",
       status: "success",
@@ -179,7 +182,7 @@ const Index: React.FC = () => {
         hasA2A: spec.a2aIntegrationDetails.length > 0
       }
     });
-    
+
     toast({
       title: "Template Applied with RAG Integration",
       description: "Comprehensive project template loaded with seamless RAG database access",
@@ -204,18 +207,18 @@ const Index: React.FC = () => {
               selectedPlatform={selectedPlatform}
               onPlatformChange={handlePlatformChange}
             />
-            
+
             {/* Platform-Specific Templates */}
             <PlatformTemplates
               selectedPlatform={selectedPlatform}
               onSelectTemplate={handleSelectTemplate}
             />
-            
+
             {/* Template Applicator */}
             <div className="flex justify-end items-center">
               <TemplateApplicator onApplyTemplate={handleSelectTemplate} />
             </div>
-            
+
             {/* Main Form */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-8">
