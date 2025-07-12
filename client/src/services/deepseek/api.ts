@@ -3,7 +3,7 @@ import { DeepSeekRequest, DeepSeekResponse, DeepSeekApiResponse } from './types'
 
 export class DeepSeekApi {
   private static readonly API_ENDPOINT = '/api/deepseek/query';
-  private static readonly TIMEOUT = 30000; // 30 seconds
+  private static readonly TIMEOUT = 60000; // 60 seconds for DeepSeek reasoning
 
   static async query(request: DeepSeekRequest): Promise<DeepSeekResponse> {
     const startTime = Date.now();
@@ -37,9 +37,12 @@ export class DeepSeekApi {
 
     } catch (error) {
       if (error.name === 'AbortError') {
-        throw new Error('DeepSeek API request timed out');
+        throw new Error('DeepSeek API request timed out after 60 seconds');
       }
-      throw error;
+      if (error.message?.includes('signal is aborted')) {
+        throw new Error('DeepSeek API request was cancelled');
+      }
+      throw new Error(`DeepSeek API error: ${error.message || 'Unknown error'}`);
     }
   }
 
@@ -58,6 +61,14 @@ export class DeepSeekApi {
     if (!response && reasoning) {
       response = reasoning;
       reasoning = 'DeepSeek reasoning process completed.';
+    }
+    
+    // Ensure we have meaningful content
+    if (!response) {
+      response = 'No response received from DeepSeek API';
+    }
+    if (!reasoning) {
+      reasoning = 'No reasoning provided by DeepSeek API';
     }
 
     return {

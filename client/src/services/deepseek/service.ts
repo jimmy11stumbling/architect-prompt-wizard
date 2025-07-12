@@ -47,6 +47,8 @@ export class DeepSeekService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       store.setError(errorMessage);
       console.error('DeepSeek query failed:', error);
+      
+      // Don't re-throw - let the store handle the error state
     }
   }
 
