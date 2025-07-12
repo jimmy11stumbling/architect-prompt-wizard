@@ -366,25 +366,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/agent-documentation", async (req, res) => {
     try {
       const { platform } = req.query;
-      const comprehensiveData = await mcpHub.getComprehensiveContext(platform as string);
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Documentation fetch timeout')), 5000)
+      );
+      
+      const dataPromise = mcpHub.getComprehensiveContext(platform as string);
+      const comprehensiveData = await Promise.race([dataPromise, timeoutPromise]) as any;
 
       // Convert to the format expected by existing agents
       const documentation = {
-        platforms: comprehensiveData.allPlatforms.map(p => ({
+        platforms: comprehensiveData.allPlatforms?.map(p => ({
           ...p.platform,
-          features: p.features,
-          integrations: p.integrations,
-          pricing: p.pricing
-        })),
-        knowledgeBase: comprehensiveData.allPlatforms.flatMap(p => p.knowledgeBase),
-        technologies: comprehensiveData.technologies,
+          features: p.features || [],
+          integrations: p.integrations || [],
+          pricing: p.pricing || []
+        })) || [],
+        knowledgeBase: comprehensiveData.allPlatforms?.flatMap(p => p.knowledgeBase || []) || [],
+        technologies: comprehensiveData.technologies || {},
         timestamp: new Date().toISOString()
       };
 
       res.json(documentation);
     } catch (error) {
       console.error("Error fetching agent documentation:", error);
-      res.status(500).json({ error: "Failed to fetch documentation" });
+      
+      // Return minimal documentation instead of failing
+      res.json({
+        platforms: [],
+        knowledgeBase: [],
+        technologies: {
+          rag2: { description: "RAG 2.0 system", features: [], bestPractices: [], implementation: [], vectorDatabases: [] },
+          mcp: { description: "Model Context Protocol", tools: [], resources: [], bestPractices: [], protocols: [] },
+          a2a: { description: "Agent-to-Agent communication", protocols: [], patterns: [], bestPractices: [], coordination: [] }
+        },
+        timestamp: new Date().toISOString(),
+        error: "Partial data due to database issues"
+      });
     }
   });
 
