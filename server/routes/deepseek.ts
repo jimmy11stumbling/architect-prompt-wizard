@@ -78,7 +78,7 @@ router.post('/stream', async (req, res) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-reasoner',
+        model: 'deepseek-chat',
         messages: enhancedMessages,
         stream: true,
         max_tokens: 8192,

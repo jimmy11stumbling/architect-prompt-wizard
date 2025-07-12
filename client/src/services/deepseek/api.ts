@@ -61,7 +61,8 @@ export class DeepSeekApi {
       });
 
       if (!response.ok) {
-        throw new Error(`Stream request failed: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Stream request failed: ${response.status} - ${errorText}`);
       }
 
       const reader = response.body?.getReader();
@@ -69,7 +70,7 @@ export class DeepSeekApi {
         throw new Error('No response body stream available');
       }
 
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let fullReasoning = '';
       let fullResponse = '';
@@ -79,7 +80,7 @@ export class DeepSeekApi {
         totalTokens: 0,
         reasoningTokens: 0
       };
-      let processingTime = 0;
+      let processingTime = Date.now();
 
       try {
         while (true) {
@@ -91,84 +92,71 @@ export class DeepSeekApi {
           }
 
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-            const dataStr = trimmed.slice(6);
-            if (dataStr === '[DONE]') {
-              console.log('Stream finished with [DONE]');
-              onComplete({
-                reasoning: fullReasoning,
-                response: fullResponse,
-                usage,
-                processingTime
-              });
-              return;
-            }
-
-            try {
-              const data = JSON.parse(dataStr);
-              console.log('Received streaming data:', data);
-
-              if (data.error) {
-                throw new Error(data.error);
+          const parts = buffer.split('\n\n');
+          
+          for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i].trim();
+            if (part.startsWith('data:')) {
+              const jsonStr = part.slice(5).trim();
+              if (jsonStr === '[DONE]') {
+                console.log('Stream finished with [DONE]');
+                onComplete({
+                  reasoning: fullReasoning,
+                  response: fullResponse,
+                  usage,
+                  processingTime: Date.now() - processingTime
+                });
+                return;
               }
 
-              if (data.choices && data.choices[0]) {
-                const choice = data.choices[0];
-                const delta = choice.delta;
+              try {
+                const parsed = JSON.parse(jsonStr);
+                console.log('Received streaming data:', parsed);
 
-                if (delta) {
-                  // Handle reasoning content streaming
-                  if (delta.reasoning_content) {
-                    console.log('Reasoning token:', delta.reasoning_content);
-                    fullReasoning += delta.reasoning_content;
-                    onReasoningToken(delta.reasoning_content);
-                  }
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
 
-                  // Handle response content streaming
-                  if (delta.content) {
-                    console.log('Response token:', delta.content);
-                    fullResponse += delta.content;
-                    onResponseToken(delta.content);
+                if (parsed.choices && parsed.choices[0]) {
+                  const choice = parsed.choices[0];
+                  const delta = choice.delta;
+
+                  if (delta) {
+                    // Handle reasoning content for deepseek-reasoner
+                    if (delta.reasoning_content) {
+                      const reasoningToken = delta.reasoning_content;
+                      fullReasoning += reasoningToken;
+                      onReasoningToken(reasoningToken);
+                    }
+                    
+                    // Handle response content for deepseek-chat
+                    if (delta.content) {
+                      const responseToken = delta.content;
+                      fullResponse += responseToken;
+                      onResponseToken(responseToken);
+                    }
                   }
                 }
+                
+                // Update usage statistics if available
+                if (parsed.usage) {
+                  usage = parsed.usage;
+                }
+              } catch (parseError) {
+                console.warn('JSON parse error:', parseError);
               }
-
-              // Update usage stats if available
-              if (data.usage) {
-                usage = data.usage;
-              }
-
-              // Update processing time if available
-              if (data.processingTime) {
-                processingTime = data.processingTime;
-              }
-
-            } catch (parseError) {
-              console.warn('Failed to parse streaming data:', parseError, 'Raw data:', dataStr);
             }
           }
+          
+          buffer = parts[parts.length - 1];
         }
-
-        // If we reach here without [DONE], complete anyway
-        onComplete({
-          reasoning: fullReasoning,
-          response: fullResponse,
-          usage,
-          processingTime
-        });
-
-      } finally {
-        reader.releaseLock();
+      } catch (streamError) {
+        console.error('Stream reading error:', streamError);
+        throw streamError;
       }
     } catch (error) {
       console.error('Streaming error:', error);
-      onError(error instanceof Error ? error : new Error('Unknown streaming error'));
+      onError(error instanceof Error ? error : new Error('Streaming failed'));
     }
   }
 }
