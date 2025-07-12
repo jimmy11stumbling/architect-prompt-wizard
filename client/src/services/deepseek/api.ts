@@ -45,7 +45,7 @@ export class DeepSeekApi {
     onError: (error: Error) => void
   ): Promise<void> {
     try {
-      console.log('Starting DeepSeek streaming request...');
+      console.log('🚀 Starting DeepSeek streaming request...');
 
       const response = await fetch(`${this.BASE_URL}/stream`, {
         method: 'POST',
@@ -62,14 +62,23 @@ export class DeepSeekApi {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`DeepSeek API failed: ${response.status} - ${errorText}`);
+        console.warn(`⚠️ DeepSeek API failed: ${response.status} - ${errorText}`);
         
-        // If authentication fails, automatically fall back to demo mode
-        if (response.status === 401 || errorText.includes('Authentication Fails')) {
-          console.log('🔄 Authentication failed, falling back to demo streaming...');
-          // Trigger demo streaming instead
+        // If authentication fails, automatically fall back to demo streaming
+        if (response.status === 401 || errorText.includes('Authentication Fails') || errorText.includes('governor')) {
+          console.log('🎬 Authentication failed, automatically switching to demo streaming...');
+          
+          // Import and call demo streaming directly with proper callbacks
           const { DeepSeekService } = await import('./service');
-          await DeepSeekService.processDemoStreaming(request.messages[request.messages.length - 1]?.content || 'Demo query');
+          
+          // Start demo streaming with the same callbacks
+          await this.startDemoStreaming(
+            request.messages[request.messages.length - 1]?.content || 'Demo query',
+            onReasoningToken,
+            onResponseToken,
+            onComplete,
+            onError
+          );
           return;
         }
         
@@ -168,6 +177,76 @@ export class DeepSeekApi {
     } catch (error) {
       console.error('Streaming error:', error);
       onError(error instanceof Error ? error : new Error('Streaming failed'));
+    }
+  }
+
+  // Demo streaming method with proper token-by-token simulation
+  static async startDemoStreaming(
+    query: string,
+    onReasoningToken: (token: string) => void,
+    onResponseToken: (token: string) => void,
+    onComplete: (response: DeepSeekResponse) => void,
+    onError: (error: Error) => void
+  ): Promise<void> {
+    try {
+      console.log('🎬 Starting demo token-by-token streaming...');
+      
+      // Simulate reasoning phase
+      const reasoningText = `Let me think about "${query}"...\n\nFirst, I need to understand what the user is asking for. This appears to be a question about streaming functionality.\n\nThe key components involved are:\n1. Real-time token streaming\n2. Visual feedback systems\n3. Authentication handling\n4. Demo mode capabilities\n\nBased on this analysis, I should provide a comprehensive response that addresses the streaming visualization features.`;
+      
+      const reasoningTokens = reasoningText.split('');
+      
+      // Stream reasoning tokens
+      for (let i = 0; i < reasoningTokens.length; i++) {
+        onReasoningToken(reasoningTokens[i]);
+        await new Promise(resolve => setTimeout(resolve, 20)); // 50 tokens/second
+      }
+      
+      // Small pause between reasoning and response
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Simulate response phase  
+      const responseText = `The StreamingInterface component is specifically designed for **real-time token-by-token streaming visualization** of DeepSeek Reasoner responses.
+
+**Key Features:**
+🔥 **Live Token Streaming** - Shows each token as it arrives
+📊 **Real-time Metrics** - Tokens per second, elapsed time, progress bars
+🧠 **Reasoning Visualization** - Displays the AI's thinking process in real-time
+✨ **Visual Feedback** - Animated indicators, blinking cursors, status updates
+⚡ **Streaming Controls** - Pause, resume, stop functionality
+
+**Current Issue:** The authentication is failing ("governor" error), so the component automatically falls back to this demo mode to showcase the visual capabilities.
+
+**What You're Seeing Now:** This is the demo streaming in action - each character appearing with realistic timing to simulate the actual DeepSeek API streaming behavior.
+
+Once the API authentication is fixed, you'll get the same visual experience but with real DeepSeek reasoning and responses!`;
+
+      const responseTokens = responseText.split('');
+      
+      // Stream response tokens
+      for (let i = 0; i < responseTokens.length; i++) {
+        onResponseToken(responseTokens[i]);
+        await new Promise(resolve => setTimeout(resolve, 25)); // 40 tokens/second
+      }
+      
+      // Complete the streaming
+      onComplete({
+        reasoning: reasoningText,
+        response: responseText,
+        usage: {
+          promptTokens: query.length,
+          completionTokens: responseText.length,
+          totalTokens: query.length + responseText.length,
+          reasoningTokens: reasoningText.length
+        },
+        processingTime: 8000
+      });
+      
+      console.log('✅ Demo streaming completed successfully!');
+      
+    } catch (error) {
+      console.error('❌ Demo streaming error:', error);
+      onError(error instanceof Error ? error : new Error('Demo streaming failed'));
     }
   }
 }

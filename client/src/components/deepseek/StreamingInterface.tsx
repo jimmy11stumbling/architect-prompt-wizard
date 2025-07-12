@@ -489,22 +489,34 @@ export default function StreamingInterface() {
 
       {/* AI Working Status - Show when streaming starts */}
       {storeIsStreaming && (
-        <Card className="border-yellow-500 bg-gradient-to-r from-yellow-900/20 to-orange-900/20">
+        <Card className="border-yellow-500 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 shadow-lg shadow-yellow-400/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Brain className="h-8 w-8 text-yellow-400 animate-pulse" />
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
               </div>
-              <div>
-                <div className="text-lg font-semibold text-yellow-400">DeepSeek AI is Working Hard</div>
-                <div className="text-sm text-gray-300">
-                  {!streamingReasoning && !streamingResponse ? 'Connecting to AI...' :
-                   streamingReasoning && !streamingResponse ? '🤖 Deep reasoning in progress...' :
-                   streamingResponse ? '📝 Generating final response...' : 'Processing...'}
+              <div className="flex-1">
+                <div className="text-lg font-semibold text-yellow-400">
+                  {demoMode ? '🎬 Demo Mode: ' : '🤖 DeepSeek AI: '}
+                  Token-by-Token Streaming Active
                 </div>
+                <div className="text-sm text-gray-300">
+                  {!streamingReasoning && !streamingResponse ? 'Initializing stream...' :
+                   streamingReasoning && !streamingResponse ? '🧠 Reasoning tokens flowing...' :
+                   streamingResponse ? '📝 Response tokens streaming...' : 'Processing...'}
+                </div>
+                {demoMode && (
+                  <div className="text-xs text-yellow-300 mt-1">
+                    ⚡ Demo showcasing real-time streaming visualization
+                  </div>
+                )}
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex items-center gap-3">
+                <div className="text-center">
+                  <div className="text-xs text-gray-400">Tokens/sec</div>
+                  <div className="text-lg font-mono text-green-400">{streamingSpeed}</div>
+                </div>
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
