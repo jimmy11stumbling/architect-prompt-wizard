@@ -247,10 +247,10 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
         <Badge variant="secondary">{filteredTemplates.length} available</Badge>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-4">
         {filteredTemplates.map((template) => (
-          <>
-            <div key={`${template.id}-header`} className="flex items-start justify-between">
+          <div key={template.id} className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 {template.icon}
                 <div>
@@ -262,7 +262,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
               </div>
             </div>
             
-            <div key={`${template.id}-tags`} className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1">
               {template.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
                   {tag}
@@ -271,14 +271,13 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
             </div>
 
             <Button
-              key={`${template.id}-button`}
               size="sm"
               className="w-full text-xs"
               onClick={() => onSelectTemplate(template.spec)}
             >
               Use This Template
             </Button>
-          </>
+          </div>
         ))}
       </div>
     </div>
