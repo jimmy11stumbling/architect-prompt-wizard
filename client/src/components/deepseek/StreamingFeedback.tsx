@@ -18,6 +18,7 @@ export default function StreamingFeedback({
   reasoningTokens = 0, 
   responseTokens = 0 
 }: StreamingFeedbackProps) {
+  // Always show during any activity
   if (!active) return null;
 
   const getStageInfo = () => {

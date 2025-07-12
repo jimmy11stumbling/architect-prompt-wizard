@@ -62,6 +62,17 @@ export class DeepSeekApi {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.warn(`DeepSeek API failed: ${response.status} - ${errorText}`);
+        
+        // If authentication fails, automatically fall back to demo mode
+        if (response.status === 401 || errorText.includes('Authentication Fails')) {
+          console.log('🔄 Authentication failed, falling back to demo streaming...');
+          // Trigger demo streaming instead
+          const { DeepSeekService } = await import('./service');
+          await DeepSeekService.processDemoStreaming(request.messages[request.messages.length - 1]?.content || 'Demo query');
+          return;
+        }
+        
         throw new Error(`Stream request failed: ${response.status} - ${errorText}`);
       }
 

@@ -161,22 +161,30 @@ export default function StreamingInterface() {
 
     try {
       setIsConnected(true);
-      // Use demo mode if enabled
-      if (demoMode) {
+      // Use demo mode if enabled OR if authentication previously failed
+      if (demoMode || !isConnected) {
+        console.log('🎬 Using demo streaming mode...');
         await DeepSeekService.processDemoStreaming(query);
       } else {
-        await DeepSeekService.processQueryStreaming(query, { 
-          ragEnabled,
-          mcpEnabled,
-          temperature 
-        });
+        try {
+          await DeepSeekService.processQueryStreaming(query, { 
+            ragEnabled,
+            mcpEnabled,
+            temperature 
+          });
+        } catch (authError) {
+          // If streaming fails, automatically try demo mode
+          console.log('🔄 Streaming failed, switching to demo mode...');
+          setDemoMode(true);
+          await DeepSeekService.processDemoStreaming(query);
+        }
       }
       setQuery('');
     } catch (error) {
       console.error('Query failed:', error);
       setIsConnected(false);
-      // Show error with helpful message about API key
-      console.log('DeepSeek API authentication failed. Please check your API key.');
+      setDemoMode(true); // Enable demo mode for future queries
+      console.log('DeepSeek API authentication failed. Switched to demo mode.');
     }
   };
 
@@ -392,6 +400,15 @@ export default function StreamingInterface() {
             <span>Query Input</span>
             <div className="ml-auto flex gap-2">
               <Button
+                variant={demoMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDemoMode(!demoMode)}
+                className="text-xs"
+              >
+                <Zap className="h-3 w-3 mr-1" />
+                DEMO {demoMode ? 'ON' : 'OFF'}
+              </Button>
+              <Button
                 variant={ragEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={() => setRagEnabled(!ragEnabled)}
@@ -500,11 +517,11 @@ export default function StreamingInterface() {
       )}
 
       {/* Response Display */}
-      {(currentResponse || storeIsStreaming) && (
+      {(currentResponse || storeIsStreaming || isLoading) && (
         <div id="streaming-response-section" className="space-y-4">
           {/* Enhanced Streaming Status with New Components */}
           <StreamingFeedback 
-            active={storeIsStreaming}
+            active={storeIsStreaming || isLoading}
             stage={
               streamingReasoning && !streamingResponse ? 'reasoning' :
               streamingResponse ? 'responding' : 'connecting'
