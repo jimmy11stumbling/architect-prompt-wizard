@@ -652,8 +652,7 @@ export async function seedPlatformData() {
       { platformId: base44Platform.id, planName: "Enterprise", pricePerMonth: "Custom", features: ["All Business features", "Custom security", "Dedicated support", "SLA"], limits: { custom: "tailored", sla: "99.9%" } },
 
       // Rork pricing
-      { platformId: rorkPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic app generation", "In-browser testing", "Limited projects"], limits: { projects: "3", builds: "10/month" } },```text
-{ projects: "3", builds: "10/month" } },
+      { platformId: rorkPlatform.id, planName: "Free", pricePerMonth: "Free", features: ["Basic app generation", "In-browser testing", "Limited projects"], limits: { projects: "3", builds: "10/month" } },
       { platformId: rorkPlatform.id, planName: "Pro", pricePerMonth: "$19", features: ["Unlimited projects", "App Store publishing", "Advanced features", "Priority support"], limits: { projects: "unlimited", builds: "unlimited" } },
       { platformId: rorkPlatform.id, planName: "Team", pricePerMonth: "$49", features: ["All Pro features", "Team collaboration", "Shared workspace", "Admin controls"], limits: { team: "5 users", shared: "workspace" } },
 
