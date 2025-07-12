@@ -12,6 +12,7 @@ import { Brain, MessageSquare, Zap, Clock, Activity, Send, Loader2 } from 'lucid
 interface StreamingMessage {
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
   timestamp: number;
   streaming?: boolean;
 }
@@ -149,7 +150,7 @@ export default function StreamingInterface() {
       setMessages(prev => 
         prev.map((msg, index) => 
           index === prev.length - 1 
-            ? { ...msg, content: currentStreamingContent, streaming: false }
+            ? { ...msg, content: currentStreamingContent, reasoning: currentReasoning, streaming: false }
             : msg
         )
       );
@@ -159,7 +160,7 @@ export default function StreamingInterface() {
       setMessages(prev => 
         prev.map((msg, index) => 
           index === prev.length - 1 
-            ? { ...msg, content: 'Error: Failed to get response', streaming: false }
+            ? { ...msg, content: 'Error: Failed to get response', reasoning: 'Error occurred during processing', streaming: false }
             : msg
         )
       );
@@ -198,30 +199,64 @@ export default function StreamingInterface() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
-                Chat Interface
+                DeepSeek Reasoning & Response
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-96 w-full border rounded-lg p-4 mb-4">
                 {messages.map((message, index) => (
-                  <div key={index} className={`mb-4 ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    <div className={`inline-block p-3 rounded-lg max-w-[80%] ${
-                      message.role === 'user' 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-100 dark:bg-gray-800 border'
-                    }`}>
-                      <div className="whitespace-pre-wrap text-sm">
-                        {message.streaming && index === messages.length - 1 
-                          ? currentStreamingContent 
-                          : message.content}
-                      </div>
-                      {message.streaming && index === messages.length - 1 && (
-                        <div className="mt-2 flex items-center gap-2 text-xs opacity-70">
-                          <Activity className="h-3 w-3 animate-pulse" />
-                          Streaming...
+                  <div key={index} className={`mb-6 ${message.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    {message.role === 'user' ? (
+                      <div className="inline-block p-3 rounded-lg max-w-[80%] bg-blue-600 text-white">
+                        <div className="whitespace-pre-wrap text-sm">
+                          {message.content}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="w-full space-y-4">
+                        {/* Reasoning Section - Shows First */}
+                        {(currentReasoning || (message.streaming && index === messages.length - 1)) && (
+                          <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Brain className="h-4 w-4 text-purple-600" />
+                                Chain-of-Thought Reasoning
+                                {message.streaming && index === messages.length - 1 && (
+                                  <Activity className="h-3 w-3 animate-pulse text-purple-600" />
+                                )}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="text-sm whitespace-pre-wrap text-gray-700 dark:text-gray-300 max-h-64 overflow-y-auto">
+                                {message.streaming && index === messages.length - 1 
+                                  ? currentReasoning 
+                                  : message.reasoning || 'Processing reasoning...'}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        {/* Response Section - Shows Below Reasoning */}
+                        <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                              <MessageSquare className="h-4 w-4 text-green-600" />
+                              Final Response
+                              {message.streaming && index === messages.length - 1 && (
+                                <Activity className="h-3 w-3 animate-pulse text-green-600" />
+                              )}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="text-sm whitespace-pre-wrap max-h-64 overflow-y-auto">
+                              {message.streaming && index === messages.length - 1 
+                                ? currentStreamingContent || 'Generating response...'
+                                : message.content}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
