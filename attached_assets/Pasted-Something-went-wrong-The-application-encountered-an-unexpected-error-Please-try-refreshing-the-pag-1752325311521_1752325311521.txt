@@ -1,0 +1,18 @@
+Something went wrong
+The application encountered an unexpected error. Please try refreshing the page or resetting the component.
+
+Error Details (Development Mode)
+Error: TextAreaField is not defined
+Stack:
+ReferenceError: TextAreaField is not defined
+    at AdvancedFeaturesSection (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/src/components/project-form/AdvancedFeaturesSection.tsx:261:7)
+    at renderWithHooks (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:11548:26)
+    at mountIndeterminateComponent (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:14926:21)
+    at beginWork (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:15914:22)
+    at beginWork$1 (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:19753:22)
+    at performUnitOfWork (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:19198:20)
+    at workLoopSync (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:19137:13)
+    at renderRootSync (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:19116:15)
+    at recoverFromConcurrentError (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:18736:28)
+    at performConcurrentWorkOnRoot (https://803e1b6b-5b13-4d24-a45f-cfab25fbcdc5-00-3kkn238beyxmx.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-WERSD76P.js?v=538a3f8c:18684:30)
+Try Again
