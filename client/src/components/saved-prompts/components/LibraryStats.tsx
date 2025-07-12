@@ -53,7 +53,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats }) => {
             <Star className="h-4 w-4 text-yellow-500" />
             <div>
               <p className="text-sm font-medium">Avg Rating</p>
-              <p className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</p>
+              <p className="text-2xl font-bold">{(stats.averageRating || 0).toFixed(1)}</p>
             </div>
           </div>
         </CardContent>
