@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, User, AlertCircle, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AgentStatusIcon } from './AgentStatusIcon';
 
 interface AgentContentProps {
   agent: AgentStatus;
