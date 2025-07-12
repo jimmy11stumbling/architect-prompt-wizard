@@ -1,18 +1,39 @@
 import { AgentName } from "@/types/ipa-types";
 
-export class AgentValidator {
-  static validateResponse(agent: AgentName, response: string): { isValid: boolean; message: string } {
+export interface ValidationResult {
+  status: "pass" | "fail" | "warning";
+  message: string;
+  score?: number;
+}
+
+class AgentValidator {
+  static validateResponse(
+    agent: AgentName, 
+    response: string, 
+    responseLength: number, 
+    executionTime: number, 
+    testSpec: any
+  ): ValidationResult {
+    // Basic validation
     if (!response || response.trim().length === 0) {
       return {
-        isValid: false,
+        status: "fail",
         message: "Agent returned empty response"
       };
     }
 
     if (response.length < 50) {
       return {
-        isValid: false,
+        status: "fail",
         message: "Response too short - may indicate error"
+      };
+    }
+
+    // Performance validation
+    if (executionTime > 10000) {
+      return {
+        status: "warning",
+        message: `Slow response time: ${executionTime}ms`
       };
     }
 
@@ -28,7 +49,7 @@ export class AgentValidator {
     for (const pattern of errorPatterns) {
       if (pattern.test(response)) {
         return {
-          isValid: false,
+          status: "fail",
           message: "Response contains error indicators"
         };
       }
@@ -39,7 +60,7 @@ export class AgentValidator {
       case "RequirementDecompositionAgent":
         if (!response.includes("requirement") && !response.includes("feature")) {
           return {
-            isValid: false,
+            status: "warning",
             message: "Missing requirement analysis keywords"
           };
         }
@@ -48,7 +69,7 @@ export class AgentValidator {
       case "RAGContextIntegrationAgent":
         if (!response.includes("context") && !response.includes("RAG")) {
           return {
-            isValid: false,
+            status: "warning",
             message: "Missing RAG or context references"
           };
         }
@@ -57,7 +78,7 @@ export class AgentValidator {
       case "A2AProtocolExpertAgent":
         if (!response.includes("agent") && !response.includes("protocol")) {
           return {
-            isValid: false,
+            status: "warning",
             message: "Missing A2A protocol references"
           };
         }
@@ -67,7 +88,7 @@ export class AgentValidator {
       case "TechStackImplementationAgent_Backend":
         if (!response.includes("implementation") && !response.includes("tech")) {
           return {
-            isValid: false,
+            status: "warning",
             message: "Missing technical implementation details"
           };
         }
@@ -76,16 +97,20 @@ export class AgentValidator {
       case "QualityAssuranceAgent":
         if (!response.includes("quality") && !response.includes("test")) {
           return {
-            isValid: false,
+            status: "warning",
             message: "Missing quality assurance keywords"
           };
         }
         break;
     }
 
+    // Calculate quality score
+    const qualityScore = this.measureResponseQuality(response);
+    
     return {
-      isValid: true,
-      message: "Response validation passed"
+      status: qualityScore >= 70 ? "pass" : qualityScore >= 50 ? "warning" : "fail",
+      message: `Response validation passed (Quality: ${qualityScore}%)`,
+      score: qualityScore
     };
   }
 

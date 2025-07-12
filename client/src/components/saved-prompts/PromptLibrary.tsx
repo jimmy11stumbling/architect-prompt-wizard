@@ -1,4 +1,3 @@
-
 import React from "react";
 import { SavedPrompt } from "@/services/api/promptService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -109,13 +108,13 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
                     <CardDescription className="line-clamp-2">{prompt.description}</CardDescription>
                   )}
                 </CardHeader>
-                
+
                 <CardContent>
                   <div className="space-y-3">
                     <div className="text-sm text-muted-foreground line-clamp-3">
                       {prompt.prompt.substring(0, 150)}...
                     </div>
-                    
+
                     {prompt.tags && prompt.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {prompt.tags.slice(0, 3).map((tag) => (
@@ -130,7 +129,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
                         )}
                       </div>
                     )}
-                    
+
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{new Date(prompt.timestamp).toLocaleDateString()}</span>
                       <div className="flex items-center gap-2">
@@ -145,7 +144,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
@@ -168,7 +167,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
               </Card>
             ))}
           </div>
-          
+
           {filteredPrompts.length === 0 && (
             <div className="text-center py-8">
               <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -246,7 +245,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
               Discover and share prompts with the community
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {prompts.filter(p => p.isPublic).map((prompt) => (
               <Card key={prompt.id}>

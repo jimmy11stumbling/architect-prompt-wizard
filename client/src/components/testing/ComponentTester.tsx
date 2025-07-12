@@ -22,42 +22,36 @@ const ComponentTester: React.FC = () => {
     
     const results: TestResult[] = [];
 
-    // Test 1: Project Form Submission
+    // Test 1: Project Form Submission - Real API Test
     try {
-      const testSpec: ProjectSpec = {
-        projectDescription: "Test project",
-        frontendTechStack: ["React"],
-        backendTechStack: ["Express"],
-        customFrontendTech: [],
-        customBackendTech: [],
-        a2aIntegrationDetails: "Test A2A",
-        additionalFeatures: "Test features",
-        ragVectorDb: "Pinecone",
-        customRagVectorDb: "",
-        mcpType: "Standard MCP",
-        customMcpType: "",
-        advancedPromptDetails: "Test prompt details"
-      };
-      
-      // Simulate form validation
-      if (testSpec.projectDescription && testSpec.frontendTechStack.length > 0) {
-        results.push({
-          component: "ProjectSpecForm",
-          status: "pass",
-          message: "Form validation and submission working correctly"
-        });
+      const response = await fetch('/api/platforms');
+      if (response.ok) {
+        const platforms = await response.json();
+        if (platforms && Array.isArray(platforms) && platforms.length > 0) {
+          results.push({
+            component: "ProjectSpecForm",
+            status: "pass",
+            message: `Form data loaded successfully (${platforms.length} platforms)`
+          });
+        } else {
+          results.push({
+            component: "ProjectSpecForm",
+            status: "warning",
+            message: "Form data exists but no platforms found"
+          });
+        }
       } else {
         results.push({
           component: "ProjectSpecForm",
           status: "fail",
-          message: "Form validation failed"
+          message: `Platform API failed: ${response.status}`
         });
       }
     } catch (error) {
       results.push({
         component: "ProjectSpecForm",
         status: "fail",
-        message: `Form error: ${error}`
+        message: `Platform API error: ${error instanceof Error ? error.message : String(error)}`
       });
     }
 
@@ -81,39 +75,58 @@ const ComponentTester: React.FC = () => {
       });
     }
 
-    // Test 3: Vector Database Options
+    // Test 3: RAG System Connectivity
     try {
-      const vectorDbs = ["Pinecone", "Weaviate", "Milvus", "Qdrant", "Chroma", "PGVector", "None"];
-      if (vectorDbs.length > 0) {
+      const ragResponse = await Promise.race([
+        fetch('/api/rag/stats'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+      ]) as Response;
+      
+      if (ragResponse.ok) {
+        const ragData = await ragResponse.json();
         results.push({
-          component: "VectorDatabaseSelector",
+          component: "RAGSystem",
           status: "pass",
-          message: "Vector database options are available"
+          message: `RAG system operational (${ragData.documentsIndexed} docs, ${ragData.chunksIndexed} chunks)`
+        });
+      } else {
+        results.push({
+          component: "RAGSystem",
+          status: "warning",
+          message: `RAG system responded but with status: ${ragResponse.status}`
         });
       }
     } catch (error) {
       results.push({
-        component: "VectorDatabaseSelector",
+        component: "RAGSystem",
         status: "fail",
-        message: `Vector DB error: ${error}`
+        message: `RAG system error: ${error instanceof Error ? error.message : String(error)}`
       });
     }
 
-    // Test 4: MCP Options
+    // Test 4: MCP System Connectivity
     try {
-      const mcpTypes = ["Standard MCP", "Extended MCP", "MCP with Tools", "MCP with Resources", "None"];
-      if (mcpTypes.length > 0) {
+      const mcpResponse = await fetch('/api/mcp/tools');
+      if (mcpResponse.ok) {
+        const mcpData = await mcpResponse.json();
+        const toolCount = mcpData.tools ? mcpData.tools.length : 0;
         results.push({
-          component: "MCPSelector",
-          status: "pass",
-          message: "MCP options are available"
+          component: "MCPSystem",
+          status: toolCount > 0 ? "pass" : "warning",
+          message: `MCP system operational (${toolCount} tools available)`
+        });
+      } else {
+        results.push({
+          component: "MCPSystem",
+          status: "fail",
+          message: `MCP API failed: ${mcpResponse.status}`
         });
       }
     } catch (error) {
       results.push({
-        component: "MCPSelector",
+        component: "MCPSystem",
         status: "fail",
-        message: `MCP error: ${error}`
+        message: `MCP system error: ${error instanceof Error ? error.message : String(error)}`
       });
     }
 
@@ -142,44 +155,78 @@ const ComponentTester: React.FC = () => {
       });
     }
 
-    // Test 6: Agent Workflow
+    // Test 6: A2A Communication System
     try {
-      const agents = ["RequirementDecompositionAgent", "RAGContextIntegrationAgent"];
-      if (agents.length > 0) {
+      const a2aResponse = await fetch('/api/a2a/agents');
+      if (a2aResponse.ok) {
+        const a2aData = await a2aResponse.json();
+        const agentCount = a2aData.agents ? a2aData.agents.length : 0;
         results.push({
-          component: "AgentWorkflow",
-          status: "pass",
-          message: "Agent workflow components available"
+          component: "A2ASystem",
+          status: agentCount > 0 ? "pass" : "warning",
+          message: `A2A system operational (${agentCount} agents registered)`
+        });
+      } else {
+        results.push({
+          component: "A2ASystem",
+          status: "warning",
+          message: "A2A system not responding, using fallback"
         });
       }
     } catch (error) {
       results.push({
-        component: "AgentWorkflow",
-        status: "fail",
-        message: `Agent workflow error: ${error}`
+        component: "A2ASystem",
+        status: "warning",
+        message: "A2A system offline, agents work independently"
       });
     }
 
-    // Test 7: Saved Prompts (localStorage simulation)
+    // Test 7: Authentication System
     try {
-      // Test localStorage functionality
-      const testPrompt = { id: 1, prompt: "test", projectName: "test", createdAt: new Date().toISOString() };
-      localStorage.setItem("test-prompt", JSON.stringify(testPrompt));
-      const retrieved = localStorage.getItem("test-prompt");
-      localStorage.removeItem("test-prompt");
-      
-      if (retrieved) {
+      const authResponse = await fetch('/api/auth/me');
+      if (authResponse.ok) {
         results.push({
-          component: "SavedPrompts",
+          component: "AuthenticationSystem",
           status: "pass",
-          message: "Local storage functionality working"
+          message: "Authentication API responding correctly"
+        });
+      } else {
+        results.push({
+          component: "AuthenticationSystem",
+          status: "warning",
+          message: `Auth API status: ${authResponse.status}`
         });
       }
     } catch (error) {
       results.push({
-        component: "SavedPrompts",
+        component: "AuthenticationSystem",
         status: "fail",
-        message: `Saved prompts error: ${error}`
+        message: `Auth system error: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+
+    // Test 8: Database Connectivity
+    try {
+      const promptsResponse = await fetch('/api/prompts');
+      if (promptsResponse.ok) {
+        const prompts = await promptsResponse.json();
+        results.push({
+          component: "DatabaseConnectivity",
+          status: "pass",
+          message: `Database operational (${Array.isArray(prompts) ? prompts.length : 0} saved prompts)`
+        });
+      } else {
+        results.push({
+          component: "DatabaseConnectivity",
+          status: "fail",
+          message: `Database API failed: ${promptsResponse.status}`
+        });
+      }
+    } catch (error) {
+      results.push({
+        component: "DatabaseConnectivity",
+        status: "fail",
+        message: `Database error: ${error instanceof Error ? error.message : String(error)}`
       });
     }
 
