@@ -72,6 +72,10 @@ export class DeepSeekStreamingClient {
       let buffer = "";
       let fullResponse = "";
       let fullReasoning = "";
+      
+      // Throttling mechanism to reduce UI jumping
+      let lastUpdateTime = 0;
+      const UPDATE_THROTTLE_MS = 50; // Minimum 50ms between UI updates
 
       realTimeResponseService.addResponse({
         source: "deepseek-streaming",
@@ -111,18 +115,30 @@ export class DeepSeekStreamingClient {
               const choice = parsed.choices?.[0];
               
               if (choice?.delta) {
+                const now = Date.now();
+                
                 // Handle main content tokens
                 const contentToken = choice.delta.content;
                 if (contentToken) {
                   fullResponse += contentToken;
-                  options.onToken?.(contentToken);
+                  
+                  // Throttle UI updates to prevent jumping
+                  if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
+                    options.onToken?.(contentToken);
+                    lastUpdateTime = now;
+                  }
                 }
 
                 // Handle reasoning tokens (if available)
                 const reasoningToken = choice.delta.reasoning_content;
                 if (reasoningToken) {
                   fullReasoning += reasoningToken;
-                  options.onReasoningToken?.(reasoningToken);
+                  
+                  // Throttle UI updates to prevent jumping
+                  if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
+                    options.onReasoningToken?.(reasoningToken);
+                    lastUpdateTime = now;
+                  }
                 }
               }
             } catch (e) {

@@ -23,6 +23,7 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
     <Collapsible
       open={isOpen}
       onOpenChange={onToggle}
+      className="transition-all duration-200 ease-in-out"
     >
       <div className="flex items-center">
         <div className="mr-3">
@@ -53,13 +54,13 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
         )}
       </div>
       
-      <CollapsibleContent>
+      <CollapsibleContent className="transition-all duration-200 ease-in-out">
         {(agent.output || agent.result) && (
           <div className="mt-3 border-t border-ipa-border pt-3">
             <div className="text-sm font-medium mb-1">Output:</div>
-            <pre className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40">
+            <div className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40 min-h-[40px] whitespace-pre-wrap break-words">
               {agent.output || agent.result}
-            </pre>
+            </div>
           </div>
         )}
       </CollapsibleContent>

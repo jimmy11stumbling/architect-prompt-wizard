@@ -48,16 +48,34 @@ const StreamingResponse: React.FC<StreamingResponseProps> = ({
   const reasoningRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Auto-scroll to bottom as new content streams in
+  // Smooth auto-scroll to bottom as new content streams in
   useEffect(() => {
     if (responseRef.current && isStreaming) {
-      responseRef.current.scrollTop = responseRef.current.scrollHeight;
+      const scrollArea = responseRef.current;
+      const isNearBottom = scrollArea.scrollTop >= scrollArea.scrollHeight - scrollArea.clientHeight - 50;
+      
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom) {
+        scrollArea.scrollTo({
+          top: scrollArea.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
     }
   }, [response, isStreaming]);
 
   useEffect(() => {
     if (reasoningRef.current && isStreaming && showReasoning) {
-      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
+      const scrollArea = reasoningRef.current;
+      const isNearBottom = scrollArea.scrollTop >= scrollArea.scrollHeight - scrollArea.clientHeight - 50;
+      
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom) {
+        scrollArea.scrollTo({
+          top: scrollArea.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
     }
   }, [reasoning, isStreaming, showReasoning]);
 
@@ -217,9 +235,9 @@ const StreamingResponse: React.FC<StreamingResponseProps> = ({
         
         <CardContent>
           <ScrollArea className="h-64 w-full" ref={responseRef}>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed min-h-[200px]">
               {response || (isStreaming ? "Generating response..." : "No response yet")}
-              {isStreaming && <span className="animate-pulse">|</span>}
+              {isStreaming && <span className="animate-pulse ml-1">|</span>}
             </div>
           </ScrollArea>
         </CardContent>
@@ -261,7 +279,7 @@ const StreamingResponse: React.FC<StreamingResponseProps> = ({
         {showReasoning && (
           <CardContent>
             <ScrollArea className="h-64 w-full" ref={reasoningRef}>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground min-h-[200px]">
                 {reasoning || (isStreaming ? "Processing reasoning..." : "No reasoning available")}
                 {isStreaming && reasoning && <span className="animate-pulse">|</span>}
               </div>

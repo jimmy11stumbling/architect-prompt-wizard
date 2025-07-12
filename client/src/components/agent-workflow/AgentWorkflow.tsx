@@ -40,7 +40,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
             return (
               <div key={key}>
                 <motion.div
-                  className={`flex flex-col p-3 rounded-md ${
+                  className={`flex flex-col p-3 rounded-md min-h-[60px] ${
                     agent.status === "processing"
                       ? "bg-ipa-primary/10"
                       : agent.status === "completed"
@@ -52,6 +52,7 @@ const AgentWorkflow: React.FC<AgentWorkflowProps> = ({ agents, isGenerating }) =
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
+                  layout
                 >
                   <AgentContent 
                     agent={agent} 
