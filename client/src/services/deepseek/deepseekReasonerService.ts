@@ -35,13 +35,28 @@ export class DeepSeekReasonerService {
   }
 
   private async makeDeepSeekCall(messages: Array<{role: string, content: string}>): Promise<any> {
-    if (!ApiKeyManager.hasApiKey()) {
-      throw new Error("DeepSeek API key is required but not found");
-    }
-
     try {
-      console.log("Making DeepSeek API call with valid API key");
-      return await DeepSeekApiClient.makeApiCall(messages);
+      console.log("Making DeepSeek API call via server endpoint");
+      
+      const response = await fetch('/api/deepseek/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+          ragContext: true
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log("DeepSeek API call via server successful");
+      return result;
     } catch (error) {
       console.error('DeepSeek API call failed:', error);
       throw error;

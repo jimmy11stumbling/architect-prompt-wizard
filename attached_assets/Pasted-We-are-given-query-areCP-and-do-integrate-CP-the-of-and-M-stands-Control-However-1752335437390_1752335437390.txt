@@ -1,0 +1,57 @@
+We are given query " areCP and do integrate?"
+
+ : "CP".
+ the of and,M" stands " Control". However in contexts, in and cloud computing it refer something.
+ Another is thatCP forMultiCloud" " Cloud". without context we consider most interpretations.
+
+ : the domain.
+ query about and integration so's in technical context.
+ In cloud computing MCP refer toMulti- Platform or " Cloud". are and platforms help manage clouds.
+
+3 Recall products frameworks.
+ prominent is'svCloud Center (C), rebed "Real Automation (RA However't matchCP possibility "M" stand "services Control Plane orManagement Control", these less.
+
+4 Research knowledge ( an, I on-existing).
+ I recall that the of management there a calledVMware Provider Platform"which be asCP but exactly).
+,M" refer " Cloud".
+
+ let's about specific product 
+ CenturyLinknow) a calledManaged Platform (CP This a infrastructure platform provides,, networking, with tools.
+
+5 DefineLink M:
+ CenturyLink Managed PlatformM) an I (rastructure a) that allows businesses deploy manage machines storage and in self-service. includes for,stration and.
+
+ : are tools M?
+ M provides a of and,:
+ Compute: machinesV) bare metal.
+ Storage Block object.
+ Networking Virtual, bal,walls.
+ tools: web portal and tools for resources.
+ Automation and orche: for deployments and the lifecycle applications.
+
+7 How they?
+ The tools designed work together an integrated share a control plane are accessible a interface ( portal and set APIs.
+ points:
+ a Self-service: can and all (,,) one.
+ b APIs MCP REST APIs allow with systems custom applications, automation tools An,form etc.).
+ c CLI Command tools scripting and.
+ d Monitoring and: monitoring tools provide into infrastructure.
+. and management Integration withAP Active for user and.
+
+ : with systems:
+CP integrate third-party such as:
+ Configuration toolsChe,et Salt).
+ - IntegrationContinuous (/CD tools (Jen,Lab).
+ - as CodeIa) (erra,Form).
+ - toolslikeios Datad) APIs or.
+
+ : if there are interpretations ofCP.
+ a different,CP stand " Control" the T, that't the about and.
+ In, might "ic Control", that a protocol and a of.
+
+10 Conclusion.
+ the, most interpretation forM tools in technical and integration context CenturyLink ( L) Cloud., that term be by other in a manner.
+
+, can:
+
+CP refer the of provided byLink Managed Platformnow ofumen) for cloud infrastructure These include for,,,, monitoring They through unified plane a-based,, CLI allowing to resources automate.,CP can integrate external such as management CI pipelines and tools APIs.

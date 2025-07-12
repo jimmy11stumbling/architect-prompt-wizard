@@ -7,8 +7,8 @@ export class ApiKeyManager {
       return storedKey;
     }
     
-    // Check environment variable as fallback
-    return import.meta.env.VITE_DEEPSEEK_API_KEY || null;
+    // For server-side API key, we'll use a server endpoint
+    return null; // Client-side shouldn't access server environment variables directly
   }
 
   static setApiKey(apiKey: string): void {
@@ -16,6 +16,18 @@ export class ApiKeyManager {
   }
 
   static hasApiKey(): boolean {
-    return !!this.getApiKey();
+    // Always return true since we have server-side API key
+    return true;
+  }
+
+  static async hasServerApiKey(): Promise<boolean> {
+    try {
+      const response = await fetch('/api/deepseek/check-api-key');
+      const result = await response.json();
+      return result.hasApiKey;
+    } catch (error) {
+      console.error('Error checking server API key:', error);
+      return false;
+    }
   }
 }

@@ -1215,6 +1215,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DeepSeek API endpoints
+  app.get("/api/deepseek/check-api-key", async (req, res) => {
+    try {
+      const hasApiKey = !!process.env.DEEPSEEK_API_KEY;
+      res.json({ hasApiKey });
+    } catch (error) {
+      console.error("DeepSeek API key check error:", error);
+      res.status(500).json({ error: "API key check failed" });
+    }
+  });
+
+  app.post("/api/deepseek/query", async (req, res) => {
+    try {
+      const { messages, ragContext } = req.body;
+      
+      if (!process.env.DEEPSEEK_API_KEY) {
+        return res.status(400).json({ error: "DeepSeek API key not configured" });
+      }
+
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-reasoner',
+          messages,
+          max_tokens: 4096,
+          temperature: 0.1,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error("DeepSeek query error:", error);
+      res.status(500).json({ error: "DeepSeek query failed" });
+    }
+  });
+
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
     try {
