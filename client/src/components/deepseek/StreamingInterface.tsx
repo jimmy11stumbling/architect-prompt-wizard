@@ -43,7 +43,7 @@ export default function StreamingInterface() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!query.trim() || isLoading) return;
+    if (!query.trim() || isLoading || isStreaming) return;
 
     setIsStreaming(true);
 
@@ -204,7 +204,7 @@ export default function StreamingInterface() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="min-h-[100px] bg-background border-border text-foreground placeholder:text-muted-foreground"
-            disabled={isLoading}
+            disabled={isLoading || isStreaming}
           />
 
           <div className="flex items-center justify-between">
@@ -216,14 +216,14 @@ export default function StreamingInterface() {
               <Button 
                 variant="outline"
                 onClick={handleClear}
-                disabled={isLoading}
+                disabled={isLoading || isStreaming}
                 size="sm"
               >
                 Clear
               </Button>
               <Button 
                 onClick={handleSubmit}
-                disabled={isLoading || !query.trim()}
+                disabled={isLoading || isStreaming || !query.trim()}
                 className="bg-purple-600 hover:bg-purple-700 text-white"
               >
                 {isLoading ? (

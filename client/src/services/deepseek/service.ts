@@ -6,8 +6,11 @@ import { DeepSeekRequest, DeepSeekMessage } from './types';
 export class DeepSeekService {
   static async processQuery(
     query: string,
-    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}
+    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean; streaming?: boolean } = {}
   ): Promise<void> {
+    if (options.streaming) {
+      return this.processStreamingQuery(query, options);
+    }
     const store = useDeepSeekStore.getState();
     
     try {
@@ -101,6 +104,105 @@ export class DeepSeekService {
     } catch (error) {
       console.error('Health check failed:', error);
       return false;
+    }
+  }
+
+  static async processStreamingQuery(
+    query: string,
+    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}
+  ): Promise<void> {
+    const store = useDeepSeekStore.getState();
+    
+    try {
+      // Set streaming state
+      store.setStreaming(true);
+      store.setError(null);
+      store.clearStreaming();
+
+      // Enhanced query with RAG context if enabled
+      let enhancedQuery = query;
+      
+      if (options.ragEnabled) {
+        try {
+          const { ragService } = await import('@/services/rag/ragService');
+          const ragResults = await ragService.searchRAG2(query, {
+            limit: 10,
+            rerankingEnabled: true,
+            hybridWeight: { semantic: 0.7, keyword: 0.3 }
+          });
+          
+          if (ragResults.results.length > 0) {
+            const contextChunks = ragResults.results.slice(0, 5).map(result => 
+              `[${result.category}] ${result.title}: ${result.content.substring(0, 500)}...`
+            ).join('\n\n');
+            
+            enhancedQuery = `Context from RAG 2.0 Database (${ragResults.totalResults} documents found):\n\n${contextChunks}\n\n---\n\nUser Question: ${query}`;
+          }
+        } catch (ragError) {
+          console.warn('RAG context retrieval failed:', ragError);
+        }
+      }
+
+      // Add MCP context if enabled
+      if (options.mcpEnabled) {
+        try {
+          const { mcpHubService } = await import('@/services/mcp/mcpHubService');
+          const mcpContext = await mcpHubService.getContextForPrompt(query, 3);
+          
+          if (mcpContext && !mcpContext.includes('No relevant')) {
+            enhancedQuery = `${mcpContext}\n\n---\n\n${enhancedQuery}`;
+          }
+        } catch (mcpError) {
+          console.warn('MCP context retrieval failed:', mcpError);
+        }
+      }
+
+      // Add user message to conversation
+      const userMessage: DeepSeekMessage = {
+        role: 'user',
+        content: enhancedQuery
+      };
+      store.addMessage(userMessage);
+
+      // Prepare request
+      const request: DeepSeekRequest = {
+        messages: [...store.conversation, userMessage],
+        maxTokens: 8192,
+        temperature: options.temperature || 0.1,
+        ragEnabled: options.ragEnabled || false
+      };
+
+      // Start streaming
+      await DeepSeekApi.streamQuery(
+        request,
+        (token: string) => {
+          store.setStreamingPhase('reasoning');
+          store.appendStreamingReasoning(token);
+        },
+        (token: string) => {
+          store.setStreamingPhase('response');
+          store.appendStreamingResponse(token);
+        },
+        (response: DeepSeekResponse) => {
+          // Add assistant message to conversation
+          const assistantMessage: DeepSeekMessage = {
+            role: 'assistant',
+            content: response.response
+          };
+          store.addMessage(assistantMessage);
+          store.setResponse(response);
+        },
+        (error: Error) => {
+          const errorMessage = error.message || 'Unknown error occurred';
+          store.setError(errorMessage);
+          console.error('DeepSeek streaming failed:', error);
+        }
+      );
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      store.setError(errorMessage);
+      console.error('DeepSeek streaming query failed:', error);
     }
   }
 

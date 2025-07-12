@@ -514,21 +514,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rag/populate", async (req, res) => {
     try {
       console.log('[RAG Populate] Starting database population...');
-      
+
       const vectorStore = new VectorStore(process.env.DATABASE_URL!);
       await vectorStore.initialize();
-      
+
       // Get all knowledge base entries
       const knowledgeBase = await storage.getAllKnowledgeBase();
       console.log(`[RAG Populate] Found ${knowledgeBase.length} knowledge base entries`);
-      
+
       if (knowledgeBase.length === 0) {
         return res.json({ 
           message: "No knowledge base entries found to populate",
           documentsAdded: 0 
         });
       }
-      
+
       // Convert to vector documents
       const documents = knowledgeBase.map(kb => ({
         id: `kb_${kb.id}`,
@@ -541,14 +541,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: kb.id
         }
       }));
-      
+
       // Add to vector store
       await vectorStore.addDocuments(documents);
       console.log(`[RAG Populate] Added ${documents.length} documents to vector store`);
-      
+
       // Get updated stats
       const stats = await vectorStore.getStats();
-      
+
       res.json({ 
         message: "Database populated successfully",
         documentsAdded: documents.length,
@@ -1156,7 +1156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add synonyms and related terms for better retrieval
       if (queryLower.includes('mcp')) {
         processedQuery += ' "Model Context Protocol" Anthropic JSON-RPC 2.0 tool resource communication agent integration server client transport protocol';
-        
+
         // CRITICAL: Directly inject MCP documentation for DeepSeek
         const mcpContext = await getMCPDocumentationContext();
         if (mcpContext) {
@@ -1230,13 +1230,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/deepseek/stream', async (req, res) => {
     try {
       const { messages, temperature = 0.7 } = req.body;
-      
+
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: 'Messages array is required' });
       }
 
       console.log(`Making DeepSeek streaming API call with ${messages.length} messages`);
-      
+
       // Set up streaming response headers
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -1294,7 +1294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 res.end();
                 return;
               }
-              
+
               try {
                 const parsed = JSON.parse(data);
                 res.write(`data: ${JSON.stringify(parsed)}\n\n`);
@@ -1319,13 +1319,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/deepseek/query", async (req, res) => {
     try {
       const { messages, ragContext } = req.body;
-      
+
       if (!process.env.DEEPSEEK_API_KEY) {
         return res.status(400).json({ error: "DeepSeek API key not configured" });
       }
 
       console.log('Making DeepSeek API call with', messages.length, 'messages');
-      
+
       // Add timeout to prevent hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
@@ -1364,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reasoningLength: result.choices?.[0]?.message?.reasoning_content?.length || 0,
           usage: result.usage
         });
-        
+
         // Handle DeepSeek Reasoner response format - preserve both reasoning and response
         if (result.choices && result.choices[0] && result.choices[0].message) {
           const message = result.choices[0].message;
@@ -1374,11 +1374,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contentLength: message.content?.length || 0,
             reasoningLength: message.reasoning_content?.length || 0
           });
-          
+
           // For DeepSeek Reasoner, don't modify the fields - let the client handle them
           // reasoning_content = reasoning process, content = final answer
         }
-        
+
         res.json(result);
       } catch (fetchError) {
         clearTimeout(timeoutId);
@@ -1448,7 +1448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const knowledgeBase = await storage.getAllKnowledgeBase();
           console.log(`[RAG Search] Found ${knowledgeBase.length} knowledge base entries`);
-          
+
           if (knowledgeBase.length > 0) {
             const documents = knowledgeBase.map(kb => ({
               id: `kb_${kb.id}`,
@@ -1460,7 +1460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 type: 'knowledge-base'
               }
             }));
-            
+
             await vectorStore.addDocuments(documents);
             console.log(`[RAG Search] Added ${documents.length} documents to vector store`);
           }
@@ -1480,10 +1480,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { EmbeddingService } = await import("./services/rag/embeddingService");
         const embeddingService = EmbeddingService.getInstance();
         const queryEmbedding = await embeddingService.generateEmbedding(query);
-        
+
         // Perform vector similarity search
         results = await vectorStore.vectorSearch(queryEmbedding, { limit, includeMetadata });
-        
+
         // If no vector results, fall back to text search
         if (results.length === 0) {
           console.log(`[RAG Search] No vector results found, falling back to text search`);
