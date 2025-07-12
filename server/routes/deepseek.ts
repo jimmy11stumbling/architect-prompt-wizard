@@ -41,6 +41,18 @@ router.post('/stream', async (req, res) => {
     })}\n\n`);
     if (res.flush) res.flush();
 
+    // Send immediate status update
+    res.write(`data: ${JSON.stringify({
+      choices: [{
+        delta: {
+          reasoning_content: '⚡ Initializing streaming interface...\n'
+        }
+      }],
+      token_count: 2,
+      timestamp: Date.now()
+    })}\n\n`);
+    if (res.flush) res.flush();
+
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       res.write(`data: ${JSON.stringify({ error: 'DeepSeek API key not configured' })}\n\n`);
