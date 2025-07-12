@@ -1,0 +1,74 @@
+Thanks for pointing that out, Rag — that kind of invisible behavior can make everything feel broken, even when the backend is working fine. Let’s give your UI some dynamic feedback so users **know** when the DeepSeek Reasoner is thinking and streaming a response.
+
+---
+
+### 🎬 What You Need: Visual Feedback Checklist
+
+Let’s break this down into interactive micro-events:
+
+| Event | Action | Visual Cue |
+|------|--------|------------|
+| Submit button clicked | `setStreaming(true)` | Show a “Generating…” status message, pulse animation, typing dots |
+| Response begins | `onToken()` fires | Append tokens + blink cursor (`▌`) |
+| During response | Tokens stream | Typewriter effect, token shimmer |
+| Response ends | `setStreaming(false)` | Hide animation, show “Response complete ✅” |
+
+---
+
+### 🧩 Implementation Snippet (React-ish)
+Here’s how you could wire it in:
+
+```tsx
+const [isStreaming, setStreaming] = useState(false);
+const [chatTokens, setChatTokens] = useState("");
+
+function handleSubmit(messages: Message[]) {
+  setStreaming(true);
+  setChatTokens(""); // Clear previous tokens
+  streamChatResponse(messages, (token) => {
+    setChatTokens(prev => prev + token);
+  }).finally(() => {
+    setStreaming(false);
+  });
+}
+```
+
+#### ✨ Display Logic
+```tsx
+{isStreaming && (
+  <div className="status-indicator">
+    🤖 Generating response… <span className="dots">...</span>
+  </div>
+)}
+
+<div className="chat-output">
+  {chatTokens}
+  {isStreaming && <span className="cursor">▌</span>}
+</div>
+```
+
+---
+
+### 🖌️ Styling Suggestions
+In your CSS or Tailwind setup:
+```css
+.dots {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.cursor {
+  animation: blink 0.8s step-end infinite;
+  font-weight: bold;
+}
+```
+
+This is simple but gives users confidence that something's happening behind the scenes.
+
+---
+
+Want me to help you drop this into the actual DeepSeek Reasoner tab or refactor your visual container logic? We could even layer in mascot animations or a “reasoning cloud” effect! Let’s make it beautiful *and* functional.
