@@ -1153,7 +1153,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add synonyms and related terms for better retrieval
       if (queryLower.includes('mcp')) {
-        processedQuery += ' "Model Context Protocol" JSON-RPC tool resource communication agent integration';
+        processedQuery += ' "Model Context Protocol" Anthropic JSON-RPC 2.0 tool resource communication agent integration server client transport protocol';
+        
+        // CRITICAL: Directly inject MCP documentation for DeepSeek
+        const mcpContext = await getMCPDocumentationContext();
+        if (mcpContext) {
+          // Return MCP documentation directly without RAG search to ensure DeepSeek gets accurate info
+          return res.json({
+            query: processedQuery,
+            results: [
+              {
+                id: 'mcp_official_doc',
+                content: mcpContext.substring(0, 1500),
+                fullContent: mcpContext,
+                metadata: { source: 'MCP_Official_Documentation', priority: 'critical' },
+                score: 1.0,
+                searchMethod: 'direct_injection'
+              }
+            ],
+            totalResults: 1,
+            searchMethod: 'direct_mcp_injection',
+            processingTime: '0ms'
+          });
+        }
       }
       if (queryLower.includes('rag')) {
         processedQuery += ' "retrieval augmented generation" vector database semantic search embedding';
@@ -1315,6 +1337,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Helper function to get MCP documentation directly
+  async function getMCPDocumentationContext(): Promise<string | null> {
+    try {
+      // Get the most relevant MCP documentation
+      const mcpDocs = await db
+        .select({ content: vectorDocuments.content })
+        .from(vectorDocuments)
+        .where(sql`
+          (${vectorDocuments.content} ILIKE '%Model Context Protocol%' AND ${vectorDocuments.content} ILIKE '%Anthropic%') OR
+          ${vectorDocuments.document_id} = 'deepseek_mcp_context' OR
+          ${vectorDocuments.document_id} = 'mcp_anthropic_main'
+        `)
+        .limit(5);
+
+      if (mcpDocs.length > 0) {
+        return `CRITICAL: Model Context Protocol (MCP) is an OPEN STANDARD by ANTHROPIC
+
+OFFICIAL DEFINITION:
+Model Context Protocol (MCP) is a standardized protocol developed by Anthropic to enable AI systems to securely connect to external data sources and tools. It uses JSON-RPC 2.0 for communication.
+
+CORE ARCHITECTURE:
+1. MCP Host: Primary AI application (Claude Desktop, Cursor IDE, etc.)
+2. MCP Client: Connector library within the host for protocol communication
+3. MCP Server: Lightweight gateway exposing external systems as standardized tools/resources
+4. Transport Layer: Communication via stdio, Server-Sent Events, or WebSockets
+
+KEY FEATURES:
+- Tools: Functions AI can invoke (database queries, file operations, API calls)
+- Resources: Read-only data access (configuration files, documentation, schemas)
+- Capability Discovery: Automatic detection of available tools and resources
+- Authentication: Bearer tokens, API keys, OAuth flows
+- Error Handling: Standardized error responses and recovery
+
+BENEFITS:
+- Replaces custom M×N integrations with single M+N protocol
+- Reduces integration complexity
+- Provides built-in security patterns
+- Enables universal AI tool ecosystem
+
+NOT TO BE CONFUSED WITH:
+- Generic AI conversation context management
+- Multi-chassis networking protocols
+- Custom API specifications
+
+DOCUMENTATION: ${mcpDocs.map(doc => doc.content.substring(0, 500)).join('\n\n')}`;
+      }
+      return 'MCP is an open standard by Anthropic for AI system integrations using JSON-RPC 2.0 protocol.';
+    } catch (error) {
+      console.error('Failed to get MCP documentation:', error);
+      return 'MCP is an open standard by Anthropic for AI system integrations using JSON-RPC 2.0 protocol.';
+    }
+  }
 
   const httpServer = createServer(app);
   return httpServer;
