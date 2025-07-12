@@ -1,4 +1,3 @@
-
 import { get_encoding } from 'tiktoken';
 import natural from 'natural';
 import stringSimilarity from 'string-similarity';
@@ -27,10 +26,13 @@ export class EmbeddingService {
   private tfidfVectorizer: natural.TfIdf;
   private vocabulary: Map<string, number> = new Map();
   private initialized = false;
-  private apiKey?: string;
+  private apiKey: string;
+  private rateLimiter: Map<string, number> = new Map();
+  private readonly MAX_REQUESTS_PER_MINUTE = 50;
+  private readonly BATCH_SIZE = 10;
 
   private constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.OPENAI_API_KEY;
+    this.apiKey = apiKey || process.env.OPENAI_API_KEY || '';
     this.tfidfVectorizer = new natural.TfIdf();
   }
 
@@ -41,6 +43,24 @@ export class EmbeddingService {
     return EmbeddingService.instance;
   }
 
+  private async checkRateLimit(): Promise<void> {
+    const now = Date.now();
+    const minute = Math.floor(now / 60000);
+    const count = this.rateLimiter.get(minute.toString()) || 0;
+
+    if (count >= this.MAX_REQUESTS_PER_MINUTE) {
+      const waitTime = 60000 - (now % 60000);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
+    this.rateLimiter.set(minute.toString(), count + 1);
+
+    // Clean old entries
+    const oldMinutes = Array.from(this.rateLimiter.keys())
+      .filter(key => parseInt(key) < minute - 1);
+    oldMinutes.forEach(key => this.rateLimiter.delete(key));
+  }
+
   async initialize(documents: string[] = []): Promise<void> {
     if (this.initialized) return;
 
@@ -49,7 +69,7 @@ export class EmbeddingService {
       for (const doc of documents) {
         const tokens = this.tokenizeText(doc);
         this.tfidfVectorizer.addDocument(tokens);
-        
+
         // Build vocabulary mapping
         tokens.forEach(token => {
           if (!this.vocabulary.has(token)) {
@@ -88,6 +108,8 @@ export class EmbeddingService {
       throw new Error('No OpenAI API key available');
     }
 
+    await this.checkRateLimit();
+
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -116,7 +138,7 @@ export class EmbeddingService {
 
       // Calculate TF-IDF scores
       const tfidfScores = new Map<string, number>();
-      
+
       // Add document to vectorizer temporarily to get TF-IDF scores
       const docIndex = this.tfidfVectorizer.documents.length;
       this.tfidfVectorizer.addDocument(tokens);
@@ -170,7 +192,7 @@ export class EmbeddingService {
 
   async generateEmbeddings(documents: EmbeddingDocument[]): Promise<EmbeddingDocument[]> {
     const embeddedDocuments = [];
-    
+
     for (const doc of documents) {
       try {
         const embedding = await this.generateEmbedding(doc.content);
@@ -183,7 +205,7 @@ export class EmbeddingService {
         // Skip documents that fail to embed
       }
     }
-    
+
     return embeddedDocuments;
   }
 
@@ -191,13 +213,13 @@ export class EmbeddingService {
     // Generate a deterministic mock embedding based on text content
     const textHash = this.simpleHash(text);
     const embedding = new Array(1536);
-    
+
     for (let i = 0; i < 1536; i++) {
       // Create pseudo-random values based on text hash and position
       const seed = (textHash + i) % 1000000;
       embedding[i] = (Math.sin(seed) + Math.cos(seed * 2)) / 2;
     }
-    
+
     // Normalize the vector
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
     return embedding.map(val => val / magnitude);
@@ -207,19 +229,19 @@ export class EmbeddingService {
     // Advanced tokenization with stemming and stopword removal
     const tokenizer = new natural.WordTokenizer();
     const stemmer = natural.PorterStemmer;
-    
+
     let tokens = tokenizer.tokenize(text.toLowerCase()) || [];
-    
+
     // Remove stopwords
     tokens = tokens.filter(token => 
       !natural.stopwords.includes(token) && 
       token.length > 2 && 
       /^[a-zA-Z]+$/.test(token)
     );
-    
+
     // Apply stemming
     tokens = tokens.map(token => stemmer.stem(token));
-    
+
     return tokens;
   }
 
@@ -259,7 +281,7 @@ export class EmbeddingService {
 
   async generateBatchEmbeddings(texts: string[], options: EmbeddingOptions = {}): Promise<EmbeddingResult[]> {
     const embeddings: EmbeddingResult[] = [];
-    
+
     for (const text of texts) {
       try {
         const embedding = await this.generateEmbedding(text, options);
@@ -307,7 +329,7 @@ export class EmbeddingService {
     for (const doc of newDocuments) {
       const tokens = this.tokenizeText(doc);
       this.tfidfVectorizer.addDocument(tokens);
-      
+
       tokens.forEach(token => {
         if (!this.vocabulary.has(token)) {
           this.vocabulary.set(token, this.vocabulary.size);

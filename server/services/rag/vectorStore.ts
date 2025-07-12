@@ -42,7 +42,15 @@ export class VectorStore {
   private embeddingService: EmbeddingService;
 
   constructor(connectionString: string) {
-    this.pool = new Pool({ connectionString });
+    this.pool = new Pool({ 
+      connectionString,
+      max: 20, // Maximum 20 connections in pool
+      min: 2,  // Keep minimum 2 connections alive
+      maxUses: 7500, // Rotate connections after 7500 uses
+      maxLifetime: 600000, // 10 minute max lifetime
+      idleTimeout: 30000, // 30 second idle timeout
+      connectionTimeoutMillis: 5000
+    });
     this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
     this.embeddingService = EmbeddingService.getInstance();
   }
@@ -87,16 +95,30 @@ export class VectorStore {
         ON vector_documents USING gin(to_tsvector('english', content))
       `);
 
-        // Create index for similarity search (only if pgvector is available)
+        // Create optimized indexes for similarity search
         try {
+          // Primary vector index with optimized list count for large datasets
           await this.db.execute(sql`
-          CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
-          ON vector_documents USING ivfflat (embedding vector_cosine_ops)
-          WITH (lists = 100)
-        `);
-          console.log('Vector similarity index created');
+            CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
+            ON vector_documents USING ivfflat (embedding vector_cosine_ops)
+            WITH (lists = 1000)
+          `);
+          
+          // Additional indexes for metadata filtering
+          await this.db.execute(sql`
+            CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
+            ON vector_documents USING gin(metadata)
+          `);
+          
+          // Composite index for document_id lookups
+          await this.db.execute(sql`
+            CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
+            ON vector_documents (document_id, created_at DESC)
+          `);
+          
+          console.log('Optimized vector indexes created');
         } catch (indexError) {
-          console.warn('Vector similarity index not created (pgvector not available)');
+          console.warn('Vector indexes not created (pgvector not available)');
         }
 
         this.initialized = true;
@@ -121,32 +143,48 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     try {
-      for (const doc of documents) {
-        let embedding = doc.embedding;
-
-        // Generate embedding if missing
-        if (!embedding) {
-          console.log(`[VectorStore] Generating embedding for document: ${doc.id}`);
-          embedding = await this.embeddingService.generateEmbedding(doc.content);
-        }
-
-        await this.db.insert(vectorDocuments).values({
-          documentId: doc.id,
-          content: doc.content,
-          embedding: embedding,
-          metadata: doc.metadata
-        }).onConflictDoUpdate({
-          target: vectorDocuments.documentId,
-          set: {
-            content: doc.content,
-            embedding: embedding,
-            metadata: doc.metadata,
-            updatedAt: new Date()
-          }
-        });
+      // Process in batches of 50 for better performance
+      const batchSize = 50;
+      const batches = [];
+      
+      for (let i = 0; i < documents.length; i += batchSize) {
+        batches.push(documents.slice(i, i + batchSize));
       }
 
-      console.log(`[VectorStore] Added ${documents.length} documents to vector store with embeddings`);
+      for (const batch of batches) {
+        // Prepare documents with embeddings
+        const documentsToInsert = await Promise.all(
+          batch.map(async (doc) => {
+            let embedding = doc.embedding;
+            
+            if (!embedding) {
+              embedding = await this.embeddingService.generateEmbedding(doc.content);
+            }
+
+            return {
+              documentId: doc.id,
+              content: doc.content,
+              embedding: embedding,
+              metadata: doc.metadata
+            };
+          })
+        );
+
+        // Batch insert
+        await this.db.insert(vectorDocuments)
+          .values(documentsToInsert)
+          .onConflictDoUpdate({
+            target: vectorDocuments.documentId,
+            set: {
+              content: sql`excluded.content`,
+              embedding: sql`excluded.embedding`,
+              metadata: sql`excluded.metadata`,
+              updatedAt: new Date()
+            }
+          });
+      }
+
+      console.log(`[VectorStore] Added ${documents.length} documents in ${batches.length} batches`);
     } catch (error) {
       console.error('Failed to add documents to vector store:', error);
       throw error;
@@ -229,29 +267,24 @@ export class VectorStore {
     }
   }
 
+  private searchCache = new Map<string, { results: any[]; timestamp: number }>();
+  private readonly CACHE_TTL = 300000; // 5 minutes
+
   async vectorSearch(queryEmbedding: number[], options: { limit?: number; includeMetadata?: boolean } = {}): Promise<any[]> {
     if (!this.initialized) await this.initialize();
 
     const { limit = 10 } = options;
+    
+    // Create cache key
+    const cacheKey = `${queryEmbedding.slice(0, 10).join(',')}_${limit}`;
+    const cached = this.searchCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.results;
+    }
 
     try {
-      console.log(`[VectorStore] Performing vector similarity search with limit: ${limit}`);
-
-      // Check if we have any documents with embeddings
-      const countResult = await this.db
-        .select({ count: sql<number>`count(*)` })
-        .from(vectorDocuments)
-        .where(sql`${vectorDocuments.embedding} IS NOT NULL`);
-
-      const vectorCount = countResult[0]?.count || 0;
-      console.log(`[VectorStore] Found ${vectorCount} documents with embeddings`);
-
-      if (vectorCount === 0) {
-        console.warn('[VectorStore] No documents with embeddings found, falling back to text search');
-        return [];
-      }
-
-      // Perform vector similarity search
+      // Optimized query with better performance
       const queryVector = `[${queryEmbedding.join(',')}]`;
       const results = await this.db
         .select({
@@ -261,13 +294,14 @@ export class VectorStore {
           similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector})`
         })
         .from(vectorDocuments)
-        .where(sql`${vectorDocuments.embedding} IS NOT NULL`)
+        .where(sql`
+          ${vectorDocuments.embedding} IS NOT NULL AND 
+          1 - (${vectorDocuments.embedding} <=> ${queryVector}) > 0.1
+        `)
         .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector})`))
         .limit(limit);
 
-      console.log(`[VectorStore] Vector search found ${results.length} results`);
-
-      return results.map(result => ({
+      const formattedResults = results.map(result => ({
         id: result.id,
         content: result.content,
         metadata: result.metadata || {},
@@ -275,6 +309,24 @@ export class VectorStore {
         relevanceScore: result.similarity,
         searchMethod: 'vector'
       }));
+
+      // Cache results
+      this.searchCache.set(cacheKey, {
+        results: formattedResults,
+        timestamp: Date.now()
+      });
+
+      // Clean old cache entries (keep cache size manageable)
+      if (this.searchCache.size > 1000) {
+        const now = Date.now();
+        for (const [key, value] of this.searchCache.entries()) {
+          if (now - value.timestamp > this.CACHE_TTL) {
+            this.searchCache.delete(key);
+          }
+        }
+      }
+
+      return formattedResults;
     } catch (error) {
       console.error('Failed to perform vector search:', error);
       return [];
