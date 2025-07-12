@@ -23,8 +23,7 @@ router.post('/stream', async (req, res) => {
       return;
     }
 
-    // Start reasoning phase
-    res.write(`data: ${JSON.stringify({ phase: 'reasoning' })}\n\n`);
+    console.log('Making DeepSeek streaming API call with', messages.length, 'messages');
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -42,7 +41,8 @@ router.post('/stream', async (req, res) => {
     });
 
     if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
     }
 
     const reader = response.body?.getReader();
@@ -52,7 +52,7 @@ router.post('/stream', async (req, res) => {
 
     const decoder = new TextDecoder();
     let buffer = '';
-    let reasoningComplete = false;
+    let isInReasoningPhase = true;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -76,24 +76,43 @@ router.post('/stream', async (req, res) => {
           try {
             const parsed = JSON.parse(data);
             
-            // Check if we're transitioning from reasoning to response
-            if (parsed.choices?.[0]?.delta?.content && !reasoningComplete) {
-              // Look for reasoning content vs response content
-              const content = parsed.choices[0].delta.content;
+            // Handle both reasoning and response content
+            if (parsed.choices?.[0]?.delta) {
+              const delta = parsed.choices[0].delta;
               
-              // Simple heuristic: if we see structured response patterns, switch to response phase
-              if (content.includes('\n\n') && content.length > 50 && !reasoningComplete) {
-                reasoningComplete = true;
-                res.write(`data: ${JSON.stringify({ phase: 'response' })}\n\n`);
+              // Check for reasoning content
+              if (delta.reasoning_content) {
+                console.log('Sending reasoning token:', delta.reasoning_content);
+                res.write(`data: ${JSON.stringify({
+                  choices: [{
+                    delta: {
+                      reasoning_content: delta.reasoning_content
+                    }
+                  }]
+                })}\n\n`);
+              }
+              
+              // Check for response content
+              if (delta.content) {
+                console.log('Sending response token:', delta.content);
+                res.write(`data: ${JSON.stringify({
+                  choices: [{
+                    delta: {
+                      content: delta.content
+                    }
+                  }]
+                })}\n\n`);
               }
             }
-
-            // Forward the streaming data
-            res.write(`data: ${data}\n\n`);
 
             // Send usage info if available
             if (parsed.usage) {
               res.write(`data: ${JSON.stringify({ usage: parsed.usage })}\n\n`);
+            }
+
+            // Send processing time if available
+            if (parsed.processingTime) {
+              res.write(`data: ${JSON.stringify({ processingTime: parsed.processingTime })}\n\n`);
             }
 
           } catch (e) {

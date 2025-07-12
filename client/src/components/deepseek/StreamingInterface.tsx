@@ -34,13 +34,15 @@ export default function StreamingInterface() {
   // Auto-scroll when streaming content updates
   useEffect(() => {
     if (reasoningRef.current && storeIsStreaming && streamingReasoning) {
-      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
+      const element = reasoningRef.current;
+      element.scrollTop = element.scrollHeight;
     }
   }, [streamingReasoning, storeIsStreaming]);
 
   useEffect(() => {
     if (responseContentRef.current && storeIsStreaming && streamingResponse) {
-      responseContentRef.current.scrollTop = responseContentRef.current.scrollHeight;
+      const element = responseContentRef.current;
+      element.scrollTop = element.scrollHeight;
     }
   }, [streamingResponse, storeIsStreaming]);
 
@@ -49,8 +51,16 @@ export default function StreamingInterface() {
     if (storeIsStreaming && (streamingReasoning || streamingResponse)) {
       const responseElement = document.getElementById('streaming-response-section');
       if (responseElement) {
+        // Scroll to the element smoothly
         responseElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    }
+  }, [storeIsStreaming, streamingReasoning, streamingResponse]);
+
+  // Scroll to top when new query starts
+  useEffect(() => {
+    if (storeIsStreaming && !streamingReasoning && !streamingResponse) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [storeIsStreaming, streamingReasoning, streamingResponse]);
 
@@ -297,10 +307,11 @@ export default function StreamingInterface() {
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                   <span className="text-sm font-medium text-blue-300">
-                    Streaming DeepSeek Response...
+                    {streamingReasoning && !streamingResponse ? 'Reasoning...' : 
+                     streamingResponse ? 'Responding...' : 'Connecting...'}
                   </span>
                   <Badge variant="outline" className="text-xs">
-                    {(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)} characters
+                    {streamingReasoning?.length || 0} reasoning + {streamingResponse?.length || 0} response chars
                   </Badge>
                 </div>
               </CardContent>
