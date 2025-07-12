@@ -148,12 +148,75 @@ router.post('/stream', async (req, res) => {
 
         // If it's a governor error, try non-streaming approach
         if (errorText.includes('governor')) {
-          console.log('Governor error detected, falling back to non-streaming...');
+          console.log('Governor error detected, trying non-streaming fallback...');
+          
+          try {
+            const nonStreamingResponse = await fetch('https://api.deepseek.com/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'ReplotIPA/1.0'
+              },
+              body: JSON.stringify({
+                model,
+                messages: enhancedMessages,
+                stream: false,
+                temperature: model === 'deepseek-chat' ? 0.7 : 0.1
+              })
+            });
+
+            if (nonStreamingResponse.ok) {
+              const nonStreamingData = await nonStreamingResponse.json();
+              const message = nonStreamingData.choices?.[0]?.message;
+
+              if (message) {
+                // Simulate streaming for better UX
+                if (message.reasoning_content) {
+                  const reasoningChunks = message.reasoning_content.split('');
+                  for (const chunk of reasoningChunks) {
+                    res.write(`data: ${JSON.stringify({
+                      choices: [{
+                        delta: { reasoning_content: chunk }
+                      }],
+                      timestamp: Date.now()
+                    })}\n\n`);
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                  }
+                }
+
+                if (message.content) {
+                  const contentChunks = message.content.split('');
+                  for (const chunk of contentChunks) {
+                    res.write(`data: ${JSON.stringify({
+                      choices: [{
+                        delta: { content: chunk }
+                      }],
+                      timestamp: Date.now()
+                    })}\n\n`);
+                    await new Promise(resolve => setTimeout(resolve, 5));
+                  }
+                }
+
+                res.write(`data: ${JSON.stringify({
+                  type: 'complete',
+                  usage: nonStreamingData.usage
+                })}\n\n`);
+                res.write(`data: [DONE]\n\n`);
+                res.end();
+                return;
+              }
+            }
+          } catch (fallbackError) {
+            console.warn('Non-streaming fallback also failed:', fallbackError);
+          }
+
+          // If non-streaming also fails, fall back to demo
           res.write(`data: ${JSON.stringify({ 
-            error: 'Streaming blocked by rate governor, falling back to standard mode',
-            fallback: true 
+            error: 'API temporarily unavailable, using demo mode',
+            fallback: 'demo'
           })}\n\n`);
-          res.end();
+          await startDemoStreaming(res, messages[messages.length - 1]?.content || 'Demo query');
           return;
         }
 

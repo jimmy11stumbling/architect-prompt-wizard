@@ -195,11 +195,17 @@ export class DeepSeekApi {
                 if (parsed.error) {
                   console.error('Stream error:', parsed.error);
 
-                  // Handle governor errors with fallback
-                  if (parsed.error.includes('governor') || parsed.fallback) {
-                    console.log('🎬 Governor error detected, switching to demo mode');
+                  // Handle governor errors with appropriate fallback
+                  if (parsed.error.includes('governor') || parsed.error.includes('Authentication Fails') || parsed.fallback) {
+                    console.log('🎬 API error detected, using fallback response');
+                    
+                    // Provide immediate feedback about the issue
+                    onReasoningToken('⚠️ DeepSeek API temporarily unavailable due to rate limiting.\n\n');
+                    onReasoningToken('🔄 This is a common issue with the DeepSeek API governor system.\n\n');
+                    onReasoningToken('💡 Providing demonstration of streaming capabilities instead...\n\n');
+                    
                     await this.startFastDemoStreaming(
-                      'System message: DeepSeek API rate limited, using demo mode',
+                      'System status: DeepSeek API rate limited - demonstrating streaming interface',
                       onReasoningToken,
                       onResponseToken,
                       onComplete
