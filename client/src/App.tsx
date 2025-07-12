@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import ErrorBoundary from "@/components/ui/error-boundary";
 import { AuthProvider } from "@/components/auth/AuthWrapper";
+import NavigationSidebar from "@/components/navigation/NavigationSidebar";
 
 
 import Index from "./pages/Index";
