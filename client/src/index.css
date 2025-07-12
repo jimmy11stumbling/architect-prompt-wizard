@@ -44,6 +44,33 @@
     --sidebar-border: 217 33% 20%;
     --sidebar-ring: 224 76.3% 48%;
   }
+
+  .dark {
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+  --card: 224 71% 4%;
+  --card-foreground: 213 31% 91%;
+  --popover: 224 71% 4%;
+  --popover-foreground: 213 31% 91%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 215 28% 17%;
+  --secondary-foreground: 213 31% 91%;
+  --muted: 215 28% 17%;
+  --muted-foreground: 217.9 10.6% 64.9%;
+  --accent: 215 28% 17%;
+  --accent-foreground: 213 31% 91%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 213 31% 91%;
+  --border: 215 28% 17%;
+  --input: 215 28% 17%;
+  --ring: 216 34% 17%;
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+}
 }
 
 @layer base {
@@ -118,6 +145,51 @@
     color: hsl(var(--foreground)) !important;
   }
 }
+
+/* Enhanced Dark Mode Styles */
+.dark .bg-background {
+  background-color: hsl(224 71% 4%) !important;
+}
+
+.dark .text-foreground {
+  color: hsl(213 31% 91%) !important;
+}
+
+.dark .bg-card {
+  background-color: hsl(224 71% 4%) !important;
+}
+
+.dark .border-border {
+  border-color: hsl(215 28% 17%) !important;
+}
+
+.dark .text-muted-foreground {
+  color: hsl(217.9 10.6% 64.9%) !important;
+}
+
+/* DeepSeek Response Areas */
+.dark [style*="background-color: hsl(var(--background))"] {
+  background-color: hsl(215 28% 17%) !important;
+  color: hsl(213 31% 91%) !important;
+}
+
+/* Ensure proper contrast for code blocks and response areas */
+.dark .font-mono {
+  color: hsl(213 31% 91%) !important;
+}
+
+.dark .bg-background.rounded-lg {
+  background-color: hsl(215 28% 17%) !important;
+  border: 1px solid hsl(215 28% 25%) !important;
+}
+
+/* Color-coded tokens */
+.dark .text-blue-400 { color: hsl(210 100% 70%) !important; }
+.dark .text-green-400 { color: hsl(120 100% 70%) !important; }
+.dark .text-purple-400 { color: hsl(280 100% 70%) !important; }
+.dark .text-yellow-400 { color: hsl(50 100% 70%) !important; }
+.dark .text-orange-400 { color: hsl(25 100% 70%) !important; }
+.dark .text-cyan-400 { color: hsl(180 100% 70%) !important; }
 
 .bg-gradient-blue-purple {
   background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #a855f7 100%);
