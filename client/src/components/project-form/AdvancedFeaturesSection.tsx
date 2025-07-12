@@ -49,43 +49,26 @@ const AdvancedFeaturesSection: React.FC<AdvancedFeaturesSectionProps> = ({
           <div className="space-y-2">
             <Label htmlFor="ragVectorDb">RAG Vector Database</Label>
             <CustomOptionSelector
+              title="RAG Vector Database"
+              description="Choose a vector database for RAG implementation"
+              options={["None", "Pinecone", "Weaviate", "Chroma", "Qdrant", "Milvus", "pgvector"]}
               value={ragVectorDb}
+              onChange={onVectorDbChange}
               customValue={customRagVectorDb}
-              onValueChange={onVectorDbChange}
               onSaveCustom={onSaveCustomVectorDb}
-              options={[
-                { value: "None", label: "None" },
-                { value: "Pinecone", label: "Pinecone" },
-                { value: "Weaviate", label: "Weaviate" },
-                { value: "Chroma", label: "Chroma" },
-                { value: "Qdrant", label: "Qdrant" },
-                { value: "Milvus", label: "Milvus" },
-                { value: "pgvector", label: "pgvector" },
-                { value: "Custom", label: "Custom" }
-              ]}
-              placeholder="Select or add vector database"
-              customPlaceholder="Enter custom vector database name"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="mcpType">MCP (Model Context Protocol)</Label>
             <CustomOptionSelector
+              title="MCP Type"
+              description="Choose a Model Context Protocol implementation"
+              options={["None", "Claude MCP", "OpenAI Function Calling", "Anthropic Tools", "LangChain Tools", "LlamaIndex Tools"]}
               value={mcpType}
+              onChange={onMcpTypeChange}
               customValue={customMcpType}
-              onValueChange={onMcpTypeChange}
               onSaveCustom={onSaveCustomMcp}
-              options={[
-                { value: "None", label: "None" },
-                { value: "Claude MCP", label: "Claude MCP" },
-                { value: "OpenAI Function Calling", label: "OpenAI Function Calling" },
-                { value: "Anthropic Tools", label: "Anthropic Tools" },
-                { value: "LangChain Tools", label: "LangChain Tools" },
-                { value: "LlamaIndex Tools", label: "LlamaIndex Tools" },
-                { value: "Custom", label: "Custom" }
-              ]}
-              placeholder="Select or add MCP type"
-              customPlaceholder="Enter custom MCP type"
             />
           </div>
         </div>
