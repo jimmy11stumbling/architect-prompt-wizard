@@ -234,32 +234,25 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Get stats for prompts
-router.get('/stats', async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+// Get prompt statistics
+  router.get('/stats', async (req, res) => {
+    try {
+      const userId = parseInt(req.query.userId as string) || 1;
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
 
-    const userPrompts = await db
-      .select()
-      .from(savedPrompts)
-      .where(eq(savedPrompts.userId, req.user.id));
-
-    const publicPrompts = await db
-      .select()
-      .from(savedPrompts)
-      .where(eq(savedPrompts.isPublic, true));
-
-    const stats = {
-      totalPrompts: userPrompts.length,
-      publicPrompts: publicPrompts.length,
-      categories: new Set(userPrompts.map(p => p.tags).flat()).size,
-      totalUsage: userPrompts.reduce((sum, p) => sum + (p.usage || 0), 0),
-      averageRating: userPrompts.length > 0 
-        ? userPrompts.reduce((sum, p) => sum + (p.rating || 0), 0) / userPrompts.length 
-        : 0
-    };
+      const stats = await db.query(
+        `SELECT 
+          COUNT(*) as total_prompts,
+          COUNT(CASE WHEN is_public = true THEN 1 END) as public_prompts,
+          COUNT(DISTINCT category) as categories,
+          COALESCE(SUM(usage), 0) as total_usage,
+          COALESCE(AVG(rating), 0) as average_rating
+        FROM prompts 
+        WHERE user_id = $1`,
+        [userId]
+      );
 
     res.json(stats);
   } catch (error) {

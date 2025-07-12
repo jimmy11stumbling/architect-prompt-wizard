@@ -182,31 +182,37 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
         <TabsContent value="featured" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {featuredPrompts.map((prompt) => (
-              <Card key={prompt.id} className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <CardTitle className="text-lg">{prompt.projectName}</CardTitle>
+              <Card key={`featured-${prompt.id}`} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-sm font-medium line-clamp-2">
+                      {prompt.projectName}
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-xs">
+                      <Star className="h-3 w-3 mr-1" />
+                      {prompt.rating || 0}
+                    </Badge>
                   </div>
-                  {prompt.description && (
-                    <CardDescription>{prompt.description}</CardDescription>
-                  )}
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="text-sm text-muted-foreground line-clamp-3">
-                      {prompt.prompt.substring(0, 150)}...
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span>Rating: {prompt.rating}/5</span>
-                      <span>{prompt.usage} uses</span>
+                <CardContent className="pt-0">
+                  <p className="text-xs text-muted-foreground line-clamp-3 mb-3">
+                    {prompt.prompt}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-1">
+                      {prompt.tags?.slice(0, 2).map((tag, index) => (
+                        <Badge key={`tag-${prompt.id}-${index}`} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                     <Button 
                       size="sm" 
-                      className="w-full"
+                      variant="outline" 
+                      className="text-xs"
                       onClick={() => onPromptUse?.(prompt)}
                     >
-                      Use This Prompt
+                      Use
                     </Button>
                   </div>
                 </CardContent>
