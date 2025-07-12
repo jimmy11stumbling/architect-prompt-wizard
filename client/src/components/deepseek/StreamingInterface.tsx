@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Brain, Send, Loader2, Database, Network, Zap, Clock, Cpu, BarChart3 } from 'lucide-react';
+import { Brain, Send, Loader2, Database, Network, Zap, Clock, Cpu, BarChart3, Activity, Eye, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { DeepSeekService, useDeepSeekStore } from '@/services/deepseek';
 import { ragService } from '@/services/rag/ragService';
 import { mcpHubService } from '@/services/mcp/mcpHubService';
@@ -299,19 +300,42 @@ export default function StreamingInterface() {
       {/* Response Display */}
       {(currentResponse || storeIsStreaming) && (
         <div id="streaming-response-section" className="space-y-4">
-          {/* Streaming Status */}
+          {/* Enhanced Streaming Status */}
           {storeIsStreaming && (
-            <Card className="border-blue-500 bg-blue-900/50">
+            <Card className="border-blue-500 bg-blue-900/50 animate-pulse">
               <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-sm font-medium text-blue-300">
-                    {streamingReasoning && !streamingResponse ? 'Reasoning...' : 
-                     streamingResponse ? 'Responding...' : 'Connecting...'}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {streamingReasoning?.length || 0} reasoning + {streamingResponse?.length || 0} response chars
-                  </Badge>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Activity className="h-5 w-5 text-blue-400 animate-pulse" />
+                    <div className="absolute -inset-1 bg-blue-400/20 rounded-full animate-ping"></div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-medium text-blue-300">
+                        {streamingReasoning && !streamingResponse ? 'AI Reasoning Process' : 
+                         streamingResponse ? 'Generating Response' : 'Connecting to DeepSeek...'}
+                      </span>
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-blue-200">
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-3 w-3" />
+                        <span>Reasoning: {streamingReasoning?.length || 0} tokens</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        <span>Response: {streamingResponse?.length || 0} tokens</span>
+                      </div>
+                    </div>
+                    <Progress 
+                      value={(streamingReasoning?.length || 0) / 10} 
+                      className="mt-2 h-1" 
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -345,7 +369,13 @@ export default function StreamingInterface() {
                 >
                   {storeIsStreaming ? streamingReasoning : currentResponse?.reasoning}
                   {storeIsStreaming && streamingReasoning && (
-                    <span className="animate-pulse text-blue-400 ml-1">▌</span>
+                    <span className="animate-pulse text-blue-400 ml-1 text-lg">▌</span>
+                  )}
+                  {storeIsStreaming && !streamingReasoning && (
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="italic">Waiting for reasoning to begin...</span>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -380,7 +410,13 @@ export default function StreamingInterface() {
                 >
                   {storeIsStreaming ? streamingResponse : currentResponse?.response}
                   {storeIsStreaming && streamingResponse && (
-                    <span className="animate-pulse text-purple-400 ml-1">▌</span>
+                    <span className="animate-pulse text-purple-400 ml-1 text-lg">▌</span>
+                  )}
+                  {storeIsStreaming && !streamingResponse && streamingReasoning && (
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <Clock className="h-4 w-4 animate-spin" />
+                      <span className="italic">Reasoning complete, generating response...</span>
+                    </div>
                   )}
                 </div>
               </CardContent>
