@@ -176,41 +176,56 @@ function StreamingInterfaceContent() {
     if (!query.trim() || isLoading || storeIsStreaming) return;
 
     try {
-      // Show immediate visual feedback
+      // Immediate visual feedback - show working state instantly
       setIsConnected(true);
       setStreamingStage('connecting');
       
-      // Force scroll to show activity immediately
-      const responseElement = document.getElementById('streaming-response-section');
-      if (responseElement) {
-        responseElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      // Force immediate scroll to response area
+      setTimeout(() => {
+        const responseElement = document.getElementById('streaming-response-section');
+        if (responseElement) {
+          responseElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
 
-      // Use demo mode if enabled OR if authentication previously failed
-      if (demoMode || !isConnected) {
-        console.log('🎬 Using demo streaming mode...');
+      // Start processing immediately (within 100ms)
+      console.log('🚀 Starting immediate streaming processing...');
+      
+      if (demoMode) {
+        console.log('🎬 High-speed demo mode activated...');
         await DeepSeekService.processDemoStreaming(query);
       } else {
         try {
+          // Try real streaming first
           await DeepSeekService.processQueryStreaming(query, { 
             ragEnabled,
             mcpEnabled,
             temperature,
-            model: selectedModel
+            model: selectedModel === 'deepseek-chat' ? 'deepseek-chat' : 'deepseek-reasoner'
           });
         } catch (authError) {
-          // If streaming fails, automatically try demo mode
-          console.log('🔄 Streaming failed, switching to demo mode...');
+          // Immediate fallback to demo if real API fails
+          console.log('🔄 API failed, immediate demo fallback...');
           setDemoMode(true);
           await DeepSeekService.processDemoStreaming(query);
         }
       }
+      
       setQuery('');
     } catch (error) {
-      console.error('Query failed:', error);
+      console.error('❌ Query processing failed:', error);
+      
+      // Always fallback to demo mode to ensure user sees something
       setIsConnected(false);
-      setDemoMode(true); // Enable demo mode for future queries
-      console.log('DeepSeek API authentication failed. Switched to demo mode.');
+      setDemoMode(true);
+      console.log('🎬 Fallback to demo mode for user experience');
+      
+      try {
+        await DeepSeekService.processDemoStreaming(query);
+        setQuery('');
+      } catch (demoError) {
+        console.error('❌ Even demo mode failed:', demoError);
+      }
     }
   };
 
