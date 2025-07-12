@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { VectorDatabaseType, MCPType } from "@/types/ipa-types";
 
 interface AdvancedFeaturesSectionProps {
@@ -119,29 +120,41 @@ const AdvancedFeaturesSection: React.FC<AdvancedFeaturesSectionProps> = ({
         </div>
       </div>
 
-      <TextAreaField
-        label="A2A Integration Details"
-        placeholder="Describe agent-to-agent communication requirements, protocols, and integration patterns..."
-        value={a2aIntegrationDetails}
-        onChange={(value) => onFieldChange("a2aIntegrationDetails", value)}
-        maxLength={2000}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="a2aIntegrationDetails">A2A Integration Details</Label>
+        <Textarea
+          id="a2aIntegrationDetails"
+          placeholder="Describe agent-to-agent communication requirements, protocols, and integration patterns..."
+          value={a2aIntegrationDetails}
+          onChange={(e) => onFieldChange("a2aIntegrationDetails", e.target.value)}
+          maxLength={2000}
+          className="min-h-[100px]"
+        />
+      </div>
 
-      <TextAreaField
-        label="Advanced Prompt Details"
-        placeholder="Specify advanced prompting strategies, context management, and AI behavior customizations..."
-        value={advancedPromptDetails}
-        onChange={(value) => onFieldChange("advancedPromptDetails", value)}
-        maxLength={2000}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="advancedPromptDetails">Advanced Prompt Details</Label>
+        <Textarea
+          id="advancedPromptDetails"
+          placeholder="Specify advanced prompting strategies, context management, and AI behavior customizations..."
+          value={advancedPromptDetails}
+          onChange={(e) => onFieldChange("advancedPromptDetails", e.target.value)}
+          maxLength={2000}
+          className="min-h-[100px]"
+        />
+      </div>
 
-      <TextAreaField
-        label="Additional Features"
-        placeholder="List any additional features, integrations, or specific requirements not covered above..."
-        value={additionalFeatures}
-        onChange={(value) => onFieldChange("additionalFeatures", value)}
-        maxLength={3000}
-      />
+      <div className="space-y-2">
+        <Label htmlFor="additionalFeatures">Additional Features</Label>
+        <Textarea
+          id="additionalFeatures"
+          placeholder="List any additional features, integrations, or specific requirements not covered above..."
+          value={additionalFeatures}
+          onChange={(e) => onFieldChange("additionalFeatures", e.target.value)}
+          maxLength={3000}
+          className="min-h-[100px]"
+        />
+      </div>
     </div>
   );
 };
