@@ -1,0 +1,153 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+5:51:06 PM [express] serving on port 5000
+Initializing vector store... (1/3)
+Initializing vector store... (1/3)
+Database connection successful
+pgvector extension enabled
+Vector documents table created/verified
+Database connection successful
+Optimized vector indexes created
+Vector store initialized successfully
+pgvector extension enabled
+Vector documents table created/verified
+Optimized vector indexes created
+Vector store initialized successfully
+5:51:20 PM [express] GET /api/rag/stats 200 in 2342ms :: {"documentsIndexed":3474,"chunksIndexed":34…
+5:51:54 PM [express] GET /api/rag/stats 200 in 628ms :: {"documentsIndexed":3474,"chunksIndexed":347…
+5:52:03 PM [express] POST /api/mcp/request 200 in 12ms
+[MCP Hub] Comprehensive context for platform: replit
+MCP Hub: Rebuilding platform data cache...
+[MCP Hub] Comprehensive context for platform: replit
+MCP Hub: Rebuilding platform data cache...
+[MCP Hub] Comprehensive context for platform: replit
+MCP Hub: Rebuilding platform data cache...
+[MCP Hub] Comprehensive context for platform: replit
+MCP Hub: Rebuilding platform data cache...
+[MCP Hub] Comprehensive context for platform: replit
+MCP Hub: Rebuilding platform data cache...
+[MCP Hub] Comprehensive context for platform: replit
+MCP Hub: Rebuilding platform data cache...
+MCP Hub: Cache rebuilt with 0 platforms and complete technology data
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 625ms :: {"success":true,"data":…
+MCP Hub: Cache rebuilt with 0 platforms and complete technology data
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 601ms :: {"success":true,"data":…
+MCP Hub: Cache rebuilt with 0 platforms and complete technology data
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 591ms :: {"success":true,"data":…
+MCP Hub: Cache rebuilt with 0 platforms and complete technology data
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 584ms :: {"success":true,"data":…
+MCP Hub: Cache rebuilt with 0 platforms and complete technology data
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 593ms :: {"success":true,"data":…
+MCP Hub: Cache rebuilt with 0 platforms and complete technology data
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 610ms :: {"success":true,"data":…
+[MCP Hub] Comprehensive context for platform: replit
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: replit
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: replit
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: replit
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: replit
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: replit
+[MCP Hub] Looking for platform: "replit"
+[MCP Hub] Available platforms: []
+[MCP Hub] No platform found for: replit
+5:52:04 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+Initializing RAG 2.0 system...
+Initializing RAG 2.0 system...
+Hybrid search engine initialized
+Hybrid search engine initialized
+RAG 2.0 system initialized successfully
+RAG 2.0 system initialized successfully
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+5:52:23 PM [express] POST /api/mcp/request 200 in 7076ms
+5:52:23 PM [express] POST /api/mcp/request 200 in 5380ms
+5:52:26 PM [express] POST /api/mcp/request 200 in 9009ms
+5:52:26 PM [express] POST /api/mcp/request 200 in 7142ms
+5:52:31 PM [express] POST /api/mcp/request 200 in 8171ms
+5:52:31 PM [express] POST /api/mcp/request 200 in 9919ms
+5:52:31 PM [express] POST /api/mcp/request 200 in 3359ms
+5:52:31 PM [express] POST /api/mcp/request 200 in 3360ms
+5:52:31 PM [express] POST /api/mcp/request 200 in 558ms
+5:52:31 PM [express] POST /api/mcp/request 200 in 558ms
+5:52:37 PM [express] POST /api/mcp/request 200 in 6349ms
+5:52:37 PM [express] POST /api/mcp/request 200 in 6351ms
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1384
+ connect",o),this._clients=this._clients.filter(u=>u!==t),s&&(o.message="Connect\
+                                                                       ^
+
+TypeError: Cannot set property message of #<ErrorEvent> which has only a getter
+    at An._connectionCallback (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1384:72)
+    at An._handleErrorWhileConnecting (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1290:38)
+    at An._handleErrorEvent (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1291:33)
+    at fn.emit (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at v.reportStreamError (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1201:46)
+    at v.emit (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:986:42)
+    at callListener (/home/runner/workspace/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onError (/home/runner/workspace/node_modules/ws/lib/event-target.js:230:9)
+    at WebSocket.emit (node:events:518:28)
+    at emitErrorAndClose (/home/runner/workspace/node_modules/ws/lib/websocket.js:1041:13)
+    at processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at runNextTicks (node:internal/process/task_queues:64:3)
+    at listOnTimeout (node:internal/timers:545:9)
+    at process.processTimers (node:internal/timers:519:7)
+
+Node.js v20.18.1
