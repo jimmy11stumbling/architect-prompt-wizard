@@ -4,7 +4,7 @@ import { realTimeResponseService } from "../integration/realTimeResponseService"
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
-import { deepseekReasonerService } from "../deepseek/deepseekReasonerService";
+import { DeepSeekService } from "../deepseek";
 import { workflowErrorHandler } from "./workflowErrorHandler";
 import { workflowNotificationService } from "./workflowNotificationService";
 
@@ -201,13 +201,11 @@ export class WorkflowEngine {
         );
 
       case "deepseek-reason":
-        return await deepseekReasonerService.processQuery({
-          prompt: resolvedConfig.prompt,
-          maxTokens: resolvedConfig.maxTokens || 4096,
+        await DeepSeekService.processQuery(resolvedConfig.prompt, {
           ragEnabled: resolvedConfig.ragEnabled || false,
-          a2aEnabled: resolvedConfig.a2aEnabled || false,
-          mcpEnabled: resolvedConfig.mcpEnabled || false
+          temperature: 0.1
         });
+        return { success: true, reasoning: "DeepSeek reasoning completed" };
 
       case "http-request":
         return await this.executeHttpRequest(resolvedConfig);

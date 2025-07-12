@@ -2,8 +2,8 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, Zap, Database, Network, Wrench } from "lucide-react";
 import DeepSeekReasonerPanel from "@/components/enhanced-features/DeepSeekReasonerPanel";
-import AttachedAssetsPanel from "@/components/deepseek/AttachedAssetsPanel";
-import DeepDiveAssetsExplorer from "@/components/deepseek/DeepDiveAssetsExplorer";
+// Removed AttachedAssetsPanel - not needed in new implementation
+// Removed DeepDiveAssetsExplorer - not needed in new implementation
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ReasonerPage: React.FC = () => {
@@ -70,29 +70,7 @@ const ReasonerPage: React.FC = () => {
         </div>
 
         {/* Main Reasoner Interface */}
-        
-      <Tabs defaultValue="reasoner" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="reasoner">DeepSeek Reasoner</TabsTrigger>
-          <TabsTrigger value="assets">Attached Assets</TabsTrigger>
-          <TabsTrigger value="deepdive">Deep Dive Explorer</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="reasoner" className="space-y-4">
-          <DeepSeekReasonerPanel />
-        </TabsContent>
-
-        <TabsContent value="assets" className="space-y-4">
-          <AttachedAssetsPanel 
-            isEnabled={true} 
-            onToggle={() => {}} 
-          />
-        </TabsContent>
-
-        <TabsContent value="deepdive" className="space-y-4">
-          <DeepDiveAssetsExplorer />
-        </TabsContent>
-      </Tabs>
+        <DeepSeekReasonerPanel />
 
         {/* Technical Specifications */}
         <Card>

@@ -2,7 +2,7 @@
 import { ragService } from "../../rag/ragService";
 import { a2aService } from "../../a2a/a2aService";
 import { mcpService } from "../../mcp/mcpService";
-import { deepseekReasonerService } from "../../deepseek/deepseekReasonerService";
+import { DeepSeekService } from "../../deepseek";
 import { realTimeResponseService } from "../realTimeResponseService";
 
 export class ServiceExecutor {
@@ -127,22 +127,18 @@ export class ServiceExecutor {
 
       const contextPrompt = this.buildContextPrompt(query, results);
       
-      const reasoning = await deepseekReasonerService.processQuery({
-        prompt: contextPrompt,
-        maxTokens: 4096,
+      await DeepSeekService.processQuery(contextPrompt, {
         ragEnabled: !!results.ragResults,
-        a2aEnabled: !!results.a2aCoordination,
-        mcpEnabled: !!results.mcpResults
+        temperature: 0.1
       });
       
       realTimeResponseService.addResponse({
         source: "system-integration",
         status: "success",
-        message: `DeepSeek reasoning completed with ${reasoning.confidence} confidence`,
+        message: `DeepSeek reasoning completed successfully`,
         data: {
           step: "deepseek",
-          confidence: reasoning.confidence,
-          tokenUsage: reasoning.tokenUsage,
+          contextLength: contextPrompt.length,
           processingTime: reasoning.processingTime
         }
       });

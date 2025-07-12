@@ -1,15 +1,16 @@
-// DeepSeek Reasoner Panel - Enhanced Features
+// DeepSeek Reasoner Panel - Main Component
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Loader2, Brain, Zap, Database } from 'lucide-react';
 import { DeepSeekService, useDeepSeekStore } from '@/services/deepseek';
 
-const DeepSeekReasonerPanel: React.FC = () => {
+export function DeepSeekReasonerPanel() {
   const [query, setQuery] = useState('');
   const [ragEnabled, setRagEnabled] = useState(true);
   
@@ -165,6 +166,4 @@ const DeepSeekReasonerPanel: React.FC = () => {
       )}
     </div>
   );
-};
-
-export default DeepSeekReasonerPanel;
+}

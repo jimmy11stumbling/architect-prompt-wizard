@@ -1,5 +1,5 @@
 import { MCPAssetContext, MCPAssetQuery } from './attachedAssetsMcpHub';
-import { AttachedAsset } from '../deepseek/attachedAssetsService';
+// Removed old AttachedAsset import - service refactored
 
 export class MCPHubService {
   private static instance: MCPHubService;

@@ -1,58 +1,41 @@
-
-export interface ReasonerQuery {
-  prompt: string;
-  maxTokens?: number;
-  conversationHistory?: ConversationHistory[];
-  ragEnabled?: boolean;
-  a2aEnabled?: boolean;
-  mcpEnabled?: boolean;
-  useAttachedAssets?: boolean;
-}
-
-export interface ReasonerResponse {
-  answer: string;
-  reasoning: string;
-  conversationId: string;
-  usage: TokenUsage;
-  integrationData?: {
-    ragResults?: any;
-    a2aMessages?: any[];
-    mcpToolCalls?: any[];
-    attachedAssets?: {
-      count: number;
-      used: string[];
-    };
-  };
-}
-
-export interface ConversationHistory {
-  role: "user" | "assistant";
+// DeepSeek Reasoner Types
+export interface DeepSeekMessage {
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp: number;
 }
 
-export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  reasoningTokens: number;
-  totalTokens: number;
+export interface DeepSeekRequest {
+  messages: DeepSeekMessage[];
+  maxTokens?: number;
+  temperature?: number;
+  ragEnabled?: boolean;
 }
 
 export interface DeepSeekResponse {
-  answer: string;
   reasoning: string;
-  confidence: number;
-  conversationId: string;
-  tokenUsage: TokenUsage;
+  response: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    reasoningTokens: number;
+    totalTokens: number;
+  };
   processingTime: number;
-  usage: TokenUsage;
-  integrationData?: {
-    ragResults?: any;
-    a2aMessages?: any[];
-    mcpToolCalls?: any[];
-    attachedAssets?: {
-      count: number;
-      used: string[];
+  conversationId: string;
+}
+
+export interface DeepSeekApiResponse {
+  choices: [{
+    message: {
+      content: string;
+      reasoning_content: string;
     };
+    finish_reason: string;
+  }];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    reasoning_tokens: number;
+    total_tokens: number;
   };
 }

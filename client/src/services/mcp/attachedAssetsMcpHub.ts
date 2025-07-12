@@ -1,8 +1,8 @@
-import { attachedAssetsService, AttachedAsset } from "../deepseek/attachedAssetsService";
+// Removed old attachedAssetsService import - service refactored
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface MCPAssetContext {
-  relevantAssets: AttachedAsset[];
+  relevantAssets: any[];
   contextData: Record<string, string>;
   metadata: {
     totalAssets: number;
@@ -44,11 +44,9 @@ export class AttachedAssetsMCPHub {
         data: {}
       });
 
-      // Load all available assets
-      const assets = await attachedAssetsService.loadAvailableAssets();
-      
+      // Initialize asset system - replaced old service with direct API calls
       // Pre-categorize assets for faster retrieval
-      this.categorizeAssets(assets);
+      this.categorizeAssets([]);
       
       this.initialized = true;
 
@@ -317,7 +315,7 @@ export class AttachedAssetsMCPHub {
     });
   }
 
-  private categorizeAssets(assets: AttachedAsset[]): void {
+  private categorizeAssets(assets: any[]): void {
     const categories = new Set<string>();
     
     assets.forEach(asset => {

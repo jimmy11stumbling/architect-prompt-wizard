@@ -2,7 +2,7 @@
 import { ragService } from "../rag/ragService";
 import { a2aService } from "../a2a/a2aService";
 import { mcpService } from "../mcp/mcpService";
-import { deepseekReasonerService } from "../deepseek/deepseekReasonerService";
+import { DeepSeekService } from "../deepseek";
 import { realTimeResponseService } from "./realTimeResponseService";
 import { 
   IntegratedQueryRequest, 
@@ -34,7 +34,7 @@ export class SystemIntegrationService {
         ragService.initialize(),
         a2aService.initialize(),
         mcpService.initialize(),
-        deepseekReasonerService.initialize()
+        DeepSeekService.checkHealth()
       ]);
 
       this.initialized = true;
