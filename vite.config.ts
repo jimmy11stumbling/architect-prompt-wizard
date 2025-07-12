@@ -10,7 +10,7 @@ export default defineConfig({
       "@": path.resolve(path.dirname(fileURLToPath(import.meta.url)), "./client/src"),
     },
   },
-  root: path.resolve(__dirname, "client"),
+  root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), "client"),
   server: {
     host: "0.0.0.0",
     port: 5173,
