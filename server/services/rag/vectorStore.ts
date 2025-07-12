@@ -50,23 +50,25 @@ export class VectorStore {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    try {
-      console.log('Initializing vector store...');
-      
-      // Test database connection first
-      await this.db.execute(sql`SELECT 1`);
-      console.log('Database connection successful');
-
-      // Enable pgvector extension (may fail if not available, but that's okay)
+    let retries = 3;
+    while (retries > 0) {
       try {
-        await this.db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
-        console.log('pgvector extension enabled');
-      } catch (vectorError) {
-        console.warn('pgvector extension not available, using text search only:', vectorError);
-      }
-      
-      // Create vector documents table if it doesn't exist
-      await this.db.execute(sql`
+        console.log(`Initializing vector store... (${4 - retries}/3)`);
+
+        // Test database connection first
+        await this.db.execute(sql`SELECT 1`);
+        console.log('Database connection successful');
+
+        // Enable pgvector extension (may fail if not available, but that's okay)
+        try {
+          await this.db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+          console.log('pgvector extension enabled');
+        } catch (vectorError) {
+          console.warn('pgvector extension not available, using text search only:', vectorError);
+        }
+
+        // Create vector documents table if it doesn't exist
+        await this.db.execute(sql`
         CREATE TABLE IF NOT EXISTS vector_documents (
           id SERIAL PRIMARY KEY,
           document_id TEXT NOT NULL UNIQUE,
@@ -77,32 +79,41 @@ export class VectorStore {
           updated_at TIMESTAMP DEFAULT NOW()
         )
       `);
-      console.log('Vector documents table created/verified');
+        console.log('Vector documents table created/verified');
 
-      // Create text search index for better performance
-      await this.db.execute(sql`
+        // Create text search index for better performance
+        await this.db.execute(sql`
         CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
         ON vector_documents USING gin(to_tsvector('english', content))
       `);
 
-      // Create index for similarity search (only if pgvector is available)
-      try {
-        await this.db.execute(sql`
+        // Create index for similarity search (only if pgvector is available)
+        try {
+          await this.db.execute(sql`
           CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
           ON vector_documents USING ivfflat (embedding vector_cosine_ops)
           WITH (lists = 100)
         `);
-        console.log('Vector similarity index created');
-      } catch (indexError) {
-        console.warn('Vector similarity index not created (pgvector not available)');
-      }
+          console.log('Vector similarity index created');
+        } catch (indexError) {
+          console.warn('Vector similarity index not created (pgvector not available)');
+        }
 
-      this.initialized = true;
-      console.log('Vector store initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize vector store:', error);
-      console.error('Error details:', error);
-      throw error;
+        this.initialized = true;
+        console.log('Vector store initialized successfully');
+        return;
+      } catch (error) {
+        retries--;
+        console.error(`Vector store initialization failed (${retries} retries left):`, error);
+
+        if (retries === 0) {
+          console.error('Vector store initialization failed permanently');
+          throw error;
+        }
+
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
   }
 
@@ -112,7 +123,7 @@ export class VectorStore {
     try {
       for (const doc of documents) {
         let embedding = doc.embedding;
-        
+
         // Generate embedding if missing
         if (!embedding) {
           console.log(`[VectorStore] Generating embedding for document: ${doc.id}`);
@@ -134,7 +145,7 @@ export class VectorStore {
           }
         });
       }
-      
+
       console.log(`[VectorStore] Added ${documents.length} documents to vector store with embeddings`);
     } catch (error) {
       console.error('Failed to add documents to vector store:', error);
@@ -159,18 +170,18 @@ export class VectorStore {
 
       if (documentsWithoutEmbeddings.length > 0) {
         console.log(`[VectorStore] Found ${documentsWithoutEmbeddings.length} documents without embeddings, generating...`);
-        
+
         for (const doc of documentsWithoutEmbeddings) {
           const embedding = await this.embeddingService.generateEmbedding(doc.content);
-          
+
           await this.db.update(vectorDocuments)
-            .set({ 
+            .set({
               embedding: embedding,
               updatedAt: new Date()
             })
             .where(sql`${vectorDocuments.id} = ${doc.id}`);
         }
-        
+
         console.log(`[VectorStore] Generated embeddings for ${documentsWithoutEmbeddings.length} documents`);
       }
     } catch (error) {
@@ -225,7 +236,7 @@ export class VectorStore {
 
     try {
       console.log(`[VectorStore] Performing vector similarity search with limit: ${limit}`);
-      
+
       // Check if we have any documents with embeddings
       const countResult = await this.db
         .select({ count: sql<number>`count(*)` })
@@ -255,7 +266,7 @@ export class VectorStore {
         .limit(limit);
 
       console.log(`[VectorStore] Vector search found ${results.length} results`);
-      
+
       return results.map(result => ({
         id: result.id,
         content: result.content,
@@ -277,7 +288,7 @@ export class VectorStore {
 
     try {
       console.log(`[VectorStore] Performing text search fallback for: "${query}" with limit: ${limit}`);
-      
+
       // Enhanced text search with better scoring
       const results = await this.db
         .select({
@@ -308,7 +319,7 @@ export class VectorStore {
         .limit(limit);
 
       console.log(`[VectorStore] Text search found ${results.length} results for query: "${query}"`);
-      
+
       return results.map(result => ({
         id: result.id,
         content: result.content,

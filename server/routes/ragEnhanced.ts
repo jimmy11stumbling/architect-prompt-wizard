@@ -235,6 +235,52 @@ router.get('/analytics', async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// Add simple in-memory cache for stats
+let statsCache = null;
+let statsCacheTime = 0;
+const STATS_CACHE_DURATION = 30000; // 30 seconds
+
+// RAG stats endpoint
+router.get('/stats', async (req: AuthenticatedRequest, res) => {
+  try {
+    const ragOrchestrator2 = RAGOrchestrator2.getInstance();
+    const now = Date.now();
+
+    // Return cached stats if recent
+    if (statsCache && (now - statsCacheTime) < STATS_CACHE_DURATION) {
+      return res.json(statsCache);
+    }
+
+    // Add timeout protection for stats
+    const statsPromise = ragOrchestrator2.getStats();
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Stats timeout')), 15000);
+    });
+
+    const stats = await Promise.race([statsPromise, timeoutPromise]);
+
+    // Cache the result
+    statsCache = stats;
+    statsCacheTime = now;
+
+    res.json(stats);
+  } catch (error) {
+    console.error('RAG stats error:', error);
+
+    // Return default stats on error instead of failing
+    const defaultStats = {
+      documentsIndexed: 0,
+      chunksIndexed: 0,
+      vectorStoreStats: { status: 'unavailable' },
+      searchEngineStats: { status: 'unavailable' },
+      embeddingStats: { status: 'unavailable' },
+      lastIndexed: new Date()
+    };
+
+    res.json(defaultStats);
+  }
+});
+
 // Helper functions
 function calculateEnhancedScore(result: any, query: string, platform?: string): number {
   let score = result.score || 0;
