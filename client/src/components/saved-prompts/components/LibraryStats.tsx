@@ -1,24 +1,55 @@
-The prompt library component is not provided so I will generate the library stat component with fallback for loading and error and safe defaults.
-```
-```replit_final_file
+
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Database, Users, TrendingUp, Star } from "lucide-react";
-import { PromptStats } from "@/services/api/promptService";
+
+export interface PromptStats {
+  totalPrompts: number;
+  publicPrompts: number;
+  categories: number;
+  totalUsage: number;
+  averageRating: number;
+}
 
 interface LibraryStatsProps {
   stats?: PromptStats | null;
   totalPrompts?: number;
+  isLoading?: boolean;
 }
 
-const LibraryStats: React.FC<LibraryStatsProps> = ({ stats, totalPrompts = 0 }) => {
+const LibraryStats: React.FC<LibraryStatsProps> = ({ 
+  stats, 
+  totalPrompts = 0, 
+  isLoading = false 
+}) => {
   // Use fallback values if stats are not available
   const safeStats = {
     totalPrompts: stats?.totalPrompts ?? totalPrompts,
     publicPrompts: stats?.publicPrompts ?? 0,
     totalUsage: stats?.totalUsage ?? 0,
-    averageRating: stats?.averageRating ?? 0
+    averageRating: stats?.averageRating ?? 0,
+    categories: stats?.categories ?? 0
   };
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+                <div>
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-8 w-12 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -74,5 +105,3 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats, totalPrompts = 0 }) 
 };
 
 export default LibraryStats;
-```The provided change snippet relates to a different component, likely `PromptStats` or a similar component displaying prompt statistics. Let's apply error handling and safe defaults to that component, assuming its structure is similar to what's described in the change snippet. Since the complete file is required, I will add a placeholder for the `usePromptLibrary` hook and assume it returns the `stats, loading, error` as used in the snippet.
-```

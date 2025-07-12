@@ -15,7 +15,7 @@ export interface SavedPrompt {
   category?: string; // Optional category
 }
 
-interface PromptStats {
+export interface PromptStats {
   totalPrompts: number;
   publicPrompts: number;
   categories: number;

@@ -234,4 +234,38 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Get stats for prompts
+router.get('/stats', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const userPrompts = await db
+      .select()
+      .from(savedPrompts)
+      .where(eq(savedPrompts.userId, req.user.id));
+
+    const publicPrompts = await db
+      .select()
+      .from(savedPrompts)
+      .where(eq(savedPrompts.isPublic, true));
+
+    const stats = {
+      totalPrompts: userPrompts.length,
+      publicPrompts: publicPrompts.length,
+      categories: new Set(userPrompts.map(p => p.tags).flat()).size,
+      totalUsage: userPrompts.reduce((sum, p) => sum + (p.usage || 0), 0),
+      averageRating: userPrompts.length > 0 
+        ? userPrompts.reduce((sum, p) => sum + (p.rating || 0), 0) / userPrompts.length 
+        : 0
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching prompt stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
