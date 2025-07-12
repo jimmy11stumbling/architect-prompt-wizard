@@ -88,7 +88,6 @@ export class RAGOrchestrator2 {
   private vectorStore: VectorStore;
   private embeddingService: EmbeddingService;
   private isInitialized = false;
-  private initializationPromise: Promise<void> | null = null;
   private indexedDocuments: ProcessedDocument[] = [];
 
   private constructor() {
@@ -114,30 +113,20 @@ export class RAGOrchestrator2 {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
-    // Return existing initialization promise if one is in progress
-    if (this.initializationPromise) {
-      return this.initializationPromise;
+
+    try {
+      console.log('Initializing RAG 2.0 system...');
+
+      // Initialize all components
+      await this.vectorStore.initialize();
+      await this.hybridSearchEngine.initialize();
+
+      this.isInitialized = true;
+      console.log('RAG 2.0 system initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize RAG 2.0 system:', error);
+      throw error;
     }
-
-    this.initializationPromise = (async () => {
-      try {
-        console.log('Initializing RAG 2.0 system...');
-
-        // Initialize all components
-        await this.vectorStore.initialize();
-        await this.hybridSearchEngine.initialize();
-
-        this.isInitialized = true;
-        console.log('RAG 2.0 system initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize RAG 2.0 system:', error);
-        this.initializationPromise = null;
-        throw error;
-      }
-    })();
-
-    return this.initializationPromise;
   }
 
   /**

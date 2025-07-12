@@ -22,21 +22,13 @@ class ConnectionMonitor {
     // Wait if too many connections
     while (this.connectionCount >= this.maxConnections) {
       console.log(`[ConnectionMonitor] Max connections reached (${this.maxConnections}), waiting...`);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     this.connectionCount++;
     console.log(`[ConnectionMonitor] Acquired connection ${this.connectionCount}/${this.maxConnections} for: ${key}`);
     
     const operationPromise = operation()
-      .catch(error => {
-        // Handle Neon-specific errors gracefully
-        if (error?.message?.includes('ErrorEvent') || error?.message?.includes('WebSocket')) {
-          console.warn(`[ConnectionMonitor] Neon connection error for ${key}, continuing with degraded functionality:`, error.message);
-          return null; // Return null instead of throwing
-        }
-        throw error;
-      })
       .finally(() => {
         this.connectionCount--;
         this.connectionPromises.delete(key);

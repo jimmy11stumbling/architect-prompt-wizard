@@ -39,7 +39,6 @@ export class VectorStore {
   private db: typeof db;
   private initialized = false;
   private embeddingService: EmbeddingService;
-  private initializationPromise: Promise<void> | null = null;
 
   constructor(connectionString?: string) {
     // Use shared database connection
@@ -49,13 +48,8 @@ export class VectorStore {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
-    // Return existing initialization promise if one is in progress
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
 
-    this.initializationPromise = connectionMonitor.acquireConnection('vector-store-init', async () => {
+    return connectionMonitor.acquireConnection('vector-store-init', async () => {
       if (this.initialized) return; // Double-check after acquiring connection
       
       let retries = 3;
@@ -138,7 +132,6 @@ export class VectorStore {
           console.error('Vector store initialization failed permanently, continuing without vector store');
           // Don't throw error, allow app to continue with degraded functionality
           this.initialized = true;
-          this.initializationPromise = null;
           return;
         }
 
@@ -146,11 +139,7 @@ export class VectorStore {
         await new Promise(resolve => setTimeout(resolve, (4 - retries) * 3000));
       }
     }
-    }).finally(() => {
-      this.initializationPromise = null;
     });
-
-    return this.initializationPromise;
   }
 
   async addDocuments(documents: VectorDocument[]): Promise<void> {
