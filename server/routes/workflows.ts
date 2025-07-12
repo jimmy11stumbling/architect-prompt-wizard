@@ -234,26 +234,112 @@ router.post('/:id/execute', async (req, res) => {
     }
 
     const { id } = req.params;
-    const validation = executionSchema.safeParse({ ...req.body, workflowId: parseInt(id) });
-    if (!validation.success) {
-      return res.status(400).json({ error: validation.error.issues });
+    const workflowId = parseInt(id);
+    
+    if (isNaN(workflowId)) {
+      return res.status(400).json({ error: 'Invalid workflow ID' });
     }
 
-    const executionData = validation.data;
-    
-    const newExecution = await db
-      .insert(workflowExecutions)
-      .values({
-        ...executionData,
-        userId: req.user.id,
-        status: 'queued',
-      })
-      .returning();
+    const { inputData = {} } = req.body;
 
-    res.status(201).json(newExecution[0]);
+    // Import and use the workflow execution engine
+    const { workflowExecutionEngine } = await import('../services/workflow/workflowExecutionEngine');
+    
+    const execution = await workflowExecutionEngine.executeWorkflow(
+      workflowId,
+      req.user.id,
+      inputData
+    );
+
+    res.status(201).json({
+      id: execution.id,
+      workflowId: execution.workflowId,
+      status: execution.status,
+      progress: execution.progress,
+      startedAt: execution.startedAt,
+      message: 'Workflow execution started successfully'
+    });
   } catch (error) {
-    console.error('Error creating workflow execution:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error executing workflow:', error);
+    res.status(500).json({ 
+      error: 'Failed to execute workflow',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Workflow execution control endpoints
+router.post('/:id/executions/:executionId/pause', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { executionId } = req.params;
+    const { workflowExecutionEngine } = await import('../services/workflow/workflowExecutionEngine');
+    
+    await workflowExecutionEngine.pauseExecution(executionId);
+    res.json({ message: 'Execution paused successfully' });
+  } catch (error) {
+    console.error('Error pausing execution:', error);
+    res.status(500).json({ error: 'Failed to pause execution' });
+  }
+});
+
+router.post('/:id/executions/:executionId/resume', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { executionId } = req.params;
+    const { workflowExecutionEngine } = await import('../services/workflow/workflowExecutionEngine');
+    
+    await workflowExecutionEngine.resumeExecution(executionId);
+    res.json({ message: 'Execution resumed successfully' });
+  } catch (error) {
+    console.error('Error resuming execution:', error);
+    res.status(500).json({ error: 'Failed to resume execution' });
+  }
+});
+
+router.post('/:id/executions/:executionId/cancel', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { executionId } = req.params;
+    const { workflowExecutionEngine } = await import('../services/workflow/workflowExecutionEngine');
+    
+    await workflowExecutionEngine.cancelExecution(executionId);
+    res.json({ message: 'Execution cancelled successfully' });
+  } catch (error) {
+    console.error('Error cancelling execution:', error);
+    res.status(500).json({ error: 'Failed to cancel execution' });
+  }
+});
+
+// Get execution status
+router.get('/:id/executions/:executionId/status', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { executionId } = req.params;
+    const { workflowExecutionEngine } = await import('../services/workflow/workflowExecutionEngine');
+    
+    const execution = workflowExecutionEngine.getExecution(executionId);
+    
+    if (!execution) {
+      return res.status(404).json({ error: 'Execution not found' });
+    }
+
+    res.json(execution);
+  } catch (error) {
+    console.error('Error getting execution status:', error);
+    res.status(500).json({ error: 'Failed to get execution status' });
   }
 });
 
