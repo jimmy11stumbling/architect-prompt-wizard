@@ -44,13 +44,20 @@ export class VectorStore {
   constructor(connectionString: string) {
     this.pool = new Pool({ 
       connectionString,
-      max: 20, // Maximum 20 connections in pool
-      min: 2,  // Keep minimum 2 connections alive
-      maxUses: 7500, // Rotate connections after 7500 uses
-      maxLifetime: 600000, // 10 minute max lifetime
-      idleTimeout: 30000, // 30 second idle timeout
-      connectionTimeoutMillis: 5000
+      max: 5, // Reduced max connections to prevent overload
+      min: 1,  // Keep minimum 1 connection alive
+      maxUses: 1000, // Reduced to prevent connection issues
+      maxLifetime: 300000, // 5 minute max lifetime
+      idleTimeout: 60000, // 60 second idle timeout
+      connectionTimeoutMillis: 10000, // Increased timeout
+      allowExitOnIdle: true
     });
+    
+    // Add error handling for pool events
+    this.pool.on('error', (err: any) => {
+      console.warn('[VectorStore] Pool error handled:', err.message);
+    });
+
     this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
     this.embeddingService = EmbeddingService.getInstance();
   }
@@ -63,8 +70,13 @@ export class VectorStore {
       try {
         console.log(`Initializing vector store... (${4 - retries}/3)`);
 
-        // Test database connection first
-        await this.db.execute(sql`SELECT 1`);
+        // Test database connection with timeout
+        const connectionPromise = this.db.execute(sql`SELECT 1`);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database connection timeout')), 15000)
+        );
+        
+        await Promise.race([connectionPromise, timeoutPromise]);
         console.log('Database connection successful');
 
         // Enable pgvector extension (may fail if not available, but that's okay)
@@ -124,17 +136,41 @@ export class VectorStore {
         this.initialized = true;
         console.log('Vector store initialized successfully');
         return;
-      } catch (error) {
+      } catch (error: any) {
         retries--;
-        console.error(`Vector store initialization failed (${retries} retries left):`, error);
+        const errorMsg = error?.message || 'Unknown error';
+        console.error(`Vector store initialization failed (${retries} retries left):`, errorMsg);
 
         if (retries === 0) {
-          console.error('Vector store initialization failed permanently');
-          throw error;
+          console.error('Vector store initialization failed permanently, continuing without vector store');
+          // Don't throw error, allow app to continue with degraded functionality
+          this.initialized = true;
+          return;
         }
 
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Close existing connections before retry
+        try {
+          await this.pool.end();
+        } catch (closeError) {
+          console.warn('Error closing pool during retry:', closeError);
+        }
+
+        // Recreate pool for retry
+        this.pool = new Pool({ 
+          connectionString: process.env.DATABASE_URL || '',
+          max: 3,
+          min: 1,
+          maxUses: 500,
+          maxLifetime: 180000,
+          idleTimeout: 30000,
+          connectionTimeoutMillis: 8000,
+          allowExitOnIdle: true
+        });
+
+        this.db = drizzle(this.pool, { schema: { ...schema, vectorDocuments } });
+
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, (4 - retries) * 3000));
       }
     }
   }
