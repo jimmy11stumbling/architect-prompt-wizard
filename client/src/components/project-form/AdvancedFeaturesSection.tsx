@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VectorDatabaseType, MCPType } from "@/types/ipa-types";
-import { TextAreaField } from "./";
 
 interface AdvancedFeaturesSectionProps {
   ragVectorDb: VectorDatabaseType;

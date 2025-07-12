@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,12 +36,12 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate required fields
     if (!isFormValid) {
       return;
     }
-    
+
     console.log("ProjectFormContainer: Submitting spec", currentSpec);
     onSubmit(currentSpec);
   };

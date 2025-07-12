@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,7 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
             </Badge>
           ))}
         </div>
-        
+
         {/* Custom Frontend Tech */}
         {customFrontendTech.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -78,8 +77,9 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
             ))}
           </div>
         )}
-        
-        <div className="flex gap-2">
+
+        {/* Removed manual entry */}
+        {/*<div className="flex gap-2">
           <Input
             placeholder="Add custom frontend technology"
             value={newFrontendTech}
@@ -89,7 +89,7 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
           <Button type="button" variant="outline" size="sm" onClick={handleAddFrontend}>
             <Plus className="h-4 w-4" />
           </Button>
-        </div>
+        </div>*/}
       </div>
 
       {/* Backend Tech Stack */}
@@ -107,7 +107,7 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
             </Badge>
           ))}
         </div>
-        
+
         {/* Custom Backend Tech */}
         {customBackendTech.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -122,8 +122,9 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
             ))}
           </div>
         )}
-        
-        <div className="flex gap-2">
+
+        {/* Removed manual entry */}
+        {/*<div className="flex gap-2">
           <Input
             placeholder="Add custom backend technology"
             value={newBackendTech}
@@ -133,7 +134,7 @@ const TechStackSection: React.FC<TechStackSectionProps> = ({
           <Button type="button" variant="outline" size="sm" onClick={handleAddBackend}>
             <Plus className="h-4 w-4" />
           </Button>
-        </div>
+        </div>*/}
       </div>
     </div>
   );
