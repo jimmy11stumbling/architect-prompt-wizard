@@ -34,6 +34,16 @@
     --ring: 224 76.3% 48%;
 
     --radius: 0.5rem;
+
+    /* Additional dark theme variables */
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 252 56% 57%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 267 68% 63%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 20%;
+    --sidebar-ring: 224 76.3% 48%;
   }
 }
 
@@ -44,6 +54,69 @@
 
   body {
     @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-foreground;
+  }
+
+  /* Force dark theme for all elements */
+  div, section, article, aside, header, footer, main, nav {
+    color: hsl(var(--foreground));
+  }
+
+  /* Dark theme for all containers and cards */
+  .bg-white {
+    @apply bg-slate-900 !important;
+  }
+
+  .bg-gray-50, .bg-gray-100 {
+    @apply bg-slate-800 !important;
+  }
+
+  .text-gray-900 {
+    @apply text-slate-100 !important;
+  }
+
+  .text-black {
+    @apply text-white !important;
+  }
+
+  /* Dark theme for forms and inputs */
+  input, textarea, select {
+    @apply bg-slate-800 border-slate-600 text-white;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    @apply bg-slate-700 border-blue-500 ring-blue-500;
+  }
+
+  /* Dark theme for dialogs and modals */
+  [role="dialog"], .dialog, .modal {
+    @apply bg-slate-900 text-white border-slate-700;
+  }
+
+  /* Dark theme for dropdowns and popovers */
+  [role="listbox"], [role="menu"], .dropdown-content, .popover-content {
+    @apply bg-slate-800 border-slate-600 text-white;
+  }
+
+  /* Dark theme for tables */
+  table {
+    @apply bg-slate-900;
+  }
+
+  th, td {
+    @apply border-slate-700 text-white;
+  }
+
+  th {
+    @apply bg-slate-800;
+  }
+
+  /* Dark theme for any remaining white backgrounds */
+  .bg-background {
+    background-color: hsl(var(--background)) !important;
+  }
+
+  .text-foreground {
+    color: hsl(var(--foreground)) !important;
   }
 }
 
@@ -77,6 +150,39 @@
 /* Enhanced button styling */
 .btn-nocodelos {
   @apply bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl;
+}
+
+/* Dark theme component overrides */
+.dark-section {
+  @apply bg-slate-900 text-white border-slate-700;
+}
+
+.dark-card {
+  @apply bg-slate-800 border-slate-700 text-white;
+}
+
+.dark-input {
+  @apply bg-slate-800 border-slate-600 text-white placeholder-slate-400;
+}
+
+.dark-button {
+  @apply bg-slate-700 hover:bg-slate-600 text-white border-slate-600;
+}
+
+/* Force dark theme for any white containers */
+.white-section, .light-section, .bg-light {
+  @apply bg-slate-900 text-white !important;
+}
+
+/* Dark theme for form sections */
+.form-section, .settings-section, .config-section {
+  @apply bg-slate-900 border-slate-700 text-white;
+}
+
+/* Dark theme for content areas */
+.content-area, .main-content, .sidebar-content {
+  @apply bg-slate-900 text-white;
+}
 
 /* Toast animations */
 @keyframes toast-slide-in-right {
