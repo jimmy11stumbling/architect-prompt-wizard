@@ -30,8 +30,29 @@ export class ResponseProcessor {
     conversationId: string,
     conversationManager: ConversationManager
   ): DeepSeekResponse {
-    let answer = apiResponse.choices[0].message.content;
-    let reasoning = apiResponse.choices[0].message.reasoning_content || apiResponse.choices[0].message.reasoning || "Advanced reasoning process completed.";
+    // Handle DeepSeek Reasoner response format - separate reasoning and response fields
+    const message = apiResponse.choices[0].message;
+    
+    // DeepSeek Reasoner returns reasoning_content and content as separate fields
+    let reasoning = message.reasoning_content || "";
+    let answer = message.content || "";
+    
+    // If no content but reasoning exists, the reasoning contains the answer
+    if (!answer && reasoning) {
+      answer = reasoning;
+      reasoning = "DeepSeek reasoning process completed.";
+    }
+    
+    // If no reasoning but content exists, use content as answer
+    if (!reasoning && answer) {
+      reasoning = "DeepSeek reasoning process completed.";
+    }
+    
+    // Ensure we have meaningful content in both fields
+    if (!answer && !reasoning) {
+      answer = "No response received from DeepSeek API";
+      reasoning = "No reasoning provided";
+    }
 
     answer = this.sanitizeText(answer);
     reasoning = this.sanitizeText(reasoning);

@@ -1234,31 +1234,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "DeepSeek API key not configured" });
       }
 
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-reasoner',
-          messages,
-          max_tokens: 4096,
-          temperature: 0.1,
-          stream: false
-        })
-      });
+      console.log('Making DeepSeek API call with', messages.length, 'messages');
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+      try {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+            'User-Agent': 'ReplotIPA/1.0'
+          },
+          body: JSON.stringify({
+            model: 'deepseek-reasoner',
+            messages,
+            max_tokens: 4096,
+            temperature: 0.1,
+            stream: false
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`DeepSeek API error: ${response.status} - ${errorText}`);
+          throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('DeepSeek API call successful, response structure:', {
+          hasChoices: !!result.choices,
+          hasMessage: !!result.choices?.[0]?.message,
+          contentLength: result.choices?.[0]?.message?.content?.length || 0,
+          reasoningLength: result.choices?.[0]?.message?.reasoning_content?.length || 0,
+          usage: result.usage
+        });
+        
+        // Handle DeepSeek Reasoner response format - preserve both reasoning and response
+        if (result.choices && result.choices[0] && result.choices[0].message) {
+          const message = result.choices[0].message;
+          console.log('DeepSeek response fields:', {
+            hasContent: !!message.content,
+            hasReasoningContent: !!message.reasoning_content,
+            contentLength: message.content?.length || 0,
+            reasoningLength: message.reasoning_content?.length || 0
+          });
+          
+          // For DeepSeek Reasoner, don't modify the fields - let the client handle them
+          // reasoning_content = reasoning process, content = final answer
+        }
+        
+        res.json(result);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error('DeepSeek API call timed out after 15 seconds');
+          throw new Error('DeepSeek API call timed out');
+        }
+        throw fetchError;
       }
-
-      const result = await response.json();
-      res.json(result);
     } catch (error) {
       console.error("DeepSeek query error:", error);
-      res.status(500).json({ error: "DeepSeek query failed" });
+      res.status(500).json({ 
+        error: "DeepSeek query failed",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

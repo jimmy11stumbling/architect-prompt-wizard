@@ -3,7 +3,7 @@ import { attachedAssetsService } from "./attachedAssetsService";
 import { ReasonerQuery, DeepSeekResponse } from './types';
 import { ApiKeyManager } from './core/apiKeyManager';
 import { DeepSeekApiClient } from './core/apiClient';
-import { MockResponseGenerator } from './core/mockResponseGenerator';
+// Removed mock response generator - using real API only
 import { ConversationManager } from './core/conversationManager';
 import { ResponseProcessor } from './core/responseProcessor';
 import { ragService } from '../rag/ragService';
@@ -38,6 +38,10 @@ export class DeepSeekReasonerService {
     try {
       console.log("Making DeepSeek API call via server endpoint");
       
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch('/api/deepseek/query', {
         method: 'POST',
         headers: {
@@ -46,19 +50,36 @@ export class DeepSeekReasonerService {
         body: JSON.stringify({
           messages,
           ragContext: true
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`DeepSeek API error: ${response.status} - ${errorText}`);
         throw new Error(`DeepSeek API error: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log("DeepSeek API call via server successful");
+      console.log("DeepSeek API call via server successful, response length:", result.choices?.[0]?.message?.content?.length || 0);
+      
+      // Validate response structure
+      if (!result.choices || !result.choices[0] || !result.choices[0].message) {
+        console.error("Invalid DeepSeek response structure:", result);
+        throw new Error("Invalid response structure from DeepSeek API");
+      }
+      
       return result;
     } catch (error) {
       console.error('DeepSeek API call failed:', error);
+      
+      // If the API call fails, return an error instead of falling back to mock
+      if (error.name === 'AbortError') {
+        throw new Error('DeepSeek API call timed out after 15 seconds');
+      }
+      
       throw error;
     }
   }

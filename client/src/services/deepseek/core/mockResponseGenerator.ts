@@ -51,7 +51,7 @@ export class MockResponseGenerator {
       choices: [{
         message: {
           content: answer,
-          reasoning: reasoning
+          reasoning_content: reasoning
         },
         finish_reason: "stop"
       }],
