@@ -118,7 +118,7 @@ export default function StreamingInterface() {
         setStreamingSpeed(Math.max(0, tokensThisSecond));
         setLastTokenCount(currentTokenCount);
       }, 1000);
-      
+
       setSpeedTimer(timer);
       return () => clearInterval(timer);
     } else {
@@ -503,17 +503,15 @@ export default function StreamingInterface() {
       {(currentResponse || storeIsStreaming) && (
         <div id="streaming-response-section" className="space-y-4">
           {/* Enhanced Streaming Status with New Components */}
-          {storeIsStreaming && (
-            <StreamingFeedback 
-              active={storeIsStreaming}
-              stage={
-                streamingReasoning && !streamingResponse ? 'reasoning' :
-                streamingResponse ? 'responding' : 'connecting'
-              }
-              reasoningTokens={streamingReasoning?.length || 0}
-              responseTokens={streamingResponse?.length || 0}
-            />
-          )}
+          <StreamingFeedback 
+            active={storeIsStreaming}
+            stage={
+              streamingReasoning && !streamingResponse ? 'reasoning' :
+              streamingResponse ? 'responding' : 'connecting'
+            }
+            reasoningTokens={streamingReasoning?.length || 0}
+            responseTokens={streamingResponse?.length || 0}
+          />
 
           {/* Reasoning Process */}
           {(streamingReasoning || currentResponse?.reasoning) && (
