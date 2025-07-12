@@ -1,6 +1,8 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { ProjectSpec } from "@/types/ipa-types";
 import { TechStackSection, AdvancedFeaturesSection, QuickFillButton, ProjectFormValidation } from "./";
 import { useProjectSpec } from "./hooks/useProjectSpec";
@@ -56,14 +58,19 @@ const ProjectFormContainer: React.FC<ProjectFormContainerProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <TextAreaField
-            label="Project Description"
-            placeholder="Describe your project in detail including main features, target audience, key functionalities, and business objectives..."
-            value={currentSpec.projectDescription}
-            onChange={(value) => updateSpec({ ...currentSpec, projectDescription: value })}
-            required={true}
-            minHeight="120px"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="projectDescription">
+              Project Description <span className="text-red-500">*</span>
+            </Label>
+            <Textarea
+              id="projectDescription"
+              placeholder="Describe your project in detail including main features, target audience, key functionalities, and business objectives..."
+              value={currentSpec.projectDescription}
+              onChange={(e) => updateSpec({ ...currentSpec, projectDescription: e.target.value })}
+              className="min-h-[120px]"
+              required
+            />
+          </div>
 
           <TechStackSection
             frontendTechStack={currentSpec.frontendTechStack}
