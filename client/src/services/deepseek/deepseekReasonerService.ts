@@ -36,11 +36,11 @@ export class DeepSeekReasonerService {
 
   private async makeDeepSeekCall(messages: Array<{role: string, content: string}>): Promise<any> {
     if (!ApiKeyManager.hasApiKey()) {
-      console.warn("No DeepSeek API key found, using mock response");
-      return MockResponseGenerator.generateEnhancedMockResponse(messages[messages.length - 1].content);
+      throw new Error("DeepSeek API key is required but not found");
     }
 
     try {
+      console.log("Making DeepSeek API call with valid API key");
       return await DeepSeekApiClient.makeApiCall(messages);
     } catch (error) {
       console.error('DeepSeek API call failed:', error);

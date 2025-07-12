@@ -11,7 +11,7 @@ export class ResponseProcessor {
     conversationManager: ConversationManager
   ): DeepSeekResponse {
     const answer = apiResponse.choices[0].message.content;
-    const reasoning = apiResponse.choices[0].message.reasoning || "Advanced reasoning process completed.";
+    const reasoning = apiResponse.choices[0].message.reasoning_content || apiResponse.choices[0].message.reasoning || "Advanced reasoning process completed.";
 
     const tokenUsage: TokenUsage = {
       promptTokens: apiResponse.usage?.prompt_tokens || 0,

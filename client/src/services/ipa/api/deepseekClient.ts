@@ -1,15 +1,14 @@
-
 import { DeepSeekCompletionRequest, DeepSeekCompletionResponse, AgentName } from "@/types/ipa-types";
 import { toast } from "@/hooks/use-toast";
 
 export class DeepSeekClient {
   private static readonly API_URL = "https://api.deepseek.com/v1/chat/completions";
-  
+
   static async makeApiCall(request: DeepSeekCompletionRequest): Promise<DeepSeekCompletionResponse> {
     const apiKey = localStorage.getItem("deepseek_api_key");
-    
+
     if (!apiKey) {
-      throw new Error("NO_API_KEY");
+      throw new Error("DeepSeek API key is required. Please set your API key in the settings.");
     }
 
     const response = await fetch(this.API_URL, {
@@ -39,9 +38,9 @@ export class DeepSeekClient {
     onError?: (error: Error) => void
   ): Promise<void> {
     const apiKey = localStorage.getItem("deepseek_api_key");
-    
+
     if (!apiKey) {
-      throw new Error("NO_API_KEY");
+      throw new Error("DeepSeek API key is required. Please set your API key in the settings.");
     }
 
     try {
@@ -76,7 +75,7 @@ export class DeepSeekClient {
 
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split("\n\n");
-        
+
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts[i].trim();
           if (part.startsWith("data:")) {
@@ -85,7 +84,7 @@ export class DeepSeekClient {
               onComplete?.();
               return;
             }
-            
+
             try {
               const parsed = JSON.parse(jsonStr);
               const token = parsed.choices?.[0]?.delta?.content;
@@ -97,10 +96,10 @@ export class DeepSeekClient {
             }
           }
         }
-        
+
         buffer = parts[parts.length - 1];
       }
-      
+
       onComplete?.();
     } catch (error) {
       console.error("Streaming error:", error);
@@ -160,7 +159,7 @@ export class DeepSeekClient {
 
   static handleApiError(error: any, agent: AgentName): void {
     console.error(`DeepSeek API error for ${agent}:`, error);
-    
+
     if (error.message === "NO_API_KEY") {
       toast({
         title: "API Key Required",

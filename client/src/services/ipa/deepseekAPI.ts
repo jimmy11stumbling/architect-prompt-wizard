@@ -39,11 +39,8 @@ export const invokeDeepSeekAgent = async (agent: AgentName, spec: ProjectSpec, m
     try {
       data = await DeepSeekClient.makeApiCall(requestBody);
     } catch (error) {
-      if (error instanceof Error && error.message === "NO_API_KEY") {
-        data = await ResponseSimulator.simulateResponse(agent, spec);
-      } else {
-        throw error;
-      }
+      console.error(`DeepSeek API call failed for agent ${agent}:`, error);
+      throw error;
     }
     
     const completionMessage = data.choices[0].message;
