@@ -345,10 +345,10 @@ export default function StreamingInterface() {
               {conversation.map((message, index) => (
                 <div 
                   key={index}
-                  className={`p-3 rounded-lg border border-border ${
+                  className={`p-3 rounded-lg border ${
                     message.role === 'user' 
-                      ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800' 
-                      : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                      ? 'bg-blue-950/20 border-blue-800 text-foreground' 
+                      : 'bg-green-950/20 border-green-800 text-foreground'
                   }`}
                 >
                   <div className="text-xs font-medium mb-1 text-muted-foreground uppercase">
