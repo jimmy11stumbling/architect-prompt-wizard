@@ -130,12 +130,7 @@ export class DatabaseStorage implements IStorage {
 
   // Platform integrations
   async getPlatformIntegrations(platformId: number): Promise<PlatformIntegration[]> {
-    try {
-      return await db.select().from(platformIntegrations).where(eq(platformIntegrations.platformId, platformId));
-    } catch (error) {
-      console.warn('Platform integrations query failed:', error);
-      return [];
-    }
+    return await db.select().from(platformIntegrations).where(eq(platformIntegrations.platformId, platformId));
   }
 
   async createPlatformIntegration(integration: InsertPlatformIntegration): Promise<PlatformIntegration> {
@@ -148,12 +143,7 @@ export class DatabaseStorage implements IStorage {
 
   // Platform pricing
   async getPlatformPricing(platformId: number): Promise<PlatformPricing[]> {
-    try {
-      return await db.select().from(platformPricing).where(eq(platformPricing.platformId, platformId));
-    } catch (error) {
-      console.warn('Platform pricing query failed:', error);
-      return [];
-    }
+    return await db.select().from(platformPricing).where(eq(platformPricing.platformId, platformId));
   }
 
   async createPlatformPricing(pricing: InsertPlatformPricing): Promise<PlatformPricing> {
