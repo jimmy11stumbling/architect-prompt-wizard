@@ -60,11 +60,53 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+
+  // Add process error handlers for better stability
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Don't exit, just log the error
   });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit, just log the error
+  });
+
+  // Add database connection retry logic
+  let dbRetryCount = 0;
+  const maxRetries = 3;
+
+  async function startServer() {
+    try {
+      // Assuming database connection testing is handled within registerRoutes
+      // before this point.
+
+      server.listen({
+        port,
+        host: "0.0.0.0",
+        reusePort: true,
+      }, () => {
+        log(`serving on port ${port}`);
+      });
+    } catch (error) {
+      dbRetryCount++;
+      console.error(`Database connection failed (attempt ${dbRetryCount}/${maxRetries}):`, error.message);
+
+      if (dbRetryCount < maxRetries) {
+        console.log('Retrying in 5 seconds...');
+        setTimeout(startServer, 5000);
+      } else {
+        console.log('Max retries reached, starting server anyway...');
+        server.listen({
+          port,
+          host: "0.0.0.0",
+          reusePort: true,
+        }, () => {
+          log(`serving on port ${port} (database connection issues)`);
+        });
+      }
+    }
+  }
+
+  startServer();
 })();

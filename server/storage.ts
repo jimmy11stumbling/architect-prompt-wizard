@@ -37,39 +37,39 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Platform management
   getAllPlatforms(): Promise<Platform[]>;
   getPlatform(id: number): Promise<Platform | undefined>;
   createPlatform(platform: InsertPlatform): Promise<Platform>;
-  
+
   // Platform features
   getPlatformFeatures(platformId: number): Promise<PlatformFeature[]>;
   createPlatformFeature(feature: InsertPlatformFeature): Promise<PlatformFeature>;
-  
+
   // Platform integrations
   getPlatformIntegrations(platformId: number): Promise<PlatformIntegration[]>;
   createPlatformIntegration(integration: InsertPlatformIntegration): Promise<PlatformIntegration>;
-  
+
   // Platform pricing
   getPlatformPricing(platformId: number): Promise<PlatformPricing[]>;
   createPlatformPricing(pricing: InsertPlatformPricing): Promise<PlatformPricing>;
-  
+
   // Prompt generation
   createPromptGeneration(generation: InsertPromptGeneration): Promise<PromptGeneration>;
   getPromptGeneration(id: number): Promise<PromptGeneration | undefined>;
   getUserPromptGenerations(userId: number): Promise<PromptGeneration[]>;
-  
+
   // Saved prompts
   createSavedPrompt(prompt: InsertSavedPrompt): Promise<SavedPrompt>;
   getUserSavedPrompts(userId: number): Promise<SavedPrompt[]>;
   getPublicSavedPrompts(): Promise<SavedPrompt[]>;
-  
+
   // Workflows
   createWorkflow(workflow: InsertWorkflow): Promise<Workflow>;
   getUserWorkflows(userId: number): Promise<Workflow[]>;
   getWorkflowTemplates(): Promise<Workflow[]>;
-  
+
   // Knowledge base
   createKnowledgeBaseEntry(entry: InsertKnowledgeBase): Promise<KnowledgeBase>;
   searchKnowledgeBase(query: string, category?: string): Promise<KnowledgeBase[]>;
@@ -217,7 +217,7 @@ export class DatabaseStorage implements IStorage {
 
   async searchKnowledgeBase(query: string, category?: string): Promise<KnowledgeBase[]> {
     const conditions = [];
-    
+
     // Add text search conditions
     if (query) {
       conditions.push(
@@ -227,16 +227,16 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
-    
+
     // Add category filter if provided
     if (category) {
       conditions.push(eq(knowledgeBase.category, category));
     }
-    
+
     if (conditions.length === 0) {
       return await db.select().from(knowledgeBase);
     }
-    
+
     return await db.select().from(knowledgeBase).where(
       conditions.length === 1 ? conditions[0] : or(...conditions)
     );
