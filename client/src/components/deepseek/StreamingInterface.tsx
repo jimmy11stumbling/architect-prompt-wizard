@@ -33,6 +33,7 @@ export default function StreamingInterface() {
   const [speedTimer, setSpeedTimer] = useState<NodeJS.Timeout | null>(null);
   const [streamingState, setStreamingState] = useState<'idle' | 'paused' | 'active'>('idle');
   const [streamingStage, setStreamingStage] = useState<'connecting' | 'reasoning' | 'responding'>('connecting');
+  const [selectedModel, setSelectedModel] = useState('deepseek-reasoner');
 
   const { 
     isLoading, 
@@ -175,7 +176,8 @@ export default function StreamingInterface() {
           await DeepSeekService.processQueryStreaming(query, { 
             ragEnabled,
             mcpEnabled,
-            temperature 
+            temperature,
+            model: selectedModel
           });
         } catch (authError) {
           // If streaming fails, automatically try demo mode
@@ -466,6 +468,15 @@ export default function StreamingInterface() {
                 <Network className="h-3 w-3 mr-1" />
                 MCP {mcpEnabled ? 'ON' : 'OFF'}
               </Button>
+               <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="bg-gray-700 text-white border border-gray-600 rounded-md px-2 py-1 text-xs focus:outline-none"
+                  disabled={isLoading || storeIsStreaming}
+                >
+                  <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                  <option value="deepseek-chat">DeepSeek Chat</option>
+                </select>
             </div>
           </CardTitle>
         </CardHeader>
@@ -483,7 +494,7 @@ export default function StreamingInterface() {
               }`}
               disabled={isLoading || storeIsStreaming}
             />
-            
+
             {/* Loading Overlay */}
             {(isLoading || storeIsStreaming) && (
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent pointer-events-none">
@@ -498,7 +509,7 @@ export default function StreamingInterface() {
                 </div>
               </div>
             )}
-            
+
             {/* Animated Border Effect */}
             {(isLoading || storeIsStreaming) && (
               <div className="absolute inset-0 rounded-md pointer-events-none">
@@ -529,7 +540,7 @@ export default function StreamingInterface() {
                   {elapsedTime}s
                 </div>
               </div>
-              
+
               <div className="relative">
                 <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
                   <div className={`h-full transition-all duration-500 ${

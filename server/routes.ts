@@ -23,6 +23,8 @@ import ragEnhancedRouter from "./routes/ragEnhanced";
 import directDocumentAccessRouter from "./routes/directDocumentAccess";
 import { RAGOrchestrator2 } from "./services/rag/ragOrchestrator2";
 import { VectorStore } from "./services/rag/vectorStore";
+import { db, vectorDocuments } from "./db";
+import { sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes (no auth middleware)
@@ -1229,7 +1231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DeepSeek Streaming API endpoint
   app.post("/api/deepseek/stream", async (req, res) => {
     try {
-      const { messages, ragContext, temperature = 0.1 } = req.body;
+      const { messages, ragContext, model = 'deepseek-reasoner' } = req.body;
 
       if (!process.env.DEEPSEEK_API_KEY) {
         return res.status(400).json({ error: "DeepSeek API key not configured" });
@@ -1246,20 +1248,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Access-Control-Allow-Headers': 'Cache-Control'
       });
 
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'deepseek-reasoner',
-          messages,
-          max_tokens: 4096,
-          temperature,
-          stream: true,
-        }),
-      });
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model,
+            messages: messages,
+            stream: true,
+            temperature: model === 'deepseek-chat' ? 0.7 : 0.1
+          })
+        });
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -37,6 +37,67 @@ export class DeepSeekApi {
     };
   }
 
+  static async streamChatResponse(
+    messages: any[], 
+    onToken: (token: string) => void,
+    model: 'deepseek-chat' | 'deepseek-reasoner' = 'deepseek-chat'
+  ): Promise<void> {
+    try {
+      console.log(`🚀 Starting ${model} streaming request...`);
+
+      const response = await fetch(`${this.BASE_URL}/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.7,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Stream request failed: ${response.status}`);
+      }
+
+      if (!response.body) throw new Error("No response stream");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i].trim();
+          if (part.startsWith("data:")) {
+            const jsonStr = part.slice(5).trim();
+            if (jsonStr === "[DONE]") return;
+            
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const token = parsed.choices?.[0]?.delta?.content;
+              if (token) onToken(token);
+            } catch (e) {
+              console.warn("JSON parse error", e);
+            }
+          }
+        }
+        buffer = parts[parts.length - 1];
+      }
+    } catch (error) {
+      console.error('DeepSeek chat streaming error:', error);
+      throw error;
+    }
+  }
+
   static async streamQuery(
     request: DeepSeekRequest,
     onReasoningToken: (token: string) => void,

@@ -7,7 +7,7 @@ import { DeepSeekRequest, DeepSeekMessage } from './types';
 export class DeepSeekService {
   static async processQueryStreaming(
     query: string,
-    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}
+    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean; model?: 'deepseek-chat' | 'deepseek-reasoner' } = {}
   ): Promise<void> {
     const store = useDeepSeekStore.getState();
 
@@ -74,30 +74,63 @@ export class DeepSeekService {
         ragEnabled: options.ragEnabled || false
       };
 
-      // Stream the response
-      await DeepSeekApi.streamQuery(
-        request,
-        (reasoningToken: string) => {
-          store.appendStreamingReasoning(reasoningToken);
-        },
-        (responseToken: string) => {
-          store.appendStreamingResponse(responseToken);
-        },
-        (finalResponse) => {
-          // Add assistant message to conversation
-          const assistantMessage: DeepSeekMessage = {
-            role: 'assistant',
-            content: finalResponse.response
-          };
-          store.addMessage(assistantMessage);
-          store.setResponse(finalResponse);
-          store.setStreaming(false);
-        },
-        (error) => {
-          store.setError(error.message);
-          store.setStreaming(false);
-        }
-      );
+      // Use different streaming methods based on model
+      if (options.model === 'deepseek-chat') {
+        // For deepseek-chat, use direct token streaming
+        await DeepSeekApi.streamChatResponse(
+          [...store.conversation, userMessage],
+          (token: string) => {
+            store.appendStreamingResponse(token);
+          },
+          options.model
+        );
+        
+        // Complete the response
+        const finalResponse = {
+          reasoning: '',
+          response: store.streamingResponse,
+          usage: {
+            promptTokens: enhancedQuery.length,
+            completionTokens: store.streamingResponse.length,
+            totalTokens: enhancedQuery.length + store.streamingResponse.length,
+            reasoningTokens: 0
+          },
+          processingTime: Date.now() - Date.now()
+        };
+        
+        const assistantMessage: DeepSeekMessage = {
+          role: 'assistant',
+          content: finalResponse.response
+        };
+        store.addMessage(assistantMessage);
+        store.setResponse(finalResponse);
+        store.setStreaming(false);
+      } else {
+        // For deepseek-reasoner, use the existing streaming method
+        await DeepSeekApi.streamQuery(
+          request,
+          (reasoningToken: string) => {
+            store.appendStreamingReasoning(reasoningToken);
+          },
+          (responseToken: string) => {
+            store.appendStreamingResponse(responseToken);
+          },
+          (finalResponse) => {
+            // Add assistant message to conversation
+            const assistantMessage: DeepSeekMessage = {
+              role: 'assistant',
+              content: finalResponse.response
+            };
+            store.addMessage(assistantMessage);
+            store.setResponse(finalResponse);
+            store.setStreaming(false);
+          },
+          (error) => {
+            store.setError(error.message);
+            store.setStreaming(false);
+          }
+        );
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
