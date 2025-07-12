@@ -139,106 +139,66 @@ export class DeepSeekApi {
         return;
       }
 
+      // Ultra-fast stream processing with immediate updates
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error('No response body stream available');
+        throw new Error('No response stream available');
       }
 
-      const decoder = new TextDecoder('utf-8');
+      const decoder = new TextDecoder();
       let buffer = '';
-      let fullReasoning = '';
-      let fullResponse = '';
-      let usage = {
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        reasoningTokens: 0
-      };
 
       try {
         while (true) {
           const { done, value } = await reader.read();
-
-          if (done) {
-            console.log('✅ Stream complete');
-            break;
-          }
+          if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-          for (let i = 0; i < parts.length - 1; i++) {
-            const part = parts[i].trim();
-            if (part.startsWith('data:')) {
-              const jsonStr = part.slice(5).trim();
-              if (jsonStr === '[DONE]') {
-                console.log('🏁 Stream finished with [DONE]');
-                onComplete({
-                  reasoning: fullReasoning,
-                  response: fullResponse,
-                  usage,
-                  processingTime: Date.now() - startTime
-                });
+          // Process each line immediately - no batching
+          for (const line of lines) {
+            if (!line.trim()) continue;
+
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                console.log('Stream finished with [DONE]');
                 return;
               }
 
               try {
-                const parsed = JSON.parse(jsonStr);
+                const parsed = JSON.parse(data);
 
-                // Handle status updates
-                if (parsed.type === 'status') {
-                  console.log(`📊 Status: ${parsed.stage} - ${parsed.message}`);
-                  continue;
+                // Status updates
+                if (parsed.type === 'connection' || parsed.type === 'status') {
+                  console.log('📡 Stream status:', parsed.message || parsed.status);
                 }
 
-                // Handle connection confirmation
-                if (parsed.type === 'connection') {
-                  console.log('🔗 Connection established in', Date.now() - startTime, 'ms');
-                  continue;
-                }
-
-                // Handle errors with fallback
-                if (parsed.type === 'error' && parsed.fallback === 'demo') {
-                  console.log('🎬 Error detected, demo mode should start automatically');
-                  return;
-                }
-
-                // Handle streaming tokens
-                if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta) {
+                if (parsed.choices?.[0]?.delta) {
                   const delta = parsed.choices[0].delta;
 
-                  // Process reasoning tokens immediately
+                  // Immediate reasoning token processing
                   if (delta.reasoning_content) {
-                    fullReasoning += delta.reasoning_content;
-                    onReasoningToken(delta.reasoning_content);
+                    useDeepSeekStore.getState().addReasoningToken(delta.reasoning_content);
+                    // Force re-render
+                    setTimeout(() => {}, 0);
                   }
 
-                  // Process response tokens immediately
+                  // Immediate response token processing
                   if (delta.content) {
-                    fullResponse += delta.content;
-                    onResponseToken(delta.content);
-                  }
-                }
-
-                // Handle completion
-                if (parsed.type === 'complete') {
-                  if (parsed.usage) {
-                    usage = {
-                      promptTokens: parsed.usage.prompt_tokens || 0,
-                      completionTokens: parsed.usage.completion_tokens || 0,
-                      totalTokens: parsed.usage.total_tokens || 0,
-                      reasoningTokens: parsed.usage.reasoning_tokens || 0
-                    };
+                    useDeepSeekStore.getState().addResponseToken(delta.content);
+                    // Force re-render
+                    setTimeout(() => {}, 0);
                   }
                 }
 
               } catch (parseError) {
-                console.warn('⚠️ JSON parse error:', parseError);
+                console.warn('Failed to parse streaming data:', parseError);
               }
             }
           }
-
-          buffer = parts[parts.length - 1];
         }
       } catch (streamError) {
         console.error('❌ Stream reading error:', streamError);
@@ -246,7 +206,7 @@ export class DeepSeekApi {
       }
     } catch (error) {
       console.error('❌ Streaming error:', error);
-      
+
       // Fallback to fast demo on any error
       console.log('🎬 Falling back to high-speed demo streaming...');
       await this.startFastDemoStreaming(

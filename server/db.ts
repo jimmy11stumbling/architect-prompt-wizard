@@ -11,7 +11,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Optimized connection pool for better performance
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  max: 5, // Limit max connections
+  idleTimeoutMillis: 30000, // Close idle connections faster
+  connectionTimeoutMillis: 5000, // Faster connection timeout
+});
+
 export const db = drizzle({ client: pool, schema });
 
 // Export the vectorDocuments table for use in routes

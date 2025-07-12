@@ -7,22 +7,28 @@ router.post('/stream', async (req, res) => {
   try {
     const { messages, ragContext, stream, model = 'deepseek-reasoner' } = req.body;
     
-    // Set headers for Server-Sent Events with immediate response
+    // Set headers for ultra-fast streaming with no buffering
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Connection': 'keep-alive',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Cache-Control',
-      'X-Accel-Buffering': 'no' // Disable nginx buffering
+      'X-Accel-Buffering': 'no',
+      'Transfer-Encoding': 'chunked',
+      'Keep-Alive': 'timeout=0'
     });
 
-    // Send immediate connection confirmation
+    // IMMEDIATE response - no delays
     res.write(`data: ${JSON.stringify({ 
       type: 'connection',
       status: 'connected',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      message: 'Ultra-fast streaming active'
     })}\n\n`);
+    
+    // Force flush immediately
+    if (res.flush) res.flush();
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
@@ -40,7 +46,7 @@ router.post('/stream', async (req, res) => {
       message: 'Preparing request...'
     })}\n\n`);
 
-    // Enhanced RAG context retrieval with timeout
+    // Lightning-fast RAG context retrieval
     let enhancedMessages = [...messages];
     if (ragContext && messages.length > 0) {
       const lastUserMessage = messages[messages.length - 1];
@@ -49,12 +55,13 @@ router.post('/stream', async (req, res) => {
           res.write(`data: ${JSON.stringify({ 
             type: 'status',
             stage: 'rag_search',
-            message: 'Searching knowledge base...'
+            message: 'Lightning RAG search...'
           })}\n\n`);
+          if (res.flush) res.flush();
           
-          // Quick RAG search with 3-second timeout
+          // Ultra-fast RAG search with 1-second timeout
           const ragController = new AbortController();
-          const ragTimeout = setTimeout(() => ragController.abort(), 3000);
+          const ragTimeout = setTimeout(() => ragController.abort(), 1000);
           
           const ragResponse = await fetch(`http://0.0.0.0:5000/api/rag/search`, {
             method: 'POST',
@@ -181,7 +188,7 @@ router.post('/stream', async (req, res) => {
               if (parsed.choices?.[0]?.delta) {
                 const delta = parsed.choices[0].delta;
                 
-                // Send reasoning tokens immediately
+                // Send reasoning tokens with immediate flush
                 if (delta.reasoning_content) {
                   tokenCount++;
                   res.write(`data: ${JSON.stringify({
@@ -190,11 +197,13 @@ router.post('/stream', async (req, res) => {
                         reasoning_content: delta.reasoning_content
                       }
                     }],
-                    token_count: tokenCount
+                    token_count: tokenCount,
+                    timestamp: Date.now()
                   })}\n\n`);
+                  if (res.flush) res.flush(); // Force immediate delivery
                 }
                 
-                // Send response tokens immediately
+                // Send response tokens with immediate flush
                 if (delta.content) {
                   tokenCount++;
                   res.write(`data: ${JSON.stringify({
@@ -203,8 +212,10 @@ router.post('/stream', async (req, res) => {
                         content: delta.content
                       }
                     }],
-                    token_count: tokenCount
+                    token_count: tokenCount,
+                    timestamp: Date.now()
                   })}\n\n`);
+                  if (res.flush) res.flush(); // Force immediate delivery
                 }
               }
 

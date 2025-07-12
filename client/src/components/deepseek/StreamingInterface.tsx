@@ -15,6 +15,7 @@ import StreamingStats from './StreamingStats';
 import StreamingHistory from './StreamingHistory';
 import StreamingStatusBar from './StreamingStatusBar';
 import StreamingErrorBoundary from './StreamingErrorBoundary';
+import DatabaseActivityMonitor from './DatabaseActivityMonitor';
 
 function StreamingInterfaceContent() {
   const [query, setQuery] = useState('');
@@ -317,6 +318,9 @@ function StreamingInterfaceContent() {
           </CardTitle>
         </CardHeader>
       </Card>
+
+      {/* Database Activity Monitor */}
+      <DatabaseActivityMonitor />
 
       {/* Control Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
