@@ -243,8 +243,7 @@ const PlatformTemplates: React.FC<PlatformTemplatesProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Templates for {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}</h3>
+      <div className="flex items-center justify-end">
         <Badge variant="secondary">{filteredTemplates.length} available</Badge>
       </div>
       
