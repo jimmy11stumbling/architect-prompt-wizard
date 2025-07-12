@@ -50,16 +50,17 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
   return (
     <div className="space-y-6">
       {/* Library Stats */}
-      {stats && <LibraryStats stats={stats} />}
+      {stats && <LibraryStats stats={stats} totalPrompts={prompts.length} />}
 
       {/* Search and Controls */}
       <LibraryControls
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onExport={handleExport}
-        onImport={handleImport}
+        categories={categories}
       />
 
       <Tabs defaultValue="all" className="w-full">

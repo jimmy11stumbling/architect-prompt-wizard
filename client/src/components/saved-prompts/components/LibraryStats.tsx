@@ -5,10 +5,19 @@ import { Database, Users, TrendingUp, Star } from "lucide-react";
 import { PromptStats } from "@/services/api/promptService";
 
 interface LibraryStatsProps {
-  stats: PromptStats;
+  stats: PromptStats | null;
+  totalPrompts?: number;
 }
 
-const LibraryStats: React.FC<LibraryStatsProps> = ({ stats }) => {
+const LibraryStats: React.FC<LibraryStatsProps> = ({ stats, totalPrompts = 0 }) => {
+  // Use fallback values if stats are not available
+  const safeStats = {
+    totalPrompts: stats?.totalPrompts ?? totalPrompts,
+    publicPrompts: stats?.publicPrompts ?? 0,
+    totalUsage: stats?.totalUsage ?? 0,
+    averageRating: stats?.averageRating ?? 0
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <Card>
@@ -17,7 +26,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats }) => {
             <Database className="h-4 w-4 text-blue-500" />
             <div>
               <p className="text-sm font-medium">Total Prompts</p>
-              <p className="text-2xl font-bold">{stats.totalPrompts}</p>
+              <p className="text-2xl font-bold">{safeStats.totalPrompts}</p>
             </div>
           </div>
         </CardContent>
@@ -29,7 +38,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats }) => {
             <Users className="h-4 w-4 text-green-500" />
             <div>
               <p className="text-sm font-medium">Public Prompts</p>
-              <p className="text-2xl font-bold">{stats.publicPrompts}</p>
+              <p className="text-2xl font-bold">{safeStats.publicPrompts}</p>
             </div>
           </div>
         </CardContent>
@@ -41,7 +50,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats }) => {
             <TrendingUp className="h-4 w-4 text-orange-500" />
             <div>
               <p className="text-sm font-medium">Total Usage</p>
-              <p className="text-2xl font-bold">{stats.totalUsage}</p>
+              <p className="text-2xl font-bold">{safeStats.totalUsage}</p>
             </div>
           </div>
         </CardContent>
@@ -53,7 +62,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats }) => {
             <Star className="h-4 w-4 text-yellow-500" />
             <div>
               <p className="text-sm font-medium">Avg Rating</p>
-              <p className="text-2xl font-bold">{(stats.averageRating || 0).toFixed(1)}</p>
+              <p className="text-2xl font-bold">{safeStats.averageRating.toFixed(1)}</p>
             </div>
           </div>
         </CardContent>
