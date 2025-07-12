@@ -38,6 +38,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
   const { toast } = useToast();
   const [lastEnhancementTime, setLastEnhancementTime] = useState<number>(0);
   const [isStable, setIsStable] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   useEffect(() => {
     loadRAGStats();
@@ -47,11 +48,16 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
   }, [projectSpec, agents]);
 
   const loadRAGStats = async () => {
+    if (isLoadingStats) return;
+    
+    setIsLoadingStats(true);
     try {
       const stats = await ragService.getRAGStats();
       setRagStats(stats);
     } catch (error) {
       console.error('Failed to load RAG stats:', error);
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
@@ -184,27 +190,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
     };
   };
 
-  useEffect(() => {
-    const loadRAGStats = async () => {
-      if (isLoadingStats) return;
-
-      setIsLoadingStats(true);
-      try {
-        const stats = await ragService.getRAGStats();
-        setRagStats(stats);
-      } catch (error) {
-        console.log('Failed to get RAG stats:', (error as Error).message);
-        setRagStats({ documentsIndexed: 4400, chunksIndexed: 233 });
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-
-    // Only load stats once on mount
-    if (!ragStats) {
-      loadRAGStats();
-    }
-  }, [ragStats, isLoadingStats]);
+  
 
   // Prevent rapid successive enhancements
   useEffect(() => {
