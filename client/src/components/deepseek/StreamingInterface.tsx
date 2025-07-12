@@ -303,8 +303,8 @@ export default function StreamingInterface() {
             isStreaming={storeIsStreaming}
             isPaused={streamingState === 'paused'}
             canResume={streamingState === 'paused'}
-            streamingProgress={0}
-            tokensReceived={0}
+            streamingProgress={storeIsStreaming ? 75 : 0}
+            tokensReceived={(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)}
             elapsedTime={elapsedTime}
             tokenVelocity={streamingSpeed}
             onStart={handleSubmit}
@@ -315,6 +315,7 @@ export default function StreamingInterface() {
               setElapsedTime(0);
               setStreamingSpeed(0);
               setStreamingState('idle');
+              DeepSeekService.clearConversation();
             }}
             disabled={isLoading}
           />
@@ -532,29 +533,34 @@ export default function StreamingInterface() {
 
           {/* Enhanced Progress Indicator */}
           {(isLoading || storeIsStreaming) && (
-            <div className="space-y-2">
+            <div className="space-y-3 bg-gray-800/50 p-4 rounded-lg border border-purple-500/30">
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full transition-colors duration-300 ${
                     isLoading && !storeIsStreaming ? 'bg-yellow-400 animate-pulse' :
                     storeIsStreaming && !streamingReasoning && !streamingResponse ? 'bg-blue-400 animate-pulse' :
                     streamingReasoning && !streamingResponse ? 'bg-orange-400 animate-pulse' :
                     streamingResponse ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
                   }`} />
-                  <span className="text-gray-300">
-                    {isLoading && !storeIsStreaming ? 'Initializing services...' :
-                     storeIsStreaming && !streamingReasoning && !streamingResponse ? 'Establishing connection...' :
-                     streamingReasoning && !streamingResponse ? 'AI reasoning in progress...' :
-                     streamingResponse ? 'Generating response...' : 'Processing query...'}
+                  <span className="text-gray-200 font-medium">
+                    {isLoading && !storeIsStreaming ? '🔄 Initializing DeepSeek connection...' :
+                     storeIsStreaming && !streamingReasoning && !streamingResponse ? '🔗 Establishing streaming connection...' :
+                     streamingReasoning && !streamingResponse ? '🧠 AI reasoning in progress...' :
+                     streamingResponse ? '✍️ Generating response...' : '⚡ Processing query...'}
                   </span>
                 </div>
-                <div className="text-purple-300 font-mono text-xs">
-                  {elapsedTime}s
+                <div className="flex items-center gap-2">
+                  <div className="text-purple-300 font-mono text-sm">{elapsedTime}s</div>
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce"></div>
+                    <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
                 </div>
               </div>
 
               <div className="relative">
-                <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div className={`h-full transition-all duration-500 ${
                     isLoading && !storeIsStreaming ? 'w-1/4 bg-gradient-to-r from-yellow-400 to-orange-400' :
                     storeIsStreaming && !streamingReasoning && !streamingResponse ? 'w-1/2 bg-gradient-to-r from-blue-400 to-purple-400' :
@@ -564,6 +570,12 @@ export default function StreamingInterface() {
                     <div className="h-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
                   </div>
                 </div>
+              </div>
+              
+              {/* Token Counter */}
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>Tokens received: {(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)}</span>
+                <span>Speed: {streamingSpeed} tokens/sec</span>
               </div>
             </div>
           )}
