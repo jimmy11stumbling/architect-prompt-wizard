@@ -176,8 +176,15 @@ function StreamingInterfaceContent() {
     if (!query.trim() || isLoading || storeIsStreaming) return;
 
     try {
+      // Show immediate visual feedback
       setIsConnected(true);
       setStreamingStage('connecting');
+      
+      // Force scroll to show activity immediately
+      const responseElement = document.getElementById('streaming-response-section');
+      if (responseElement) {
+        responseElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
 
       // Use demo mode if enabled OR if authentication previously failed
       if (demoMode || !isConnected) {
@@ -646,8 +653,8 @@ function StreamingInterfaceContent() {
         </Card>
       )}
 
-      {/* AI Working Status - Show when streaming starts */}
-      {storeIsStreaming && (
+      {/* AI Working Status - Show when loading OR streaming */}
+      {(isLoading || storeIsStreaming) && (
         <Card className="border-yellow-500 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 shadow-lg shadow-yellow-400/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -658,10 +665,11 @@ function StreamingInterfaceContent() {
               <div className="flex-1">
                 <div className="text-lg font-semibold text-yellow-400">
                   {demoMode ? '🎬 Demo Mode: ' : '🤖 DeepSeek AI: '}
-                  Token-by-Token Streaming Active
+                  {isLoading && !storeIsStreaming ? 'Initializing Connection...' : 'Token-by-Token Streaming Active'}
                 </div>
                 <div className="text-sm text-gray-300">
-                  {!streamingReasoning && !streamingResponse ? 'Initializing stream...' :
+                  {isLoading && !storeIsStreaming ? '🔄 Setting up streaming connection...' :
+                   !streamingReasoning && !streamingResponse ? '🔗 Establishing stream...' :
                    streamingReasoning && !streamingResponse ? '🧠 Reasoning tokens flowing...' :
                    streamingResponse ? '📝 Response tokens streaming...' : 'Processing...'}
                 </div>
@@ -670,11 +678,20 @@ function StreamingInterfaceContent() {
                     ⚡ Demo showcasing real-time streaming visualization
                   </div>
                 )}
+                {(isLoading && !storeIsStreaming) && (
+                  <div className="text-xs text-blue-300 mt-1 animate-pulse">
+                    🚀 DeepSeek is starting up - this may take a few seconds...
+                  </div>
+                )}
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <div className="text-center">
-                  <div className="text-xs text-gray-400">Tokens/sec</div>
-                  <div className="text-lg font-mono text-green-400">{streamingSpeed}</div>
+                  <div className="text-xs text-gray-400">
+                    {isLoading && !storeIsStreaming ? 'Status' : 'Tokens/sec'}
+                  </div>
+                  <div className="text-lg font-mono text-green-400">
+                    {isLoading && !storeIsStreaming ? '🔄' : streamingSpeed}
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-yellow-400 rounded-full animate-bounce"></div>
@@ -687,7 +704,7 @@ function StreamingInterfaceContent() {
         </Card>
       )}
 
-      {/* Response Display - Show whenever there's activity */}
+      {/* Response Display - Show whenever there's activity OR loading */}
       {(currentResponse || storeIsStreaming || isLoading || streamingResponse || streamingReasoning) && (
         <div id="streaming-response-section" className="space-y-4">
           {/* Enhanced Streaming Status with New Components */}
@@ -723,17 +740,19 @@ function StreamingInterfaceContent() {
             </Card>
           )}
 
-          {/* Reasoning Display - Show when reasoning is available */}
-          {(storeIsStreaming || streamingReasoning || currentResponse?.reasoning) && (
+          {/* Reasoning Display - Show when reasoning is available OR when starting */}
+          {(storeIsStreaming || isLoading || streamingReasoning || currentResponse?.reasoning) && (
             <Card className="border-orange-500/50 bg-gradient-to-br from-orange-900/20 to-yellow-900/20">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-white">
                   <Brain className="h-5 w-5 text-orange-400" />
                   🧠 AI Reasoning Process
-                  {storeIsStreaming && streamingReasoning && (
+                  {((storeIsStreaming && streamingReasoning) || (isLoading && !storeIsStreaming)) && (
                     <div className="ml-auto flex items-center gap-1">
                       <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-orange-300">Thinking...</span>
+                      <span className="text-xs text-orange-300">
+                        {isLoading && !storeIsStreaming ? 'Starting...' : 'Thinking...'}
+                      </span>
                     </div>
                   )}
                 </CardTitle>
@@ -770,12 +789,19 @@ function StreamingInterfaceContent() {
                     <div className="text-orange-100">
                       {currentResponse.reasoning}
                     </div>
-                  ) : storeIsStreaming ? (
+                  ) : (storeIsStreaming || isLoading) ? (
                     <div className="flex flex-col items-center justify-center h-24 text-orange-300">
                       <Brain className="h-6 w-6 animate-pulse mb-2" />
-                      <span className="italic">DeepSeek AI is reasoning...</span>
+                      <span className="italic">
+                        {isLoading && !storeIsStreaming ? 'Connecting to DeepSeek AI...' : 'DeepSeek AI is reasoning...'}
+                      </span>
                       <div className="text-xs mt-1 text-center text-orange-400">
-                        Chain-of-thought process will appear here
+                        {isLoading && !storeIsStreaming ? 'Preparing reasoning engine...' : 'Chain-of-thought process will appear here'}
+                      </div>
+                      <div className="flex gap-1 mt-2">
+                        <div className="w-1 h-1 bg-orange-400 rounded-full animate-bounce"></div>
+                        <div className="w-1 h-1 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-1 h-1 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   ) : (
@@ -788,17 +814,19 @@ function StreamingInterfaceContent() {
             </Card>
           )}
 
-          {/* Response Display - Show whenever there's streaming content */}
-          {(storeIsStreaming || streamingResponse || currentResponse?.response) && (
+          {/* Response Display - Show whenever there's streaming content OR loading */}
+          {(storeIsStreaming || isLoading || streamingResponse || currentResponse?.response) && (
             <Card className="border-green-500/50 bg-gradient-to-br from-green-900/20 to-blue-900/20">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-white">
                   <MessageSquare className="h-5 w-5 text-green-400" />
                   📝 Final Response
-                  {storeIsStreaming && streamingResponse && (
+                  {((storeIsStreaming && streamingResponse) || (isLoading && !storeIsStreaming)) && (
                     <div className="ml-auto flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-green-300">Responding...</span>
+                      <span className="text-xs text-green-300">
+                        {isLoading && !storeIsStreaming ? 'Preparing...' : 'Responding...'}
+                      </span>
                     </div>
                   )}
                 </CardTitle>
@@ -831,12 +859,14 @@ function StreamingInterfaceContent() {
                         <span className="text-xs">Response tokens: {streamingResponse.length}</span>
                       </div>
                     </div>
-                  ) : storeIsStreaming ? (
+                  ) : (storeIsStreaming || isLoading) ? (
                     <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                       <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                      <span className="italic">Waiting for response...</span>
+                      <span className="italic">
+                        {isLoading && !storeIsStreaming ? 'Connecting to DeepSeek...' : 'Waiting for response...'}
+                      </span>
                       <div className="text-xs mt-1 text-center">
-                        Response will stream after reasoning completes
+                        {isLoading && !storeIsStreaming ? 'Setting up streaming connection...' : 'Response will stream after reasoning completes'}
                       </div>
                       <div className="flex gap-1 mt-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce"></div>
