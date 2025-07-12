@@ -366,8 +366,11 @@ export class WorkflowExecutionEngine {
       const step = stepMap.get(stepId);
       if (!step) return;
 
-      // Visit dependencies first
-      step.dependencies.forEach(depId => visit(depId));
+      // Visit dependencies first - ensure dependencies is an array
+      const deps = step.dependencies || [];
+      if (Array.isArray(deps)) {
+        deps.forEach(depId => visit(depId));
+      }
       
       visited.add(stepId);
       sorted.push(step);
@@ -468,18 +471,20 @@ export class WorkflowExecutionEngine {
 
     // Update database
     const updateData: any = {
-      status,
-      updatedAt: new Date()
+      status
     };
 
-    if (updates.outputData) updateData.outputData = updates.outputData;
-    if (updates.errorMessage) updateData.errorMessage = updates.errorMessage;
+    if (updates.outputData) updateData.results = updates.outputData;
     if (status === 'completed' || status === 'failed') updateData.completedAt = new Date();
 
-    await db
-      .update(workflowExecutions)
-      .set(updateData)
-      .where(eq(workflowExecutions.id, parseInt(executionId)));
+    try {
+      await db
+        .update(workflowExecutions)
+        .set(updateData)
+        .where(eq(workflowExecutions.id, parseInt(executionId)));
+    } catch (error) {
+      console.error(`[WorkflowEngine] Failed to update execution status:`, error);
+    }
   }
 
   // Public methods for monitoring and control
