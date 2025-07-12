@@ -3,89 +3,88 @@ import { create } from 'zustand';
 import { DeepSeekResponse, DeepSeekMessage } from './types';
 
 interface DeepSeekStore {
-  conversation: DeepSeekMessage[];
+  // State
+  isLoading: boolean;
+  isStreaming: boolean;
   currentResponse: DeepSeekResponse | null;
   streamingReasoning: string;
   streamingResponse: string;
-  isLoading: boolean;
-  isStreaming: boolean;
-  streamingPhase: 'reasoning' | 'response' | null;
+  conversation: DeepSeekMessage[];
   error: string | null;
-
+  
   // Actions
-  setResponse: (response: DeepSeekResponse) => void;
-  addMessage: (message: DeepSeekMessage) => void;
-  clearConversation: () => void;
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
-  setStreamingPhase: (phase: 'reasoning' | 'response' | null) => void;
+  setResponse: (response: DeepSeekResponse) => void;
+  setError: (error: string | null) => void;
+  addMessage: (message: DeepSeekMessage) => void;
   appendStreamingReasoning: (token: string) => void;
   appendStreamingResponse: (token: string) => void;
-  clearStreaming: () => void;
-  setError: (error: string | null) => void;
+  clearStreamingContent: () => void;
+  clearConversation: () => void;
   reset: () => void;
 }
 
-export const useDeepSeekStore = create<DeepSeekStore>((set, get) => ({
-  conversation: [],
+export const useDeepSeekStore = create<DeepSeekStore>((set) => ({
+  // Initial state
+  isLoading: false,
+  isStreaming: false,
   currentResponse: null,
   streamingReasoning: '',
   streamingResponse: '',
-  isLoading: false,
-  isStreaming: false,
-  streamingPhase: null,
+  conversation: [],
   error: null,
 
+  // Actions
+  setLoading: (loading) => set({ isLoading: loading }),
+  
+  setStreaming: (streaming) => set({ isStreaming: streaming }),
+  
   setResponse: (response) => set({ 
-    currentResponse: response, 
+    currentResponse: response,
+    error: null,
+    isLoading: false
+  }),
+  
+  setError: (error) => set({ 
+    error,
     isLoading: false,
     isStreaming: false,
-    streamingPhase: null
+    currentResponse: null
   }),
-
+  
   addMessage: (message) => set((state) => ({
     conversation: [...state.conversation, message]
   })),
-
-  clearConversation: () => set({ 
-    conversation: [], 
-    currentResponse: null, 
-    streamingReasoning: '',
-    streamingResponse: '',
-    streamingPhase: null,
-    error: null 
-  }),
-
-  setLoading: (loading) => set({ isLoading: loading }),
-
-  setStreaming: (streaming) => set({ isStreaming: streaming }),
-
-  setStreamingPhase: (phase) => set({ streamingPhase: phase }),
-
+  
   appendStreamingReasoning: (token) => set((state) => ({
     streamingReasoning: state.streamingReasoning + token
   })),
-
+  
   appendStreamingResponse: (token) => set((state) => ({
     streamingResponse: state.streamingResponse + token
   })),
-
-  clearStreaming: () => set({
+  
+  clearStreamingContent: () => set({
     streamingReasoning: '',
-    streamingResponse: '',
-    streamingPhase: null
+    streamingResponse: ''
   }),
-
-  setError: (error) => set({ error, isLoading: false, isStreaming: false }),
-
-  reset: () => set({
+  
+  clearConversation: () => set({ 
     conversation: [],
     currentResponse: null,
     streamingReasoning: '',
     streamingResponse: '',
+    error: null
+  }),
+  
+  reset: () => set({
     isLoading: false,
     isStreaming: false,
-    streamingPhase: null,
+    currentResponse: null,
+    streamingReasoning: '',
+    streamingResponse: '',
+    conversation: [],
     error: null
   })
 }));

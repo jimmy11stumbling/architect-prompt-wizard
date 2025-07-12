@@ -1227,12 +1227,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DeepSeek Streaming API endpoint
-  app.post('/api/deepseek/stream', async (req, res) => {
+  app.post("/api/deepseek/stream", async (req, res) => {
     try {
-      const { messages, temperature = 0.7 } = req.body;
+      const { messages, ragContext, temperature = 0.1 } = req.body;
 
-      if (!messages || !Array.isArray(messages)) {
-        return res.status(400).json({ error: 'Messages array is required' });
+      if (!process.env.DEEPSEEK_API_KEY) {
+        return res.status(400).json({ error: "DeepSeek API key not configured" });
       }
 
       console.log(`Making DeepSeek streaming API call with ${messages.length} messages`);
@@ -1288,8 +1288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data.trim() === '[DONE]') {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') {
                 res.write(`data: [DONE]\n\n`);
                 res.end();
                 return;

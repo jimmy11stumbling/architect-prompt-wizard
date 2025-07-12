@@ -20,10 +20,30 @@ export default function StreamingInterface() {
 
   const { 
     isLoading, 
-    currentResponse, 
+    isStreaming: storeIsStreaming,
+    currentResponse,
+    streamingReasoning,
+    streamingResponse,
     error, 
     conversation 
   } = useDeepSeekStore();
+
+  // Auto-scroll refs
+  const reasoningRef = useRef<HTMLDivElement>(null);
+  const responseContentRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll when streaming content updates
+  useEffect(() => {
+    if (reasoningRef.current && storeIsStreaming && streamingReasoning) {
+      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight;
+    }
+  }, [streamingReasoning, storeIsStreaming]);
+
+  useEffect(() => {
+    if (responseContentRef.current && storeIsStreaming && streamingResponse) {
+      responseContentRef.current.scrollTop = responseContentRef.current.scrollHeight;
+    }
+  }, [streamingResponse, storeIsStreaming]);
 
   // Load system stats on mount
   useEffect(() => {
@@ -43,13 +63,14 @@ export default function StreamingInterface() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!query.trim() || isLoading || isStreaming) return;
+    if (!query.trim() || isLoading || storeIsStreaming) return;
 
     setIsStreaming(true);
 
     try {
-      await DeepSeekService.processQuery(query, { 
+      await DeepSeekService.processQueryStreaming(query, { 
         ragEnabled,
+        mcpEnabled,
         temperature: 0.1 
       });
       setQuery('');
@@ -204,7 +225,7 @@ export default function StreamingInterface() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             className="min-h-[100px] bg-background border-border text-foreground placeholder:text-muted-foreground"
-            disabled={isLoading || isStreaming}
+            disabled={isLoading}
           />
 
           <div className="flex items-center justify-between">
@@ -216,20 +237,20 @@ export default function StreamingInterface() {
               <Button 
                 variant="outline"
                 onClick={handleClear}
-                disabled={isLoading || isStreaming}
+                disabled={isLoading}
                 size="sm"
               >
                 Clear
               </Button>
               <Button 
                 onClick={handleSubmit}
-                disabled={isLoading || isStreaming || !query.trim()}
+                disabled={isLoading || storeIsStreaming || !query.trim()}
                 className="bg-purple-600 hover:bg-purple-700 text-white"
               >
-                {isLoading ? (
+                {(isLoading || storeIsStreaming) ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Processing...
+                    {storeIsStreaming ? 'Streaming...' : 'Processing...'}
                   </>
                 ) : (
                   <>
@@ -255,19 +276,42 @@ export default function StreamingInterface() {
       )}
 
       {/* Response Display */}
-      {currentResponse && (
+      {(currentResponse || storeIsStreaming) && (
         <div className="space-y-4">
+          {/* Streaming Status */}
+          {storeIsStreaming && (
+            <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Streaming DeepSeek Response...
+                  </span>
+                  <Badge variant="outline" className="text-xs">
+                    {streamingReasoning.length + streamingResponse.length} tokens
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Reasoning Process */}
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2 text-foreground">
                 <Cpu className="h-5 w-5 text-blue-400" />
                 Reasoning Process
+                {storeIsStreaming && (
+                  <div className="ml-auto flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-muted-foreground">Live</span>
+                  </div>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div 
-                ref={responseRef}
+                ref={reasoningRef}
                 className="whitespace-pre-wrap text-sm bg-background rounded-lg p-4 border border-border text-foreground font-mono leading-relaxed"
                 style={{ 
                   maxHeight: '400px', 
@@ -276,7 +320,10 @@ export default function StreamingInterface() {
                   color: 'hsl(var(--foreground))'
                 }}
               >
-                {currentResponse.reasoning}
+                {storeIsStreaming ? streamingReasoning : currentResponse?.reasoning}
+                {storeIsStreaming && streamingReasoning && (
+                  <span className="animate-pulse text-blue-400">|</span>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -287,47 +334,59 @@ export default function StreamingInterface() {
               <CardTitle className="text-lg flex items-center gap-2 text-foreground">
                 <Brain className="h-5 w-5 text-purple-400" />
                 Response
+                {storeIsStreaming && streamingResponse && (
+                  <div className="ml-auto flex items-center gap-1">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-muted-foreground">Live</span>
+                  </div>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div 
+                ref={responseContentRef}
                 className="whitespace-pre-wrap text-sm bg-background rounded-lg p-4 border border-border text-foreground leading-relaxed"
                 style={{ 
                   backgroundColor: 'hsl(var(--background))',
                   color: 'hsl(var(--foreground))'
                 }}
               >
-                {currentResponse.response}
+                {storeIsStreaming ? streamingResponse : currentResponse?.response}
+                {storeIsStreaming && streamingResponse && (
+                  <span className="animate-pulse text-purple-400">|</span>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Usage Statistics */}
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-sm text-foreground">Usage Statistics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="font-medium text-foreground">Prompt Tokens</div>
-                  <div className="text-blue-400 font-mono">{currentResponse.usage.promptTokens}</div>
+          {currentResponse && (
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <CardTitle className="text-sm text-foreground">Usage Statistics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="font-medium text-foreground">Prompt Tokens</div>
+                    <div className="text-blue-400 font-mono">{currentResponse.usage.promptTokens}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-foreground">Completion Tokens</div>
+                    <div className="text-green-400 font-mono">{currentResponse.usage.completionTokens}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-foreground">Reasoning Tokens</div>
+                    <div className="text-orange-400 font-mono">{currentResponse.usage.reasoningTokens}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-foreground">Processing Time</div>
+                    <div className="text-purple-400 font-mono">{currentResponse.processingTime}ms</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium text-foreground">Completion Tokens</div>
-                  <div className="text-green-400 font-mono">{currentResponse.usage.completionTokens}</div>
-                </div>
-                <div>
-                  <div className="font-medium text-foreground">Reasoning Tokens</div>
-                  <div className="text-orange-400 font-mono">{currentResponse.usage.reasoningTokens}</div>
-                </div>
-                <div>
-                  <div className="font-medium text-foreground">Processing Time</div>
-                  <div className="text-purple-400 font-mono">{currentResponse.processingTime}ms</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
