@@ -8,6 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { DeepSeekService, useDeepSeekStore } from '@/services/deepseek';
 import { ragService } from '@/services/rag/ragService';
 import { mcpHubService } from '@/services/mcp/mcpHubService';
+import StreamingFeedback from './StreamingFeedback';
+import TypewriterEffect from './TypewriterEffect';
 
 export default function StreamingInterface() {
   const [query, setQuery] = useState('');
@@ -316,49 +318,17 @@ export default function StreamingInterface() {
       {/* Response Display */}
       {(currentResponse || storeIsStreaming) && (
         <div id="streaming-response-section" className="space-y-4">
-          {/* Enhanced Streaming Status */}
+          {/* Enhanced Streaming Status with New Components */}
           {storeIsStreaming && (
-            <Card className="border-blue-500 bg-blue-900/50 animate-pulse">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Activity className="h-5 w-5 text-blue-400 animate-pulse" />
-                    <div className="absolute -inset-1 bg-blue-400/20 rounded-full animate-ping"></div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium text-blue-300">
-                        {streamingReasoning && !streamingResponse ? '🤖 AI Reasoning Process' : 
-                         streamingResponse ? '📝 Generating Response' : '🔗 Connecting to DeepSeek...'}
-                      </span>
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs text-blue-200">
-                      <div className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        <span>Reasoning: {streamingReasoning?.length || 0} tokens</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        <span>Response: {streamingResponse?.length || 0} tokens</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Live streaming ▌</span>
-                      </div>
-                    </div>
-                    <Progress 
-                      value={Math.min(((streamingReasoning?.length || 0) + (streamingResponse?.length || 0)) / 20, 100)} 
-                      className="mt-2 h-1" 
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <StreamingFeedback 
+              active={storeIsStreaming}
+              stage={
+                streamingReasoning && !streamingResponse ? 'reasoning' :
+                streamingResponse ? 'responding' : 'connecting'
+              }
+              reasoningTokens={streamingReasoning?.length || 0}
+              responseTokens={streamingResponse?.length || 0}
+            />
           )}
 
           {/* Reasoning Process */}
@@ -387,9 +357,15 @@ export default function StreamingInterface() {
                     color: '#ffffff'
                   }}
                 >
-                  {storeIsStreaming ? streamingReasoning : currentResponse?.reasoning}
-                  {storeIsStreaming && streamingReasoning && (
-                    <span className="animate-pulse text-blue-400 ml-1 text-lg">▌</span>
+                  {storeIsStreaming ? (
+                    <TypewriterEffect 
+                      text={streamingReasoning || ''}
+                      speed={20}
+                      showCursor={true}
+                      className="text-white font-mono"
+                    />
+                  ) : (
+                    currentResponse?.reasoning
                   )}
                   {storeIsStreaming && !streamingReasoning && (
                     <div className="flex items-center gap-2 text-gray-400">
@@ -428,9 +404,15 @@ export default function StreamingInterface() {
                     color: '#ffffff'
                   }}
                 >
-                  {storeIsStreaming ? streamingResponse : currentResponse?.response}
-                  {storeIsStreaming && streamingResponse && (
-                    <span className="animate-pulse text-purple-400 ml-1 text-lg">▌</span>
+                  {storeIsStreaming ? (
+                    <TypewriterEffect 
+                      text={streamingResponse || ''}
+                      speed={25}
+                      showCursor={true}
+                      className="text-white"
+                    />
+                  ) : (
+                    currentResponse?.response
                   )}
                   {storeIsStreaming && !streamingResponse && streamingReasoning && (
                     <div className="flex items-center gap-2 text-gray-400">
