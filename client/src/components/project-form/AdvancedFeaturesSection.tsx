@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VectorDatabase, MCPType } from "@/types/ipa-types";
-import { CustomOptionSelector } from "./CustomOptionSelector";
+import CustomOptionSelector from "./CustomOptionSelector";
 
 interface AdvancedFeaturesSectionProps {
   ragVectorDb: VectorDatabase;
