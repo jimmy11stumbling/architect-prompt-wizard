@@ -24,7 +24,13 @@ export interface MCPAssetContext {
   };
 }
 
-export class AttachedAssetsMCPService {
+export /**
+ * Attached Assets MCP Service
+ * 
+ * Model Context Protocol (MCP) implementation for attached assets
+ * Following Anthropic's JSON-RPC 2.0 standard for AI system integrations
+ */
+class AttachedAssetsMCPService {
   private static instance: AttachedAssetsMCPService;
   private assetCache: Map<string, AttachedAsset[]> = new Map();
   private contentCache: Map<string, string> = new Map();

@@ -1,24 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Check } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Save } from "lucide-react";
 
 interface CustomOptionSelectorProps {
   title: string;
@@ -26,84 +12,93 @@ interface CustomOptionSelectorProps {
   options: string[];
   value: string;
   onChange: (value: string) => void;
-  customValue: string;
-  onSaveCustom: (customValue: string) => void;
-  icon?: React.ReactNode;
+  customValue?: string;
+  onSaveCustom?: (value: string) => void;
+  placeholder?: string;
 }
 
-const CustomOptionSelector: React.FC<CustomOptionSelectorProps> = ({
+export const CustomOptionSelector: React.FC<CustomOptionSelectorProps> = ({
   title,
   description,
-  options,
-  value,
+  options = [],
+  value = "",
   onChange,
-  customValue,
+  customValue = "",
   onSaveCustom,
-  icon
+  placeholder = "Select an option"
 }) => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [customInput, setCustomInput] = useState("");
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [customInput, setCustomInput] = useState(customValue);
 
-  const handleSaveCustom = () => {
-    if (customInput.trim()) {
-      onSaveCustom(customInput.trim());
-      setCustomInput("");
-      setIsDialogOpen(false);
+  const handleSelectionChange = (selectedValue: string) => {
+    if (selectedValue === "custom") {
+      setIsCustomMode(true);
+    } else {
+      setIsCustomMode(false);
+      onChange(selectedValue);
     }
   };
 
+  const handleSaveCustom = () => {
+    if (customInput.trim() && onSaveCustom) {
+      onSaveCustom(customInput.trim());
+      onChange(customInput.trim());
+      setIsCustomMode(false);
+    }
+  };
+
+  const allOptions = [...options, "Custom"];
+
   return (
-    <div className="space-y-2">
-      <Label className="flex items-center gap-2">
-        {icon}
-        {title}
-      </Label>
-      <p className="text-sm text-muted-foreground">{description}</p>
-      <div className="flex gap-2">
-        <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder={`Select ${title}`} />
+    <div className="space-y-3">
+      <div>
+        <Label className="text-sm font-medium">{title}</Label>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+
+      {!isCustomMode ? (
+        <Select value={value} onValueChange={handleSelectionChange}>
+          <SelectTrigger>
+            <SelectValue placeholder={placeholder} />
           </SelectTrigger>
           <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option} value={option}>
+            {allOptions.map((option) => (
+              <SelectItem key={option} value={option.toLowerCase()}>
                 {option}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Custom {title}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <Input
-                placeholder={`Enter custom ${title.toLowerCase()}...`}
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveCustom()}
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                onClick={handleSaveCustom}
-                disabled={!customInput.trim()}
-              >
-                <Check className="h-4 w-4 mr-2" />
-                Add
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      ) : (
+        <div className="flex gap-2">
+          <Input
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            placeholder={`Enter custom ${title.toLowerCase()}`}
+            className="flex-1"
+          />
+          <Button 
+            size="sm" 
+            onClick={handleSaveCustom}
+            disabled={!customInput.trim()}
+          >
+            <Save className="h-4 w-4" />
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => setIsCustomMode(false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {customValue && !isCustomMode && value === customValue && (
+        <div className="text-xs text-green-600 bg-green-50 p-2 rounded">
+          Using custom value: {customValue}
+        </div>
+      )}
     </div>
   );
 };

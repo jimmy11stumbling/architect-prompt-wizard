@@ -1358,7 +1358,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return `CRITICAL: Model Context Protocol (MCP) is an OPEN STANDARD by ANTHROPIC
 
 OFFICIAL DEFINITION:
-Model Context Protocol (MCP) is a standardized protocol developed by Anthropic to enable AI systems to securely connect to external data sources and tools. It uses JSON-RPC 2.0 for communication.
+Model Context Protocol (MCP) is the universal open standard by Anthropic for connecting AI models to external data sources and tools. 
+Key characteristics:
+- JSON-RPC 2.0 communication protocol
+- Host-Client-Server architecture
+- Standardized Tools, Resources, and Prompts
+- Replaces M×N custom integrations with M+N standard protocol
+- Secure transport via stdio or Server-Sent Events
+- Authentication via OAuth 2.0/2.1
 
 CORE ARCHITECTURE:
 1. MCP Host: Primary AI application (Claude Desktop, Cursor IDE, etc.)

@@ -50,25 +50,27 @@ const AdvancedFeaturesSection: React.FC<AdvancedFeaturesSectionProps> = ({
             <Label htmlFor="ragVectorDb">RAG Vector Database</Label>
             <CustomOptionSelector
               title="RAG Vector Database"
-              description="Choose a vector database for RAG implementation"
+              description="Choose a vector database for RAG 2.0 implementation"
               options={["None", "Pinecone", "Weaviate", "Chroma", "Qdrant", "Milvus", "pgvector"]}
-              value={ragVectorDb}
+              value={ragVectorDb || "None"}
               onChange={onVectorDbChange}
               customValue={customRagVectorDb}
               onSaveCustom={onSaveCustomVectorDb}
+              placeholder="Select vector database"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="mcpType">MCP (Model Context Protocol)</Label>
             <CustomOptionSelector
-              title="MCP Type"
-              description="Choose a Model Context Protocol implementation"
-              options={["None", "Claude MCP", "OpenAI Function Calling", "Anthropic Tools", "LangChain Tools", "LlamaIndex Tools"]}
-              value={mcpType}
+              title="MCP Protocol Type"
+              description="Model Context Protocol by Anthropic - standardized JSON-RPC 2.0 for AI system integrations"
+              options={["None", "Anthropic MCP", "JSON-RPC Tools", "Custom MCP Server", "MCP Hub Integration"]}
+              value={mcpType || "None"}
               onChange={onMcpTypeChange}
               customValue={customMcpType}
               onSaveCustom={onSaveCustomMcp}
+              placeholder="Select MCP implementation"
             />
           </div>
         </div>
