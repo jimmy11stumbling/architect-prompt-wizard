@@ -1226,6 +1226,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DeepSeek Streaming API endpoint
+  app.post('/api/deepseek/stream', async (req, res) => {
+    try {
+      const { messages, temperature = 0.7 } = req.body;
+      
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Messages array is required' });
+      }
+
+      console.log(`Making DeepSeek streaming API call with ${messages.length} messages`);
+      
+      // Set up streaming response headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      });
+
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek-reasoner',
+          messages,
+          max_tokens: 4096,
+          temperature,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('DeepSeek streaming API error:', response.status, errorText);
+        res.write(`data: ${JSON.stringify({ error: errorText })}\n\n`);
+        res.end();
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        res.write(`data: ${JSON.stringify({ error: 'No response stream' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data.trim() === '[DONE]') {
+                res.write(`data: [DONE]\n\n`);
+                res.end();
+                return;
+              }
+              
+              try {
+                const parsed = JSON.parse(data);
+                res.write(`data: ${JSON.stringify(parsed)}\n\n`);
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Streaming error:', error);
+        res.write(`data: ${JSON.stringify({ error: 'Streaming error' })}\n\n`);
+      }
+
+      res.end();
+    } catch (error) {
+      console.error('DeepSeek streaming API error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   app.post("/api/deepseek/query", async (req, res) => {
     try {
       const { messages, ragContext } = req.body;
