@@ -141,13 +141,13 @@ router.post('/stream', async (req, res) => {
 
     // Skip API call entirely and go straight to demo mode due to persistent governor issues
     console.log('🎬 Bypassing DeepSeek API due to persistent rate limiting - activating demo mode');
-    
+
     res.write(`data: ${JSON.stringify({ 
       error: 'DeepSeek API temporarily unavailable due to rate limiting',
       fallback: 'demo',
       message: 'Activating high-speed demo streaming'
     })}\n\n`);
-    
+
     await startDemoStreaming(res, messages[messages.length - 1]?.content || 'Demo query');
     return;
 
@@ -170,12 +170,17 @@ router.post('/stream', async (req, res) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('DeepSeek streaming API error:', response.status, errorText);
+        console.error('DeepSeek API Error:', errorText);
+        console.error('Error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
 
-        // If it's a governor error, try non-streaming approach
-        if (errorText.includes('governor')) {
+        // If it's a governor/authentication error, try non-streaming approach
+        if (errorText.includes('governor') || errorText.includes('Authentication Fails')) {
           console.log('Governor error detected, trying non-streaming fallback...');
-          
+
           try {
             const nonStreamingResponse = await fetch('https://api.deepseek.com/chat/completions', {
               method: 'POST',
@@ -392,7 +397,7 @@ async function startDemoStreaming(res: any, query: string) {
       token_count: i + 1,
       timestamp: Date.now()
     })}\n\n`);
-    
+
     // Minimal delay - 1ms
     await new Promise(resolve => setTimeout(resolve, 1));
     if (res.flush) res.flush();

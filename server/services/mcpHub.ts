@@ -88,37 +88,57 @@ export class MCPHub {
         knowledgeBase = [];
       }
       
-      const platformsData: MCPPlatformData[] = await Promise.all(
-        platforms.map(async (platform) => {
-          let features = [];
-          let integrations = [];
-          let pricing = [];
+      // Process platforms sequentially to reduce database load
+      const platformsData: MCPPlatformData[] = [];
+      
+      for (const platform of platforms) {
+        let features = [];
+        let integrations = [];
+        let pricing = [];
+        
+        try {
+          // Fetch data sequentially with individual error handling
+          try {
+            features = await storage.getPlatformFeatures(platform.id);
+          } catch (error) {
+            console.warn(`Failed to fetch features for platform ${platform.id}:`, error.message);
+            features = [];
+          }
           
           try {
-            [features, integrations, pricing] = await Promise.all([
-              storage.getPlatformFeatures(platform.id).catch(() => []),
-              storage.getPlatformIntegrations(platform.id).catch(() => []),
-              storage.getPlatformPricing(platform.id).catch(() => [])
-            ]);
+            integrations = await storage.getPlatformIntegrations(platform.id);
           } catch (error) {
-            console.warn(`Failed to fetch data for platform ${platform.id}:`, error);
+            console.warn(`Failed to fetch integrations for platform ${platform.id}:`, error.message);
+            integrations = [];
           }
+          
+          try {
+            pricing = await storage.getPlatformPricing(platform.id);
+          } catch (error) {
+            console.warn(`Failed to fetch pricing for platform ${platform.id}:`, error.message);
+            pricing = [];
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch data for platform ${platform.id}:`, error);
+        }
 
-          // Get platform-specific knowledge base entries
-          const platformKnowledge = knowledgeBase.filter(kb => 
-            kb.title.toLowerCase().includes(platform.name.toLowerCase().split(' ')[0]) ||
-            kb.category?.toLowerCase().includes(platform.category?.toLowerCase() || '')
-          );
+        // Get platform-specific knowledge base entries
+        const platformKnowledge = knowledgeBase.filter(kb => 
+          kb.title.toLowerCase().includes(platform.name.toLowerCase().split(' ')[0]) ||
+          kb.category?.toLowerCase().includes(platform.category?.toLowerCase() || '')
+        );
 
-          return {
-            platform,
-            features,
-            integrations,
-            pricing,
-            knowledgeBase: platformKnowledge
-          };
-        })
-      );
+        platformsData.push({
+          platform,
+          features,
+          integrations,
+          pricing,
+          knowledgeBase: platformKnowledge
+        });
+        
+        // Small delay to prevent overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
       // Technology data with comprehensive information
       const technologies: MCPTechnologyData = {

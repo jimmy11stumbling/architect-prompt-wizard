@@ -196,8 +196,11 @@ export class DeepSeekApi {
                 if (parsed.error) {
                   console.error('Stream error:', parsed.error);
 
-                  // Handle governor errors with appropriate fallback
-                  if (parsed.error.includes('governor') || parsed.error.includes('Authentication Fails') || parsed.fallback) {
+                  // Handle governor/authentication errors with appropriate fallback
+                  if (parsed.error.includes('governor') || 
+                      parsed.error.includes('Authentication Fails') || 
+                      parsed.error.includes('authentication') ||
+                      parsed.fallback) {
                     console.log('🎬 API error detected, using fallback response');
                     
                     // Provide immediate feedback about the issue

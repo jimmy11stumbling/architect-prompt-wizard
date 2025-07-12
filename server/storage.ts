@@ -258,3 +258,32 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
+import * as schema from "@shared/schema";
+
+neonConfig.webSocketConstructor = ws;
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not set');
+}
+
+// Configure connection pool with better timeout settings
+const pool = new Pool({ 
+  connectionString,
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 15000,
+  acquireTimeoutMillis: 5000,
+  createTimeoutMillis: 10000
+});
+
+// Add error handling for pool
+pool.on('error', (err) => {
+  console.warn('Database pool error:', err.message);
+});
+
+export const db = drizzle({ client: pool, schema });
