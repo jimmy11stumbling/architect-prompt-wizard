@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Brain, Zap, Clock, Activity, Cpu, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 
-interface StreamingFeedbackProps {
+export interface StreamingFeedbackProps {
   active: boolean;
   stage?: 'connecting' | 'reasoning' | 'responding';
   reasoningTokens?: number;

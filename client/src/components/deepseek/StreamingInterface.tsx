@@ -32,6 +32,7 @@ export default function StreamingInterface() {
   const [lastTokenCount, setLastTokenCount] = useState(0);
   const [speedTimer, setSpeedTimer] = useState<NodeJS.Timeout | null>(null);
   const [streamingState, setStreamingState] = useState<'idle' | 'paused' | 'active'>('idle');
+  const [streamingStage, setStreamingStage] = useState<'connecting' | 'reasoning' | 'responding'>('connecting');
 
   const { 
     isLoading, 
@@ -39,6 +40,8 @@ export default function StreamingInterface() {
     currentResponse,
     streamingReasoning,
     streamingResponse,
+    reasoningTokenCount,
+    responseTokenCount,
     error, 
     conversation 
   } = useDeepSeekStore();
@@ -161,6 +164,8 @@ export default function StreamingInterface() {
 
     try {
       setIsConnected(true);
+      setStreamingStage('connecting');
+
       // Use demo mode if enabled OR if authentication previously failed
       if (demoMode || !isConnected) {
         console.log('🎬 Using demo streaming mode...');
@@ -187,6 +192,15 @@ export default function StreamingInterface() {
       console.log('DeepSeek API authentication failed. Switched to demo mode.');
     }
   };
+
+  // Track streaming stage based on content
+  useEffect(() => {
+    if (streamingReasoning && !streamingResponse) {
+      setStreamingStage('reasoning');
+    } else if (streamingResponse) {
+      setStreamingStage('responding');
+    }
+  }, [streamingReasoning, streamingResponse]);
 
   // Streaming Control Functions
   const handlePause = () => {
@@ -534,12 +548,9 @@ export default function StreamingInterface() {
           {/* Enhanced Streaming Status with New Components */}
           <StreamingFeedback 
             active={storeIsStreaming || isLoading}
-            stage={
-              streamingReasoning && !streamingResponse ? 'reasoning' :
-              streamingResponse ? 'responding' : 'connecting'
-            }
-            reasoningTokens={streamingReasoning?.length || 0}
-            responseTokens={streamingResponse?.length || 0}
+            stage={streamingStage}
+            reasoningTokens={reasoningTokenCount}
+            responseTokens={responseTokenCount}
           />
 
           {/* Reasoning Process */}
