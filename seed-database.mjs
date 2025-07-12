@@ -1,4 +1,4 @@
-import { seedPlatformData } from './server/seedData.js';
+import { seedPlatformData } from './server/seedData.ts';
 
 async function main() {
   console.log('Starting database seeding...');
