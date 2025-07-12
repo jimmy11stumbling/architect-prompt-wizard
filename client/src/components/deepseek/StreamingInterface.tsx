@@ -663,14 +663,14 @@ export default function StreamingInterface() {
             responseTokens={responseTokenCount}
           />
 
-          {/* Reasoning Process */}
-          {(streamingReasoning || currentResponse?.reasoning) && (
+          {/* Reasoning Process - Show always when streaming, even if no reasoning content */}
+          {(storeIsStreaming || streamingReasoning || currentResponse?.reasoning) && (
             <Card className="border-gray-700 bg-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-white">
                   <Cpu className="h-5 w-5 text-blue-400" />
                   Reasoning Process
-                  {storeIsStreaming && streamingReasoning && (
+                  {storeIsStreaming && (
                     <div className="ml-auto flex items-center gap-1">
                       <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
                       <span className="text-xs text-muted-foreground">Live</span>
@@ -691,49 +691,57 @@ export default function StreamingInterface() {
                 >
                   {storeIsStreaming ? (
                     <div>
-                      <TypewriterEffect 
-                        text={streamingReasoning || ''}
-                        speed={20}
-                        showCursor={true}
-                        className="text-white font-mono"
-                      />
-                      {streamingReasoning && (
-                        <div className="flex items-center gap-2 mt-2 text-blue-400">
-                          <Activity className="h-4 w-4 animate-spin" />
-                          <span className="text-xs">Reasoning tokens: {streamingReasoning.length}</span>
+                      {streamingReasoning ? (
+                        <div>
+                          <TypewriterEffect 
+                            text={streamingReasoning}
+                            speed={20}
+                            showCursor={true}
+                            className="text-white font-mono"
+                          />
+                          <div className="flex items-center gap-2 mt-2 text-blue-400">
+                            <Activity className="h-4 w-4 animate-spin" />
+                            <span className="text-xs">Reasoning tokens: {streamingReasoning.length}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                          <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                          <span className="italic">DeepSeek Reasoner Model - No separate reasoning phase</span>
+                          <div className="text-xs mt-1 text-center">
+                            This model outputs final response directly with internal reasoning
+                          </div>
+                          <div className="flex gap-1 mt-2">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
                         </div>
                       )}
                     </div>
                   ) : (
-                    currentResponse?.reasoning
-                  )}
-                  {storeIsStreaming && !streamingReasoning && (
-                    <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                      <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                      <span className="italic">Waiting for reasoning to begin...</span>
-                      <div className="flex gap-1 mt-2">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                    currentResponse?.reasoning || (
+                      <div className="text-gray-400 italic">
+                        No separate reasoning content - DeepSeek Reasoner outputs final response directly
                       </div>
-                    </div>
+                    )
                   )}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Final Response */}
-          {(streamingResponse || currentResponse?.response) && (
+          {/* Final Response - Show always when streaming or when response exists */}
+          {(storeIsStreaming || streamingResponse || currentResponse?.response) && (
             <Card className="border-gray-700 bg-gray-800">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2 text-white">
                   <Brain className="h-5 w-5 text-purple-400" />
                   Response
-                  {storeIsStreaming && streamingResponse && (
+                  {storeIsStreaming && (
                     <div className="ml-auto flex items-center gap-1">
                       <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-muted-foreground">Live</span>
+                      <span className="text-xs text-muted-foreground">Live Streaming</span>
                     </div>
                   )}
                 </CardTitle>
@@ -751,32 +759,40 @@ export default function StreamingInterface() {
                 >
                   {storeIsStreaming ? (
                     <div>
-                      <TypewriterEffect 
-                        text={streamingResponse || ''}
-                        speed={25}
-                        showCursor={true}
-                        className="text-white"
-                      />
-                      {streamingResponse && (
-                        <div className="flex items-center gap-2 mt-2 text-purple-400">
-                          <MessageSquare className="h-4 w-4 animate-pulse" />
-                          <span className="text-xs">Response tokens: {streamingResponse.length}</span>
+                      {streamingResponse ? (
+                        <div>
+                          <TypewriterEffect 
+                            text={streamingResponse}
+                            speed={25}
+                            showCursor={true}
+                            className="text-white"
+                          />
+                          <div className="flex items-center gap-2 mt-2 text-purple-400">
+                            <MessageSquare className="h-4 w-4 animate-pulse" />
+                            <span className="text-xs">Response tokens: {streamingResponse.length}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                          <Loader2 className="h-8 w-8 animate-spin mb-2" />
+                          <span className="italic">Connecting to DeepSeek Reasoner...</span>
+                          <div className="text-xs mt-1 text-center">
+                            Waiting for response tokens to begin streaming
+                          </div>
+                          <div className="flex gap-1 mt-2">
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
                         </div>
                       )}
                     </div>
                   ) : (
-                    currentResponse?.response
-                  )}
-                  {storeIsStreaming && !streamingResponse && streamingReasoning && (
-                    <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-                      <Clock className="h-8 w-8 animate-spin mb-2" />
-                      <span className="italic">Reasoning complete, generating response...</span>
-                      <div className="flex gap-1 mt-2">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    currentResponse?.response || (
+                      <div className="text-gray-400 italic">
+                        No response generated yet
                       </div>
-                    </div>
+                    )
                   )}
                 </div>
               </CardContent>
