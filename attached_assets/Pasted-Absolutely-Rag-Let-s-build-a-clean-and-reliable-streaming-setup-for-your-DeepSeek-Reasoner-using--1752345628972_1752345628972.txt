@@ -1,0 +1,78 @@
+Absolutely, Rag. Let’s build a clean and reliable streaming setup for your DeepSeek Reasoner using **TypeScript + Fetch API** with token-by-token handling and live visual feedback.
+
+---
+
+### ⚙️ Updated Streaming Integration
+
+Here’s a fully rewritten `streamChatResponse()` function that:
+- Uses `ReadableStream` properly
+- Handles SSE (server-sent events) chunked data
+- Updates your UI with each token via `onToken()` callback
+
+```ts
+async function streamChatResponse(
+  messages: any[],
+  onToken: (token: string) => void
+) {
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${YOUR_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages,
+      stream: true,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.body) {
+    throw new Error("Stream not available. Response body missing.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split("\n\n");
+
+    for (let i = 0; i < chunks.length - 1; i++) {
+      const chunk = chunks[i].trim();
+      if (chunk.startsWith("data:")) {
+        const jsonStr = chunk.slice(5).trim();
+        if (jsonStr === "[DONE]") return;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const token = parsed.choices?.[0]?.delta?.content;
+          if (token) onToken(token);
+        } catch (e) {
+          console.warn("Streaming JSON parse error:", e);
+        }
+      }
+    }
+
+    buffer = chunks[chunks.length - 1]; // carry over remaining partial chunk
+  }
+}
+```
+
+---
+
+### 🧪 Integration Suggestions
+
+Here’s how to plug this into your DeepSeekStudio or Reasoner UI:
+- Call `streamChatResponse(messages, updateUIWithToken)`
+- Use `updateUIWithToken()` to append tokens to your chat box
+- Trigger animated reasoning indicators when streaming begins
+- Automatically scroll to latest token to simulate real-time typing
+
+---
+
+If you'd like, I can help you build a small test harness to isolate the streaming call and verify the output separately before plugging it into your main app. Let’s get those indicators dancing again. 💫 Want to give it a go?

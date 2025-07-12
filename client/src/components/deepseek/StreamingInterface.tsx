@@ -328,8 +328,8 @@ export default function StreamingInterface() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-sm font-medium text-blue-300">
-                        {streamingReasoning && !streamingResponse ? 'AI Reasoning Process' : 
-                         streamingResponse ? 'Generating Response' : 'Connecting to DeepSeek...'}
+                        {streamingReasoning && !streamingResponse ? '🤖 AI Reasoning Process' : 
+                         streamingResponse ? '📝 Generating Response' : '🔗 Connecting to DeepSeek...'}
                       </span>
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
@@ -346,9 +346,13 @@ export default function StreamingInterface() {
                         <MessageSquare className="h-3 w-3" />
                         <span>Response: {streamingResponse?.length || 0} tokens</span>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>Live streaming ▌</span>
+                      </div>
                     </div>
                     <Progress 
-                      value={(streamingReasoning?.length || 0) / 10} 
+                      value={Math.min(((streamingReasoning?.length || 0) + (streamingResponse?.length || 0)) / 20, 100)} 
                       className="mt-2 h-1" 
                     />
                   </div>
