@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Code, Palette, Cloud, Bot } from "lucide-react";
+import { Zap, Code, Palette, Cloud, Bot, Smartphone } from "lucide-react";
 import { PlatformType, PlatformConfig } from "@/types/ipa-types";
 
 interface PlatformSelectorProps {
