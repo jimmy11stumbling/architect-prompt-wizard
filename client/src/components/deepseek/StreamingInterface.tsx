@@ -10,6 +10,11 @@ import { ragService } from '@/services/rag/ragService';
 import { mcpHubService } from '@/services/mcp/mcpHubService';
 import StreamingFeedback from './StreamingFeedback';
 import TypewriterEffect from './TypewriterEffect';
+import StreamingControls from './StreamingControls';
+import StreamingStats from './StreamingStats';
+import StreamingHistory from './StreamingHistory';
+import StreamingStatusBar from './StreamingStatusBar';
+import StreamingErrorBoundary from './StreamingErrorBoundary';
 
 export default function StreamingInterface() {
   const [query, setQuery] = useState('');
@@ -19,6 +24,11 @@ export default function StreamingInterface() {
   const [mcpStats, setMcpStats] = useState(null);
   const [demoMode, setDemoMode] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [temperature, setTemperature] = useState(0.1);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [streamingSpeed, setStreamingSpeed] = useState(0);
+  const [isConnected, setIsConnected] = useState(true);
 
   const { 
     isLoading, 
@@ -75,6 +85,27 @@ export default function StreamingInterface() {
     }
   }, [conversation, storeIsStreaming]);
 
+  // Timer functionality for streaming
+  useEffect(() => {
+    if (storeIsStreaming && !startTime) {
+      setStartTime(new Date());
+    } else if (!storeIsStreaming && startTime) {
+      setStartTime(null);
+      setElapsedTime(0);
+    }
+  }, [storeIsStreaming, startTime]);
+
+  // Update elapsed time every second during streaming
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (storeIsStreaming && startTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((new Date().getTime() - startTime.getTime()) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [storeIsStreaming, startTime]);
+
   // Load system stats on mount
   useEffect(() => {
     const loadStats = async () => {
@@ -99,14 +130,27 @@ export default function StreamingInterface() {
       await DeepSeekService.processQueryStreaming(query, { 
         ragEnabled,
         mcpEnabled,
-        temperature: 0.1 
+        temperature 
       });
       setQuery('');
     } catch (error) {
       console.error('Query failed:', error);
+      setIsConnected(false);
       // Show error with helpful message about API key
       console.log('DeepSeek API authentication failed. Please check your API key.');
     }
+  };
+
+  const handleCopyMessage = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch (error) {
+      console.error('Failed to copy message:', error);
+    }
+  };
+
+  const handleClearHistory = () => {
+    DeepSeekService.clearConversation();
   };
 
   const handleDemoSubmit = async () => {
@@ -132,6 +176,13 @@ export default function StreamingInterface() {
     setQuery('');
   };
 
+  const getCurrentStage = () => {
+    if (!storeIsStreaming) return 'idle';
+    if (streamingReasoning && !streamingResponse) return 'reasoning';
+    if (streamingResponse) return 'responding';
+    return 'connecting';
+  };
+
   return (
     <div className="flex flex-col h-full max-w-7xl mx-auto p-4 space-y-4 min-h-screen bg-gray-900 text-white">
       {/* Header with System Status */}
@@ -146,6 +197,35 @@ export default function StreamingInterface() {
           </CardTitle>
         </CardHeader>
       </Card>
+
+      {/* Control Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <StreamingControls
+            isStreaming={storeIsStreaming}
+            ragEnabled={ragEnabled}
+            setRagEnabled={setRagEnabled}
+            mcpEnabled={mcpEnabled}
+            setMcpEnabled={setMcpEnabled}
+            temperature={temperature}
+            setTemperature={setTemperature}
+            demoMode={demoMode}
+            setDemoMode={setDemoMode}
+            ragStats={ragStats}
+            mcpStats={mcpStats}
+          />
+        </div>
+        <div>
+          <StreamingStats
+            isStreaming={storeIsStreaming}
+            reasoningTokens={streamingReasoning?.length || 0}
+            responseTokens={streamingResponse?.length || 0}
+            totalTokens={(streamingReasoning?.length || 0) + (streamingResponse?.length || 0)}
+            streamingSpeed={streamingSpeed}
+            elapsedTime={elapsedTime}
+          />
+        </div>
+      </div>
 
       {/* Live Statistics Panel */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -511,38 +591,28 @@ export default function StreamingInterface() {
         </div>
       )}
 
-      {/* Conversation History */}
-      {conversation.length > 0 && (
-        <Card className="border-gray-700 bg-gray-800">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-white">
-              <Clock className="h-5 w-5 text-gray-400" />
-              Conversation History ({conversation.length} messages)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="max-h-96 overflow-y-auto" ref={conversationRef}>
-            <div className="space-y-3">
-              {conversation.map((message, index) => (
-                <div 
-                  key={index}
-                  className={`p-3 rounded-lg border ${
-                    message.role === 'user' 
-                      ? 'bg-blue-950/20 border-blue-800 text-foreground' 
-                      : 'bg-green-950/20 border-green-800 text-foreground'
-                  }`}
-                >
-                  <div className="text-xs font-medium mb-1 text-muted-foreground uppercase">
-                    {message.role}
-                  </div>
-                  <div className="text-sm text-foreground whitespace-pre-wrap">
-                    {message.content}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Enhanced Conversation History */}
+      <StreamingHistory
+        conversation={conversation.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: new Date(),
+          tokenCount: msg.content.length
+        }))}
+        onClearHistory={handleClearHistory}
+        onCopyMessage={handleCopyMessage}
+      />
+
+      {/* Status Bar */}
+      <StreamingStatusBar
+        isConnected={isConnected}
+        isStreaming={storeIsStreaming}
+        stage={getCurrentStage()}
+        reasoningTokens={streamingReasoning?.length || 0}
+        responseTokens={streamingResponse?.length || 0}
+        elapsedTime={elapsedTime}
+        error={error}
+      />
     </div>
   );
 }
