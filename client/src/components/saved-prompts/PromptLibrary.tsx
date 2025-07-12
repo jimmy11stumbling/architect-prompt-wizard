@@ -85,7 +85,7 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
             </Button>
             {categories.map((category) => (
               <Button
-                key={category.id}
+                key={`category-filter-${category.id}`}
                 variant={selectedCategory === category.id ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSelectedCategory(category.id)}

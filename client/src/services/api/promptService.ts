@@ -152,24 +152,14 @@ class PromptService {
   async getStats(): Promise<PromptStats> {
     try {
       const response = await fetch(`${this.apiUrl}/stats`, {
-        headers: this.getHeaders(),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
-        // Fallback to calculating stats from all prompts if stats endpoint fails
-        const prompts = await this.getAllPrompts();
-        return this.calculateStatsFromPrompts(prompts);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      // Fallback to calculating stats from all prompts
-      try {
-        const prompts = await this.getAllPrompts();
-        return this.calculateStatsFromPrompts(prompts);
-      } catch (fallbackError) {
-        console.error('Error calculating fallback stats:', fallbackError);
+        // Return fallback stats instead of throwing
+        console.warn(`Stats API returned ${response.status}, using fallback data`);
         return {
           totalPrompts: 0,
           publicPrompts: 0,
@@ -178,6 +168,18 @@ class PromptService {
           averageRating: 0
         };
       }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      // Return fallback stats on any error
+      return {
+        totalPrompts: 0,
+        publicPrompts: 0,
+        categories: 0,
+        totalUsage: 0,
+        averageRating: 0
+      };
     }
   }
 
