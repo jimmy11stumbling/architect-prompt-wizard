@@ -3,12 +3,16 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Grid, List, Download, Upload } from "lucide-react";
+import { PromptCategory } from "@/services/api/promptService";
 
 interface LibraryControlsProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
+  selectedCategory?: string | null;
+  onCategoryChange?: (category: string | null) => void;
   viewMode: 'grid' | 'list';
   onViewModeChange: (mode: 'grid' | 'list') => void;
+  categories?: PromptCategory[];
   onExport: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -16,8 +20,11 @@ interface LibraryControlsProps {
 const LibraryControls: React.FC<LibraryControlsProps> = ({
   searchTerm,
   onSearchChange,
+  selectedCategory,
+  onCategoryChange,
   viewMode,
   onViewModeChange,
+  categories,
   onExport,
   onImport
 }) => {

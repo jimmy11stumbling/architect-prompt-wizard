@@ -61,6 +61,8 @@ const PromptLibrary: React.FC<PromptLibraryProps> = ({
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         categories={categories}
+        onExport={handleExport}
+        onImport={handleImport}
       />
 
       <Tabs defaultValue="all" className="w-full">

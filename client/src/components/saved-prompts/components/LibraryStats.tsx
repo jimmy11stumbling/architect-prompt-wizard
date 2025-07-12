@@ -1,11 +1,10 @@
-
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Database, Users, TrendingUp, Star } from "lucide-react";
 import { PromptStats } from "@/services/api/promptService";
 
 interface LibraryStatsProps {
-  stats: PromptStats | null;
+  stats?: PromptStats | null;
   totalPrompts?: number;
 }
 
@@ -31,7 +30,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats, totalPrompts = 0 }) 
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center space-x-2">
@@ -43,7 +42,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats, totalPrompts = 0 }) 
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center space-x-2">
@@ -55,7 +54,7 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({ stats, totalPrompts = 0 }) 
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center space-x-2">
