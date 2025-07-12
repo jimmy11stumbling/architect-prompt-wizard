@@ -120,19 +120,19 @@ const AnalyticsPage: React.FC = () => {
   useEffect(() => {
     const updateAnalytics = () => {
       const now = Date.now();
-      
+
       // Calculate real-time metrics
       const totalExecutions = executions?.length || 0;
       const successfulExecutions = executions?.filter((e: any) => e.status === "completed")?.length || 0;
       const failedExecutions = executions?.filter((e: any) => e.status === "failed")?.length || 0;
-      
+
       const successRate = totalExecutions > 0 ? (successfulExecutions / totalExecutions) * 100 : 0;
       const errorRate = totalExecutions > 0 ? (failedExecutions / totalExecutions) * 100 : 0;
-      
+
       // Get notification statistics
       const notificationStats = workflowNotificationService.getNotificationStatistics();
       const errorStats = workflowErrorHandler.getErrorStatistics();
-      
+
       // Generate real-time data points
       const realtimePoint = {
         timestamp: now,
@@ -184,7 +184,7 @@ const AnalyticsPage: React.FC = () => {
           realtimePoint
         ]
       }));
-      
+
       setLastUpdate(new Date());
     };
 
@@ -193,7 +193,7 @@ const AnalyticsPage: React.FC = () => {
 
     // Set up real-time updates
     const interval = setInterval(updateAnalytics, 2000);
-    
+
     return () => clearInterval(interval);
   }, [workflows, executions]);
 
@@ -458,7 +458,7 @@ const AnalyticsPage: React.FC = () => {
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                
+
                 {/* Center Label */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center">
@@ -474,7 +474,7 @@ const AnalyticsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Status Breakdown */}
               <div className="space-y-3">
                 {pieChartData.map((item, index) => (
@@ -506,7 +506,7 @@ const AnalyticsPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              
+
               {/* Real-time Status Indicator */}
               <div className="flex items-center justify-between text-sm text-muted-foreground border-t pt-3">
                 <div className="flex items-center gap-2">
@@ -587,7 +587,7 @@ const AnalyticsPage: React.FC = () => {
                   <div className="text-2xl font-bold text-green-500">99.9%</div>
                   <p className="text-xs text-muted-foreground">Uptime</p>
                 </div>
-                
+
                 <div className="p-4 border rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
@@ -598,7 +598,7 @@ const AnalyticsPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">Avg Response</p>
                 </div>
-                
+
                 <div className="p-4 border rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse" />
@@ -609,7 +609,7 @@ const AnalyticsPage: React.FC = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">Active Connections</p>
                 </div>
-                
+
                 <div className="p-4 border rounded-lg bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
@@ -621,7 +621,7 @@ const AnalyticsPage: React.FC = () => {
                   <p className="text-xs text-muted-foreground">Requests/min</p>
                 </div>
               </div>
-              
+
               {/* System Load Gauge */}
               <div className="p-4 border rounded-lg">
                 <div className="flex items-center justify-between mb-2">

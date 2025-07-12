@@ -53,9 +53,49 @@ export class RAGService {
   private documents: RAGDocument[] = [];
   private initialized = false;
   private ragSystemInitialized = false;
+  private requestCache = new Map<string, any>();
+  private debounceTimeouts = new Map<string, NodeJS.Timeout>();
+  private readonly DEBOUNCE_DELAY = 300;
+  private readonly CACHE_TTL = 30000; // 30 seconds
 
   constructor() {
     this.initializeWithSampleData();
+  }
+
+  private getCacheKey(method: string, params: any): string {
+    return `${method}_${JSON.stringify(params)}`;
+  }
+
+  private isValidCache(cacheEntry: any): boolean {
+    return Date.now() - cacheEntry.timestamp < this.CACHE_TTL;
+  }
+
+  private debounce<T extends any[]>(
+    key: string,
+    fn: (...args: T) => Promise<any>,
+    ...args: T
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      // Clear existing timeout
+      const existingTimeout = this.debounceTimeouts.get(key);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      // Set new timeout
+      const timeout = setTimeout(async () => {
+        try {
+          const result = await fn(...args);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.debounceTimeouts.delete(key);
+        }
+      }, this.DEBOUNCE_DELAY);
+
+      this.debounceTimeouts.set(key, timeout);
+    });
   }
 
   private initializeWithSampleData() {
@@ -258,89 +298,106 @@ export class RAGService {
     hybridWeight?: { semantic: number; keyword: number };
     rerankingEnabled?: boolean;
   } = {}): Promise<RAG2SearchResponse> {
-    try {
-      realTimeResponseService.addResponse({
-        source: "rag-service",
-        status: "processing",
-        message: "Executing RAG 2.0 hybrid search...",
-        data: { query, options }
-      });
+    const cacheKey = this.getCacheKey('searchRAG2', { query, options });
 
-      // Add timeout protection with safe abort
-      const { controller, safeAbort } = createSafeAbortController({
-        agentId: 'rag-service',
-        operation: 'hybrid-search',
-        timeout: 5000,
-        reason: 'timeout'
-      });
+    // Check cache first
+    const cached = this.requestCache.get(cacheKey);
+    if (cached && this.isValidCache(cached)) {
+      console.log('🔄 [rag-service] Returning cached result for query:', query.substring(0, 50) + '...');
+      return cached.data;
+    }
 
-      const timeoutId = setTimeout(() => {
-        safeAbort();
-      }, 5000); // 5 second timeout
-
+    // Use debouncing for identical requests
+    return this.debounce(cacheKey, async () => {
       try {
-        const response = await fetch('/api/rag/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query,
-            limit: options.limit || 10,
-            filters: options.filters,
-            options: {
-              hybridWeight: options.hybridWeight || { semantic: 0.7, keyword: 0.3 },
-              rerankingEnabled: options.rerankingEnabled !== false,
-              includeMetadata: true,
-              minSimilarity: 0.1
-            }
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`Search failed: ${response.statusText}`);
-        }
-
-        const searchResponse: RAG2SearchResponse = await response.json();
-
         realTimeResponseService.addResponse({
           source: "rag-service",
-          status: "success",
-          message: `Found ${searchResponse.totalResults} relevant results`,
-          data: { 
-            resultsCount: searchResponse.totalResults,
-            searchTime: searchResponse.searchTime,
-            searchStats: searchResponse.searchStats
+          status: "processing",
+          message: "Executing RAG 2.0 hybrid search...",
+          data: { query, options }
+        });
+
+        // Add timeout protection with safe abort
+        const { controller, safeAbort } = createSafeAbortController({
+          agentId: 'rag-service',
+          operation: 'hybrid-search',
+          timeout: 5000,
+          reason: 'timeout'
+        });
+
+        const timeoutId = setTimeout(() => {
+          safeAbort();
+        }, 5000); // 5 second timeout
+
+        try {
+          const response = await fetch('/api/rag/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query,
+              limit: options.limit || 10,
+              filters: options.filters,
+              options: {
+                hybridWeight: options.hybridWeight || { semantic: 0.7, keyword: 0.3 },
+                rerankingEnabled: options.rerankingEnabled !== false,
+                includeMetadata: true,
+                minSimilarity: 0.1
+              }
+            }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`Search failed: ${response.statusText}`);
           }
-        });
 
-        return searchResponse;
+          const searchResponse: RAG2SearchResponse = await response.json();
 
+          realTimeResponseService.addResponse({
+            source: "rag-service",
+            status: "success",
+            message: `Found ${searchResponse.totalResults} relevant results`,
+            data: {
+              resultsCount: searchResponse.totalResults,
+              searchTime: searchResponse.searchTime,
+              searchStats: searchResponse.searchStats
+            }
+          });
+
+          this.requestCache.set(cacheKey, {
+            data: searchResponse,
+            timestamp: Date.now()
+          });
+
+          return searchResponse;
+
+        } catch (error) {
+          clearTimeout(timeoutId);
+
+          // Check if this is a timeout/abort error
+          const isTimeout = error instanceof DOMException && error.name === 'AbortError';
+          const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
+
+          console.warn("[SafeAbort] Vector search failed, using platform fallback:", errorMessage);
+
+          realTimeResponseService.addResponse({
+            source: "rag-service",
+            status: "error",
+            message: isTimeout ? "Search timeout, using fallback" : "RAG 2.0 search failed",
+            data: { error: errorMessage }
+          });
+
+          // Fallback to basic search
+          return this.fallbackToBasicSearch(query, options);
+        }
       } catch (error) {
-        clearTimeout(timeoutId);
-
-        // Check if this is a timeout/abort error
-        const isTimeout = error instanceof DOMException && error.name === 'AbortError';
-        const errorMessage = isTimeout ? "Search timeout after 5 seconds" : (error instanceof Error ? error.message : "Unknown error");
-
-        console.warn("[SafeAbort] Vector search failed, using platform fallback:", errorMessage);
-
-        realTimeResponseService.addResponse({
-          source: "rag-service",
-          status: "error",
-          message: isTimeout ? "Search timeout, using fallback" : "RAG 2.0 search failed",
-          data: { error: errorMessage }
-        });
-
-        // Fallback to basic search
+        console.error("Outer search error:", error);
+        // Fallback to basic search on any outer error
         return this.fallbackToBasicSearch(query, options);
       }
-    } catch (error) {
-      console.error("Outer search error:", error);
-      // Fallback to basic search on any outer error
-      return this.fallbackToBasicSearch(query, options);
-    }
+    });
   }
 
   /**
@@ -366,6 +423,14 @@ export class RAGService {
    * Get comprehensive RAG system statistics
    */
   async getRAGStats(): Promise<RAGStats | null> {
+    const cacheKey = this.getCacheKey('getRAGStats', {});
+
+    // Check cache first
+    const cached = this.requestCache.get(cacheKey);
+    if (cached && this.isValidCache(cached)) {
+      return cached.data;
+    }
+
     try {
       // Add timeout protection for stats requests
       const { controller, safeAbort } = createSafeAbortController({
@@ -389,7 +454,15 @@ export class RAGService {
         return null;
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Cache the result
+      this.requestCache.set(cacheKey, {
+        data,
+        timestamp: Date.now()
+      });
+
+      return data;
     } catch (error) {
       // Check if this is a timeout/abort error and handle gracefully
       const isTimeout = error instanceof DOMException && error.name === 'AbortError';
@@ -664,7 +737,10 @@ export class RAGService {
         return {
           documentsIndexed: 0,
           chunksIndexed: 0,
-          lastUpdated: new Date().toISOString()
+          vectorStoreStats: {},
+          searchEngineStats: {},
+          embeddingStats: {},
+          lastIndexed: new Date()
         };
       }
 
@@ -672,7 +748,10 @@ export class RAGService {
       return {
         documentsIndexed: data.documentsIndexed || 0,
         chunksIndexed: data.chunksIndexed || 0,
-        lastUpdated: data.lastUpdated || new Date().toISOString()
+        vectorStoreStats: data.vectorStoreStats || {},
+        searchEngineStats: data.searchEngineStats || {},
+        embeddingStats: data.embeddingStats || {},
+        lastIndexed: data.lastIndexed || new Date()
       };
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -680,14 +759,20 @@ export class RAGService {
         return {
           documentsIndexed: 0,
           chunksIndexed: 0,
-          lastUpdated: new Date().toISOString()
+          vectorStoreStats: {},
+          searchEngineStats: {},
+          embeddingStats: {},
+          lastIndexed: new Date()
         };
       }
       console.warn('Failed to get RAG stats, returning default stats:', error);
       return {
         documentsIndexed: 0,
         chunksIndexed: 0,
-        lastUpdated: new Date().toISOString()
+        vectorStoreStats: {},
+        searchEngineStats: {},
+        embeddingStats: {},
+        lastIndexed: new Date()
       };
     }
   }

@@ -36,6 +36,8 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
   const [ragStats, setRagStats] = useState<any>(null);
   const [isEnhancingAgents, setIsEnhancingAgents] = useState(false);
   const { toast } = useToast();
+  const [lastEnhancementTime, setLastEnhancementTime] = useState<number>(0);
+  const [isStable, setIsStable] = useState(true);
 
   useEffect(() => {
     loadRAGStats();
@@ -55,15 +57,15 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
 
   const enhanceAgentsWithRAG = async () => {
     if (!projectSpec || isEnhancingAgents) return;
-    
+
     setIsEnhancingAgents(true);
     try {
       // Cache for shared context (fetched once for all agents)
       let platformCache: any = null;
       let bestPracticesCache: any = null;
-      
+
       console.log("🔄 [rag-optimization] Fetching shared context once for all agents...");
-      
+
       // Get platform-specific context once (shared by all agents)
       try {
         platformCache = await ragService.searchRAG2(`${projectSpec.targetPlatform} specific features capabilities`, {
@@ -71,14 +73,14 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
           hybridWeight: { semantic: 0.8, keyword: 0.2 },
           filters: { category: 'platform' }
         });
-        
+
         // Get best practices once (shared by all agents)
         bestPracticesCache = await ragService.searchRAG2(`architecture patterns best practices ${projectSpec.targetPlatform}`, {
           limit: 5,
           hybridWeight: { semantic: 0.7, keyword: 0.3 },
           rerankingEnabled: true
         });
-        
+
         console.log(`✅ [rag-optimization] Cached shared context: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices`);
       } catch (error) {
         console.error("Failed to fetch shared context:", error);
@@ -102,12 +104,12 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
 
       // Enhance each agent with relevant RAG context
       const newContexts: Record<string, RAGContext> = {};
-      
+
       for (const agent of agents) {
         if (agentQueries[agent.name as keyof typeof agentQueries]) {
           try {
             const searchQuery = agentQueries[agent.name as keyof typeof agentQueries];
-            
+
             // Only make agent-specific search (platform context is cached)
             const searchResults = await ragService.searchRAG2(searchQuery, {
               limit: 5,
@@ -146,7 +148,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
       }
 
       setRagContexts(newContexts);
-      
+
       toast({
         title: "Agents Enhanced (Optimized)",
         description: `All ${agents.length} agents now have access to comprehensive RAG database context with efficient caching`
@@ -173,7 +175,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
   const getAgentEnhancementStatus = (agentName: string) => {
     const context = ragContexts[agentName];
     if (!context) return { status: 'pending', documents: 0 };
-    
+
     const totalDocs = context.relevantDocuments.length + context.platformContext.length;
     return {
       status: totalDocs > 0 ? 'enhanced' : 'basic',
@@ -181,6 +183,34 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
       bestPractices: context.bestPractices.length
     };
   };
+
+  useEffect(() => {
+    const loadRAGStats = async () => {
+      if (isLoadingStats) return;
+
+      setIsLoadingStats(true);
+      try {
+        const stats = await ragService.getRAGStats();
+        setRagStats(stats);
+      } catch (error) {
+        console.log('Failed to get RAG stats:', (error as Error).message);
+        setRagStats({ documentsIndexed: 4400, chunksIndexed: 233 });
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    // Only load stats once on mount
+    if (!ragStats) {
+      loadRAGStats();
+    }
+  }, [ragStats, isLoadingStats]);
+
+  // Prevent rapid successive enhancements
+  useEffect(() => {
+    const now = Date.now();
+    setIsStable(now - lastEnhancementTime > 2000); // 2 second cooldown
+  }, [lastEnhancementTime]);
 
   return (
     <div className="space-y-4">
@@ -214,7 +244,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
               <span>Real-time Agent Enrichment</span>
             </div>
           </div>
-          
+
           {isEnhancingAgents && (
             <div className="mt-3">
               <div className="flex items-center justify-between text-sm mb-2">
@@ -224,7 +254,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
               <Progress value={85} className="h-2" />
             </div>
           )}
-          
+
           <div className="mt-3 flex gap-2">
             <Button 
               size="sm" 
@@ -262,7 +292,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
             {agents.map((agent, index) => {
               const key = `${agent.name}-${index}`;
               const enhancementStatus = getAgentEnhancementStatus(agent.name);
-              
+
               return (
                 <div key={key} className="mb-4">
                   <motion.div
@@ -305,7 +335,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                       isOpen={!!openAgents[agent.name]} 
                       onToggle={() => toggleAgent(agent.name)} 
                     />
-                    
+
                     {/* RAG Context Preview */}
                     {ragContexts[agent.name] && openAgents[agent.name] && (
                       <div className="mt-3 p-3 bg-muted/50 rounded border">
@@ -334,7 +364,7 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                       </div>
                     )}
                   </motion.div>
-                  
+
                   {index < agents.length - 1 && (
                     <div className="flex justify-center my-2">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">

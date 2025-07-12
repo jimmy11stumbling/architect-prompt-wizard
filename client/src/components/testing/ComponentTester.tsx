@@ -264,11 +264,13 @@ const ComponentTester: React.FC = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>Component Functionality Test Suite</CardTitle>
-        <div className="flex gap-4 text-sm">
-          <span className="text-green-500">✓ {passedTests} Passed</span>
-          <span className="text-red-500">✗ {failedTests} Failed</span>
-          <span className="text-yellow-500">⚠ {warningTests} Warnings</span>
-        </div>
+        {testResults.length > 0 && (
+          <div className="flex gap-4 text-sm">
+            <span className="text-green-500">✓ {passedTests} Passed</span>
+            <span className="text-red-500">✗ {failedTests} Failed</span>
+            <span className="text-yellow-500">⚠ {warningTests} Warnings</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <Button 

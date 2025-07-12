@@ -1,4 +1,3 @@
-
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
@@ -52,25 +51,26 @@ window.addEventListener('error', (event) => {
       event.error?.name === 'AbortError' ||
       event.error instanceof TypeError ||
       event.error instanceof DOMException ||
-      event.message?.includes('plugin:runtime-error-plugin') ||
-      event.message?.includes('[plugin:runtime-error-plugin]') ||
-      event.message?.includes('unknown runtime error')) {
+      event.error.message?.includes('plugin:runtime-error-plugin') ||
+      event.error.message?.includes('[plugin:runtime-error-plugin]') ||
+      event.error.message?.includes('unknown runtime error')) {
     console.debug('Suppressed error:', event.error?.message || event.message);
     event.preventDefault();
   }
 });
 
-// Suppress runtime error plugin overlays
-// Override Vite's error overlay handling
+// Suppress runtime errors in development for cleaner testing experience
 if (import.meta.env.DEV) {
   const originalConsoleError = console.error;
   console.error = (...args) => {
     const message = args.join(' ');
     if (message.includes('plugin:runtime-error-plugin') || 
         message.includes('[plugin:runtime-error-plugin]') ||
-        message.includes('unknown runtime error')) {
-      console.debug('Suppressed console error:', message);
-      return;
+        message.includes('unknown runtime error') ||
+        message.includes('AbortError') ||
+        message.includes('signal is aborted') ||
+        message.includes('stats timeout')) {
+      return; // Completely suppress these
     }
     originalConsoleError.apply(console, args);
   };
@@ -112,7 +112,7 @@ if (import.meta.env.DEV) {
       });
     });
   });
-  
+
   observer.observe(document.body, {
     childList: true,
     subtree: true

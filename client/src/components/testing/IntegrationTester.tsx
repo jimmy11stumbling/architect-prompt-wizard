@@ -204,7 +204,7 @@ const IntegrationTester: React.FC = () => {
           <span className="text-red-500">✗ {failedTests} Failed</span>
           <span className="text-yellow-500">⚠ {warningTests} Warnings</span>
         </div>
-        {isRunning && (
+        {isRunning && currentTest && (
           <div className="space-y-2">
             <div className="text-sm text-muted-foreground">
               Testing: {currentTest}
