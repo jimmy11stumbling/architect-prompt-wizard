@@ -226,15 +226,9 @@ export class RAGOrchestrator2 {
         return [];
       });
 
-      const integrations = await storage.getPlatformIntegrations('*').catch(err => {
-        console.warn('Failed to fetch integrations:', err.message);
-        return [];
-      });
-
-      const pricing = await storage.getPlatformPricing('*').catch(err => {
-        console.warn('Failed to fetch pricing:', err.message);
-        return [];
-      });
+      // Skip integrations and pricing for now due to missing columns
+      const integrations: any[] = [];
+      const pricing: any[] = [];
 
       const platformDocs: ProcessedDocument[] = [];
 

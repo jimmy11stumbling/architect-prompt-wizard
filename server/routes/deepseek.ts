@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 
 const router = Router();
@@ -6,7 +5,7 @@ const router = Router();
 router.post('/stream', async (req, res) => {
   try {
     const { messages, ragContext, stream, model = 'deepseek-reasoner' } = req.body;
-    
+
     // Set headers for ultra-fast streaming with no buffering
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -26,7 +25,7 @@ router.post('/stream', async (req, res) => {
       timestamp: Date.now(),
       message: 'DeepSeek streaming initialized'
     })}\n\n`);
-    
+
     // Force flush immediately
     if (res.flush) res.flush();
 
@@ -70,11 +69,11 @@ router.post('/stream', async (req, res) => {
             message: 'Lightning RAG search...'
           })}\n\n`);
           if (res.flush) res.flush();
-          
+
           // Ultra-fast RAG search with 1-second timeout
           const ragController = new AbortController();
           const ragTimeout = setTimeout(() => ragController.abort(), 1000);
-          
+
           const ragResponse = await fetch(`http://0.0.0.0:5000/api/rag/search`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -91,7 +90,7 @@ router.post('/stream', async (req, res) => {
           if (ragResponse.ok) {
             const ragData = await ragResponse.json();
             console.log(`📚 RAG found ${ragData.results?.length || 0} relevant documents`);
-            
+
             if (ragData.results && ragData.results.length > 0) {
               const contextChunks = ragData.results.slice(0, 5).map((result: any, index: number) => {
                 return `[Doc ${index + 1}] ${result.content.substring(0, 300)}...`;
@@ -103,7 +102,7 @@ router.post('/stream', async (req, res) => {
               };
 
               enhancedMessages = [contextMessage, ...messages];
-              
+
               res.write(`data: ${JSON.stringify({ 
                 type: 'status',
                 stage: 'rag_complete',
@@ -129,37 +128,39 @@ router.post('/stream', async (req, res) => {
     })}\n\n`);
 
     const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: model === 'deepseek-chat' ? 'deepseek-chat' : 'deepseek-reasoner',
-        messages: enhancedMessages,
-        stream: true,
-        max_tokens: 4096,
-        temperature: 0.1
-      })
-    });
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'ReplotIPA/1.0'
+          },
+          body: JSON.stringify({
+            model,
+            messages: messages,
+            stream: true,
+            temperature: model === 'deepseek-chat' ? 0.7 : 0.1
+          })
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ DeepSeek API error: ${response.status} - ${errorText}`);
-      
-      // Send proper error response instead of demo fallback
-      res.write(`data: ${JSON.stringify({
-        type: 'error',
-        error: `DeepSeek API Authentication Failed: ${response.status}`,
-        details: errorText.includes('governor') 
-          ? 'API key authentication failed. Please check your DEEPSEEK_API_KEY in Secrets.'
-          : errorText,
-        action_required: 'Please verify your DeepSeek API key configuration'
-      })}\n\n`);
-      res.write(`data: [DONE]\n\n`);
-      res.end();
-      return;
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('DeepSeek streaming API error:', response.status, errorText);
+
+        // If it's a governor error, try non-streaming approach
+        if (errorText.includes('governor')) {
+          console.log('Governor error detected, falling back to non-streaming...');
+          res.write(`data: ${JSON.stringify({ 
+            error: 'Streaming blocked by rate governor, falling back to standard mode',
+            fallback: true 
+          })}\n\n`);
+          res.end();
+          return;
+        }
+
+        res.write(`data: ${JSON.stringify({ error: errorText })}\n\n`);
+        res.end();
+        return;
+      }
 
     res.write(`data: ${JSON.stringify({ 
       type: 'status',
@@ -187,7 +188,7 @@ router.post('/stream', async (req, res) => {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          
+
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') {
@@ -198,10 +199,10 @@ router.post('/stream', async (req, res) => {
 
             try {
               const parsed = JSON.parse(data);
-              
+
               if (parsed.choices?.[0]?.delta) {
                 const delta = parsed.choices[0].delta;
-                
+
                 // Send reasoning tokens with immediate flush
                 if (delta.reasoning_content) {
                   tokenCount++;
@@ -216,7 +217,7 @@ router.post('/stream', async (req, res) => {
                   })}\n\n`);
                   if (res.flush) res.flush(); // Force immediate delivery
                 }
-                
+
                 // Send response tokens with immediate flush
                 if (delta.content) {
                   tokenCount++;
@@ -260,7 +261,7 @@ router.post('/stream', async (req, res) => {
       message: error.message,
       fallback: 'demo'
     })}\n\n`);
-    
+
     // Fallback to demo mode on any error
     try {
       await startDemoStreaming(res, 'Error fallback demo');
@@ -273,7 +274,7 @@ router.post('/stream', async (req, res) => {
 // Enhanced demo streaming with immediate visual feedback
 async function startDemoStreaming(res: any, query: string) {
   console.log('🎬 Starting enhanced demo streaming with immediate feedback...');
-  
+
   res.write(`data: ${JSON.stringify({ 
     type: 'status',
     stage: 'demo_mode',
@@ -282,7 +283,7 @@ async function startDemoStreaming(res: any, query: string) {
 
   // IMMEDIATE reasoning start - no delays
   const reasoningText = `🧠 Analyzing query: "${query}"\n\nDeepSeek reasoning process:\n1. 📝 Query comprehension and intent analysis\n2. 🔍 Context retrieval and relevance scoring  \n3. 🧠 Chain-of-thought reasoning generation\n4. ✨ Response formulation with streaming\n\nProcessing your request with advanced AI reasoning...`;
-  
+
   // Stream reasoning at maximum speed (3ms per character)
   for (let i = 0; i < reasoningText.length; i++) {
     res.write(`data: ${JSON.stringify({
@@ -294,7 +295,7 @@ async function startDemoStreaming(res: any, query: string) {
       token_count: i + 1,
       timestamp: Date.now()
     })}\n\n`);
-    
+
     // Ultra-fast reasoning - 3ms per character
     await new Promise(resolve => setTimeout(resolve, 3));
     if (res.flush) res.flush();
@@ -317,7 +318,7 @@ async function startDemoStreaming(res: any, query: string) {
       token_count: reasoningText.length + i + 1,
       timestamp: Date.now()
     })}\n\n`);
-    
+
     // Ultra-fast response - 2ms per character  
     await new Promise(resolve => setTimeout(resolve, 2));
     if (res.flush) res.flush();
@@ -341,7 +342,7 @@ async function startDemoStreaming(res: any, query: string) {
 router.post('/demo-stream', async (req, res) => {
   try {
     const { messages } = req.body;
-    
+
     // Set headers for Server-Sent Events
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -350,9 +351,9 @@ router.post('/demo-stream', async (req, res) => {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Cache-Control'
     });
-    
+
     console.log('🎭 Demo streaming mode activated');
-    
+
     // Demo response simulating real streaming with visual indicators
     const demoResponse = `🧠 **DeepSeek Reasoner Analysis**
 
@@ -388,12 +389,12 @@ This demonstrates the complete integration of advanced AI reasoning with real-ti
 
     const words = demoResponse.split(' ');
     let wordIndex = 0;
-    
+
     const streamInterval = setInterval(() => {
       if (wordIndex < words.length) {
         const word = words[wordIndex];
         const token = wordIndex === 0 ? word : ` ${word}`;
-        
+
         res.write(`data: ${JSON.stringify({
           choices: [{
             delta: {
@@ -401,7 +402,7 @@ This demonstrates the complete integration of advanced AI reasoning with real-ti
             }
           }]
         })}\n\n`);
-        
+
         wordIndex++;
       } else {
         clearInterval(streamInterval);
@@ -420,7 +421,7 @@ This demonstrates the complete integration of advanced AI reasoning with real-ti
         res.end();
       }
     }, 80); // Stream at ~12 tokens per second for realistic feel
-    
+
   } catch (error) {
     console.error('Demo streaming error:', error);
     res.status(500).json({ error: 'Internal server error' });

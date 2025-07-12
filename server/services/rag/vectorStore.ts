@@ -89,20 +89,32 @@ export class VectorStore {
       `);
         console.log('Vector documents table created/verified');
 
-        // Add performance indexes for RAG queries
-        await this.db.execute(sql`
-          CREATE INDEX IF NOT EXISTS idx_vector_documents_document_id ON vector_documents(document_id);
-        `);
+        // Add performance indexes for RAG queries with better error handling
+        try {
+          await this.db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_vector_documents_document_id ON vector_documents(document_id);
+          `);
+        } catch (error) {
+          console.warn('Index idx_vector_documents_document_id already exists or failed to create');
+        }
 
-        await this.db.execute(sql`
-          CREATE INDEX IF NOT EXISTS idx_vector_documents_created_at ON vector_documents(created_at DESC);
-        `);
+        try {
+          await this.db.execute(sql`
+            CREATE INDEX IF NOT EXISTS idx_vector_documents_created_at ON vector_documents(created_at DESC);
+          `);
+        } catch (error) {
+          console.warn('Index idx_vector_documents_created_at already exists or failed to create');
+        }
         
         // Create text search index for better performance
-        await this.db.execute(sql`
-        CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
-        ON vector_documents USING gin(to_tsvector('english', content))
-      `);
+        try {
+          await this.db.execute(sql`
+            CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
+            ON vector_documents USING gin(to_tsvector('english', content))
+          `);
+        } catch (error) {
+          console.warn('Text search index already exists or failed to create');
+        }
 
         // Create optimized indexes for similarity search
         try {
@@ -127,7 +139,7 @@ export class VectorStore {
 
           console.log('Optimized vector indexes created');
         } catch (indexError) {
-          console.warn('Vector indexes not created (pgvector not available)');
+          console.warn('Vector indexes not created (pgvector not available or already exist)');
         }
 
         this.initialized = true;

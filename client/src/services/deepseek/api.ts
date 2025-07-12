@@ -117,7 +117,7 @@ export class DeepSeekApi {
 
       try {
         const response = await Promise.race([streamingPromise, timeoutPromise]);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.warn(`⚠️ DeepSeek API failed: ${response.status} - ${errorText}`);
@@ -126,7 +126,7 @@ export class DeepSeekApi {
 
         // Process the streaming response
         await this.processStreamingResponse(response, onReasoningToken, onResponseToken, onComplete);
-        
+
       } catch (streamError) {
         console.error('❌ Streaming failed:', streamError);
         onError(new Error(`DeepSeek streaming failed: ${streamError.message}`));
@@ -192,18 +192,25 @@ export class DeepSeekApi {
               try {
                 const parsed = JSON.parse(data);
 
-                // Status updates
-                if (parsed.type === 'connection' || parsed.type === 'status') {
-                  console.log('📡 Stream status:', parsed.message || parsed.status);
+                if (parsed.error) {
+                  console.error('Stream error:', parsed.error);
+
+                  // Handle governor errors with fallback
+                  if (parsed.error.includes('governor') || parsed.fallback) {
+                    console.log('🎬 Governor error detected, switching to demo mode');
+                    await this.startFastDemoStreaming(
+                      'System message: DeepSeek API rate limited, using demo mode',
+                      onReasoningToken,
+                      onResponseToken,
+                      onComplete
+                    );
+                    return;
+                  }
+
+                  throw new Error(parsed.error);
                 }
 
-                // Handle error responses
-                if (parsed.type === 'error') {
-                  console.error('❌ DeepSeek API Error:', parsed.error);
-                  throw new Error(parsed.details || parsed.error);
-                }
-
-                if (parsed.choices?.[0]?.delta) {
+                if (parsed.choices && parsed.choices[0]?.delta) {
                   const delta = parsed.choices[0].delta;
 
                   // Immediate reasoning token processing
@@ -218,7 +225,7 @@ export class DeepSeekApi {
                 }
 
               } catch (parseError) {
-                console.warn('Failed to parse streaming data:', parseError);
+                console.warn('Failed to parse streaming chunk:', parseError);
               }
             }
           }
