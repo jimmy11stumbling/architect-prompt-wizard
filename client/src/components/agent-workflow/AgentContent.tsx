@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { AgentStatus } from "@/types/ipa-types";
 import { 
@@ -7,7 +7,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import AgentStatusIcon from "./AgentStatusIcon";
-import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -17,14 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { AgentStatusIcon } from './AgentStatusIcon';
 
 interface AgentContentProps {
-  agent: {
-    id: string;
-    name: string;
-    status: 'idle' | 'processing' | 'completed' | 'error';
-    response?: string;
-    processingTime?: number;
-    error?: string;
-  };
+  agent: AgentStatus;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
 const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) => {
@@ -43,10 +37,11 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
   };
 
     const handleCopyResponse = async () => {
-    if (!agent.response) return;
+    const contentToCopy = agent.output || agent.result;
+    if (!contentToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(agent.response);
+      await navigator.clipboard.writeText(contentToCopy);
       setCopied(true);
       toast({
         title: "Copied!",
@@ -105,12 +100,12 @@ const AgentContent: React.FC<AgentContentProps> = ({ agent, isOpen, onToggle }) 
              <div className="text-xs bg-ipa-background/50 p-2 rounded-md overflow-auto max-h-40 min-h-[40px] whitespace-pre-wrap break-words">
               {agent.output || agent.result}
             </div>
-             {agent.response && (
+             {(agent.output || agent.result) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCopyResponse}
-                className="h-6 px-2 text-xs"
+                className="h-6 px-2 text-xs ml-2"
                 disabled={copied}
               >
                 {copied ? (
