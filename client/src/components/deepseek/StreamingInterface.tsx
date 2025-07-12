@@ -94,14 +94,14 @@ export default function StreamingInterface() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-7xl mx-auto p-4 space-y-4 bg-background text-foreground">
+    <div className="flex flex-col h-full max-w-7xl mx-auto p-4 space-y-4 min-h-screen bg-gray-900 text-white">
       {/* Header with System Status */}
-      <Card className="border-border bg-card">
+      <Card className="border-gray-700 bg-gray-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
+          <CardTitle className="flex items-center gap-2 text-white">
             <Brain className="h-6 w-6 text-purple-400" />
             DeepSeek Reasoner
-            <Badge variant="secondary" className="ml-auto bg-secondary text-secondary-foreground">
+            <Badge variant="secondary" className="ml-auto bg-purple-600 text-white">
               Advanced Chain-of-Thought reasoning with real-time streaming
             </Badge>
           </CardTitle>
@@ -110,15 +110,15 @@ export default function StreamingInterface() {
 
       {/* Live Statistics Panel */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-border bg-card">
+        <Card className="border-gray-700 bg-gray-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-foreground">
+            <CardTitle className="text-sm flex items-center gap-2 text-white">
               <Database className="h-4 w-4 text-blue-400" />
               RAG 2.0 Database
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-foreground">
+            <div className="space-y-2 text-white">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Documents:</span>
                 <span className="font-mono text-green-400">{ragStats?.documentsIndexed || 477}</span>
@@ -137,15 +137,15 @@ export default function StreamingInterface() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
+        <Card className="border-gray-700 bg-gray-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-foreground">
+            <CardTitle className="text-sm flex items-center gap-2 text-white">
               <Network className="h-4 w-4 text-purple-400" />
               MCP Protocol
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-foreground">
+            <div className="space-y-2 text-white">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Assets:</span>
                 <span className="font-mono text-purple-400">{mcpStats?.totalAssets || 45}</span>
@@ -164,15 +164,15 @@ export default function StreamingInterface() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
+        <Card className="border-gray-700 bg-gray-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-foreground">
+            <CardTitle className="text-sm flex items-center gap-2 text-white">
               <BarChart3 className="h-4 w-4 text-yellow-400" />
               Processing Stats
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-foreground">
+            <div className="space-y-2 text-white">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Response Tokens:</span>
                 <span className="font-mono text-yellow-400">{currentResponse?.usage.completionTokens || 0}</span>
@@ -191,9 +191,9 @@ export default function StreamingInterface() {
       </div>
 
       {/* Query Input */}
-      <Card className="border-border bg-card">
+      <Card className="border-gray-700 bg-gray-800">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-foreground">
+          <CardTitle className="flex items-center space-x-2 text-white">
             <Zap className="h-5 w-5 text-yellow-400" />
             <span>Query Input</span>
             <div className="ml-auto flex gap-2">
@@ -224,7 +224,7 @@ export default function StreamingInterface() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[100px] bg-background border-border text-foreground placeholder:text-muted-foreground"
+            className="min-h-[100px] bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
             disabled={isLoading}
           />
 
@@ -266,9 +266,9 @@ export default function StreamingInterface() {
 
       {/* Error Display */}
       {error && (
-        <Card className="border-red-500 bg-red-50 dark:bg-red-950/20">
+        <Card className="border-red-500 bg-red-900/50">
           <CardContent className="pt-6">
-            <div className="text-red-600 dark:text-red-400 font-medium">
+            <div className="text-red-400 font-medium">
               Error: {error}
             </div>
           </CardContent>
@@ -280,11 +280,11 @@ export default function StreamingInterface() {
         <div className="space-y-4">
           {/* Streaming Status */}
           {storeIsStreaming && (
-            <Card className="border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+            <Card className="border-blue-500 bg-blue-900/50">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                  <span className="text-sm font-medium text-blue-300">
                     Streaming DeepSeek Response...
                   </span>
                   <Badge variant="outline" className="text-xs">
@@ -296,9 +296,9 @@ export default function StreamingInterface() {
           )}
 
           {/* Reasoning Process */}
-          <Card className="border-border bg-card">
+          <Card className="border-gray-700 bg-gray-800">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+              <CardTitle className="text-lg flex items-center gap-2 text-white">
                 <Cpu className="h-5 w-5 text-blue-400" />
                 Reasoning Process
                 {storeIsStreaming && (
@@ -312,12 +312,12 @@ export default function StreamingInterface() {
             <CardContent>
               <div 
                 ref={reasoningRef}
-                className="whitespace-pre-wrap text-sm bg-background rounded-lg p-4 border border-border text-foreground font-mono leading-relaxed"
+                className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white font-mono leading-relaxed"
                 style={{ 
                   maxHeight: '400px', 
                   overflowY: 'auto',
-                  backgroundColor: 'hsl(var(--background))',
-                  color: 'hsl(var(--foreground))'
+                  backgroundColor: '#111827',
+                  color: '#ffffff'
                 }}
               >
                 {storeIsStreaming ? streamingReasoning : currentResponse?.reasoning}
@@ -329,9 +329,9 @@ export default function StreamingInterface() {
           </Card>
 
           {/* Final Response */}
-          <Card className="border-border bg-card">
+          <Card className="border-gray-700 bg-gray-800">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+              <CardTitle className="text-lg flex items-center gap-2 text-white">
                 <Brain className="h-5 w-5 text-purple-400" />
                 Response
                 {storeIsStreaming && streamingResponse && (
@@ -345,10 +345,10 @@ export default function StreamingInterface() {
             <CardContent>
               <div 
                 ref={responseContentRef}
-                className="whitespace-pre-wrap text-sm bg-background rounded-lg p-4 border border-border text-foreground leading-relaxed"
+                className="whitespace-pre-wrap text-sm bg-gray-900 rounded-lg p-4 border border-gray-600 text-white leading-relaxed"
                 style={{ 
-                  backgroundColor: 'hsl(var(--background))',
-                  color: 'hsl(var(--foreground))'
+                  backgroundColor: '#111827',
+                  color: '#ffffff'
                 }}
               >
                 {storeIsStreaming ? streamingResponse : currentResponse?.response}
@@ -361,9 +361,9 @@ export default function StreamingInterface() {
 
           {/* Usage Statistics */}
           {currentResponse && (
-            <Card className="border-border bg-card">
+            <Card className="border-gray-700 bg-gray-800">
               <CardHeader>
-                <CardTitle className="text-sm text-foreground">Usage Statistics</CardTitle>
+                <CardTitle className="text-sm text-white">Usage Statistics</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -392,9 +392,9 @@ export default function StreamingInterface() {
 
       {/* Conversation History */}
       {conversation.length > 0 && (
-        <Card className="border-border bg-card">
+        <Card className="border-gray-700 bg-gray-800">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2 text-foreground">
+            <CardTitle className="text-lg flex items-center gap-2 text-white">
               <Clock className="h-5 w-5 text-gray-400" />
               Conversation History ({conversation.length} messages)
             </CardTitle>
