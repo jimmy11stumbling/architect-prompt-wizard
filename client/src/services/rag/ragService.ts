@@ -327,7 +327,7 @@ export class RAGService {
 
         const timeoutId = setTimeout(() => {
           safeAbort();
-        }, 5000); // 5 second timeout
+        }, 2000); // Reduced to 2 second timeout for faster fallback
 
         try {
           const response = await fetch('/api/rag/search', {
@@ -407,7 +407,7 @@ export class RAGService {
               }
             };
           }
-          
+
           // Fallback to basic search for other errors
           try {
             return this.fallbackToBasicSearch(query, options);

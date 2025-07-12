@@ -89,6 +89,15 @@ export class VectorStore {
       `);
         console.log('Vector documents table created/verified');
 
+        // Add performance indexes for RAG queries
+        await this.db.execute(sql`
+          CREATE INDEX IF NOT EXISTS idx_vector_documents_document_id ON vector_documents(document_id);
+        `);
+
+        await this.db.execute(sql`
+          CREATE INDEX IF NOT EXISTS idx_vector_documents_created_at ON vector_documents(created_at DESC);
+        `);
+        
         // Create text search index for better performance
         await this.db.execute(sql`
         CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
@@ -103,19 +112,19 @@ export class VectorStore {
             ON vector_documents USING ivfflat (embedding vector_cosine_ops)
             WITH (lists = 1000)
           `);
-          
+
           // Additional indexes for metadata filtering
           await this.db.execute(sql`
             CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
             ON vector_documents USING gin(metadata)
           `);
-          
+
           // Composite index for document_id lookups
           await this.db.execute(sql`
             CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
             ON vector_documents (document_id, created_at DESC)
           `);
-          
+
           console.log('Optimized vector indexes created');
         } catch (indexError) {
           console.warn('Vector indexes not created (pgvector not available)');
@@ -146,7 +155,7 @@ export class VectorStore {
       // Process in batches of 50 for better performance
       const batchSize = 50;
       const batches = [];
-      
+
       for (let i = 0; i < documents.length; i += batchSize) {
         batches.push(documents.slice(i, i + batchSize));
       }
@@ -156,7 +165,7 @@ export class VectorStore {
         const documentsToInsert = await Promise.all(
           batch.map(async (doc) => {
             let embedding = doc.embedding;
-            
+
             if (!embedding) {
               embedding = await this.embeddingService.generateEmbedding(doc.content);
             }
@@ -274,11 +283,11 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     const { limit = 10 } = options;
-    
+
     // Create cache key
     const cacheKey = `${queryEmbedding.slice(0, 10).join(',')}_${limit}`;
     const cached = this.searchCache.get(cacheKey);
-    
+
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.results;
     }

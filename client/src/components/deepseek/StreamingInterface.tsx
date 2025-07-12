@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Brain, Send, Loader2, Database, Network, Zap, Clock, Cpu, BarChart3, Activity, Eye, MessageSquare } from 'lucide-react';
+import { Brain, Send, Loader2, Database, Network, Zap, Clock, Cpu, BarChart3, Activity, Eye, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,10 +180,10 @@ function StreamingInterfaceContent() {
       // IMMEDIATE visual feedback - show working state instantly
       setIsConnected(true);
       setStreamingStage('connecting');
-      
+
       // Start immediate thinking animation
       DeepSeekService.startThinkingAnimation();
-      
+
       // Force immediate scroll to response area
       setTimeout(() => {
         const responseElement = document.getElementById('streaming-response-section');
@@ -193,7 +193,7 @@ function StreamingInterfaceContent() {
       }, 50);
 
       console.log('🚀 Starting immediate streaming with visual feedback...');
-      
+
       // Start fallback timer - if no tokens arrive in 10 seconds, switch to demo
       const fallbackTimer = setTimeout(() => {
         if (!streamingReasoning && !streamingResponse) {
@@ -202,7 +202,7 @@ function StreamingInterfaceContent() {
           DeepSeekService.processDemoStreaming(query);
         }
       }, 10000);
-      
+
       if (demoMode) {
         console.log('🎬 High-speed demo mode activated...');
         clearTimeout(fallbackTimer);
@@ -225,16 +225,16 @@ function StreamingInterfaceContent() {
           await DeepSeekService.processDemoStreaming(query);
         }
       }
-      
+
       setQuery('');
     } catch (error) {
       console.error('❌ Query processing failed:', error);
-      
+
       // Always fallback to demo mode to ensure user sees something
       setIsConnected(false);
       setDemoMode(true);
       console.log('🎬 Fallback to demo mode for user experience');
-      
+
       try {
         await DeepSeekService.processDemoStreaming(query);
         setQuery('');
@@ -681,6 +681,23 @@ function StreamingInterfaceContent() {
           <CardContent className="pt-6">
             <div className="text-red-400 font-medium">
               Error: {error}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+       {/* Show authentication error prominently */}
+       {error && (error.includes('Authentication') || error.includes('governor')) && (
+        <Card className="border-red-500 bg-red-900/50">
+          <CardContent className="pt-6">
+            <div className="text-red-400 font-medium">
+              DeepSeek API Authentication Failed
+            </div>
+            <p className="text-sm text-red-600 mb-3">
+              The DeepSeek API key is invalid or has been rate limited. Please check your configuration.
+            </p>
+            <div className="text-xs text-red-500 bg-red-100 p-2 rounded">
+              <strong>Fix:</strong> Update your DEEPSEEK_API_KEY in Replit Secrets with a valid API key from DeepSeek.
             </div>
           </CardContent>
         </Card>

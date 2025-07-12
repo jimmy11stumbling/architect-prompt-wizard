@@ -145,22 +145,19 @@ router.post('/stream', async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`DeepSeek API error: ${response.status} - ${errorText}`);
+      console.error(`❌ DeepSeek API error: ${response.status} - ${errorText}`);
       
-      // Send immediate error with reasoning token
+      // Send proper error response instead of demo fallback
       res.write(`data: ${JSON.stringify({
-        choices: [{
-          delta: {
-            reasoning_content: `⚠️ DeepSeek API error: ${response.status}\n🔄 Switching to demo mode...\n`
-          }
-        }],
-        token_count: 1,
-        timestamp: Date.now()
+        type: 'error',
+        error: `DeepSeek API Authentication Failed: ${response.status}`,
+        details: errorText.includes('governor') 
+          ? 'API key authentication failed. Please check your DEEPSEEK_API_KEY in Secrets.'
+          : errorText,
+        action_required: 'Please verify your DeepSeek API key configuration'
       })}\n\n`);
-      if (res.flush) res.flush();
-      
-      // Start demo streaming immediately
-      await startDemoStreaming(res, messages[messages.length - 1]?.content || 'Demo query');
+      res.write(`data: [DONE]\n\n`);
+      res.end();
       return;
     }
 

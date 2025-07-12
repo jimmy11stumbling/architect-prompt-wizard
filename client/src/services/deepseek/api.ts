@@ -128,24 +128,12 @@ export class DeepSeekApi {
         await this.processStreamingResponse(response, onReasoningToken, onResponseToken, onComplete);
         
       } catch (streamError) {
-        console.log('🔄 Streaming failed, immediate demo fallback...');
-        await this.startFastDemoStreaming(
-          request.messages[request.messages.length - 1]?.content || 'Demo query',
-          onReasoningToken,
-          onResponseToken,
-          onComplete,
-          onError
-        );
+        console.error('❌ Streaming failed:', streamError);
+        onError(new Error(`DeepSeek streaming failed: ${streamError.message}`));
       }
     } catch (error) {
       console.error('❌ Streaming error:', error);
-      await this.startFastDemoStreaming(
-        request.messages[request.messages.length - 1]?.content || 'Error fallback',
-        onReasoningToken,
-        onResponseToken,
-        onComplete,
-        onError
-      );
+      onError(error instanceof Error ? error : new Error('DeepSeek API communication failed'));
     }
   }
 
@@ -207,6 +195,12 @@ export class DeepSeekApi {
                 // Status updates
                 if (parsed.type === 'connection' || parsed.type === 'status') {
                   console.log('📡 Stream status:', parsed.message || parsed.status);
+                }
+
+                // Handle error responses
+                if (parsed.type === 'error') {
+                  console.error('❌ DeepSeek API Error:', parsed.error);
+                  throw new Error(parsed.details || parsed.error);
                 }
 
                 if (parsed.choices?.[0]?.delta) {
