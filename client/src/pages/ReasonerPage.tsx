@@ -5,9 +5,11 @@ import DeepSeekReasonerPanel from "@/components/enhanced-features/DeepSeekReason
 // Removed AttachedAssetsPanel - not needed in new implementation
 // Removed DeepDiveAssetsExplorer - not needed in new implementation
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MainLayout from "@/components/layout/MainLayout";
 
 const ReasonerPage: React.FC = () => {
   return (
+    <MainLayout>
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
@@ -100,6 +102,7 @@ const ReasonerPage: React.FC = () => {
         </Card>
       </div>
     </div>
+    </MainLayout>
   );
 };
 

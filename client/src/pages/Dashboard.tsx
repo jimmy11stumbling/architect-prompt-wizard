@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ import AgentOrchestrationDashboard from "@/components/orchestration/AgentOrchest
 import AdvancedTemplateSystem from "@/components/templates/AdvancedTemplateSystem";
 import WorkflowDashboard from "@/components/workflow/WorkflowDashboard";
 import { RAGAnalyticsDashboard } from "@/components/rag/RAGAnalyticsDashboard";
+import MainLayout from "@/components/layout/MainLayout";
 
 interface SystemStats {
   platforms: number;
@@ -68,7 +68,7 @@ const Dashboard: React.FC = () => {
           fetch('/api/mcp/health').then(r => r.json()),
           fetch('/api/a2a/health').then(r => r.json())
         ]);
-        
+
         setSystemHealth({
           rag: ragHealth.status || 'unknown',
           mcp: mcpHealth.status || 'unknown',
@@ -175,7 +175,9 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <MainLayout>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -405,6 +407,8 @@ const Dashboard: React.FC = () => {
         </TabsContent>
       </Tabs>
     </div>
+  </div>
+    </MainLayout>
   );
 };
 
