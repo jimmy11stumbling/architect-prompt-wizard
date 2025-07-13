@@ -17,8 +17,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, onSelectTemplate }) =
         <NavigationSidebar />
         <div className="flex-1 flex flex-col">
           {onSelectTemplate && <Header onSelectTemplate={onSelectTemplate} />}
-          <main className="flex-1 container py-8">
-            <div className="max-w-6xl mx-auto">
+          <main className="flex-1 px-6 py-8">
+            <div className="w-full">
               {children}
             </div>
           </main>
