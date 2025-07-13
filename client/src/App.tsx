@@ -29,7 +29,7 @@ const App = () => (
       <Toaster />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<MainLayout><Index /></MainLayout>} />
           <Route path="/index" element={<Navigate to="/" replace />} />
           <Route
             path="/*"
