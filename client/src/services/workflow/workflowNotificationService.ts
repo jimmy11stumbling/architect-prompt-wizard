@@ -38,10 +38,8 @@ export class WorkflowNotificationService {
   }
 
   constructor() {
-    // Subscribe to real-time events with throttling
-    realTimeResponseService.subscribe((response) => {
-      this.handleRealTimeEventThrottled(response);
-    });
+    // Notifications disabled - no subscription to real-time events
+    console.log("Workflow notifications disabled");
   }
 
   private handleRealTimeEventThrottled(event: any) {
@@ -324,43 +322,8 @@ export class WorkflowNotificationService {
   }
 
   addNotification(notification: Partial<WorkflowNotification>): string {
-    // Check for duplicate notifications in last 5 seconds
-    const recentTime = Date.now() - 5000;
-    const isDuplicate = Array.from(this.notifications.values()).some(n =>
-      n.title === notification.title &&
-      n.message === notification.message &&
-      n.timestamp > recentTime
-    );
-
-    if (isDuplicate) {
-      return ""; // Skip duplicate notifications
-    }
-
-    const id = this.generateNotificationId();
-    const fullNotification: WorkflowNotification = {
-      id,
-      type: "info",
-      title: "",
-      message: "",
-      workflowId: "",
-      timestamp: Date.now(),
-      read: false,
-      persistent: false,
-      ...notification
-    };
-
-    this.notifications.set(id, fullNotification);
-
-    // Auto-remove non-persistent notifications after 10 seconds
-    if (!fullNotification.persistent) {
-      setTimeout(() => {
-        this.removeNotification(id);
-      }, 10000);
-    }
-
-    this.notifySubscribers();
-
-    return id;
+    // Notifications disabled - return empty string
+    return "";
   }
 
   removeNotification(id: string): void {
