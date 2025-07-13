@@ -2,7 +2,7 @@
 class ConnectionMonitor {
   private static instance: ConnectionMonitor;
   private connectionCount = 0;
-  private maxConnections = 3;
+  private maxConnections = 1;
   private connectionPromises = new Map<string, Promise<any>>();
   
   static getInstance(): ConnectionMonitor {
@@ -19,10 +19,18 @@ class ConnectionMonitor {
       return this.connectionPromises.get(key) as Promise<T>;
     }
     
-    // Wait if too many connections
-    while (this.connectionCount >= this.maxConnections) {
+    // Wait if too many connections with timeout
+    let waitCount = 0;
+    while (this.connectionCount >= this.maxConnections && waitCount < 10) {
       console.log(`[ConnectionMonitor] Max connections reached (${this.maxConnections}), waiting...`);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      waitCount++;
+    }
+    
+    if (waitCount >= 10) {
+      console.warn(`[ConnectionMonitor] Force releasing stuck connections`);
+      this.connectionCount = 0;
+      this.connectionPromises.clear();
     }
     
     this.connectionCount++;

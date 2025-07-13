@@ -47,6 +47,12 @@ export class DeepSeekApi {
     onComplete: (response: DeepSeekResponse) => void,
     onError: (error: Error) => void
   ): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      onError(new Error('Request timed out after 40 seconds'));
+    }, 40000);
+
     try {
       console.log('Starting DeepSeek streaming request...');
 
@@ -61,6 +67,7 @@ export class DeepSeekApi {
           stream: true,
           maxTokens: request.maxTokens || 32768
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -165,6 +172,8 @@ export class DeepSeekApi {
     } catch (error) {
       console.error('Streaming error:', error);
       onError(error instanceof Error ? error : new Error('Streaming failed'));
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

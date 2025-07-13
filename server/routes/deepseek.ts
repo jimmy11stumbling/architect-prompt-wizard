@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 
 const router = Router();
@@ -8,7 +7,7 @@ router.get('/check-api-key', async (req, res) => {
   try {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     const hasValidKey = !!(apiKey && apiKey !== 'your-deepseek-api-key-here' && apiKey.length > 10);
-    
+
     if (hasValidKey) {
       // Test API connectivity
       try {
@@ -24,7 +23,7 @@ router.get('/check-api-key', async (req, res) => {
             max_tokens: 1
           })
         });
-        
+
         res.json({ 
           hasApiKey: true, 
           isValid: testResponse.status !== 401,
@@ -54,9 +53,22 @@ import { Router } from 'express';
 
 const router = Router();
 
-router.post('/stream', async (req, res) => {
+router.post("/stream", async (req, res) => {
+  const requestTimeout = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(408).json({ error: "Request timeout" });
+    }
+  }, 35000); // 35 second overall timeout
+
   try {
     const { messages, ragContext, stream } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      clearTimeout(requestTimeout);
+      return res.status(400).json({ error: "Messages array is required" });
+    }
+
+    console.log('Making DeepSeek streaming API call with', messages.length, 'messages');
 
     // Set headers for Server-Sent Events
     res.writeHead(200, {
@@ -164,7 +176,7 @@ router.post('/stream', async (req, res) => {
 
       for (const line of lines) {
         if (!line.trim() || !line.startsWith('data: ')) continue;
-        
+
         const data = line.slice(6).trim();
         if (data === '[DONE]') {
           res.write(`data: [DONE]\n\n`);
@@ -174,9 +186,9 @@ router.post('/stream', async (req, res) => {
 
         try {
           const parsed = JSON.parse(data);
-          
+
           const delta = parsed.choices?.[0]?.delta;
-          
+
           // Handle reasoning content (Chain of Thought) - comes first
           if (delta?.reasoning_content) {
             console.log('📝 Streaming reasoning token:', delta.reasoning_content.substring(0, 50));
@@ -186,7 +198,7 @@ router.post('/stream', async (req, res) => {
             };
             res.write(`data: ${JSON.stringify(reasoningChunk)}\n\n`);
           }
-          
+
           // Handle final response content - comes after reasoning
           if (delta?.content) {
             console.log('💬 Streaming response token:', delta.content.substring(0, 50));
@@ -196,7 +208,7 @@ router.post('/stream', async (req, res) => {
             };
             res.write(`data: ${JSON.stringify(responseChunk)}\n\n`);
           }
-          
+
           // Handle completion with usage stats
           if (parsed.choices?.[0]?.finish_reason) {
             console.log('✅ Stream completed with reason:', parsed.choices[0].finish_reason);
@@ -212,7 +224,7 @@ router.post('/stream', async (req, res) => {
             };
             res.write(`data: ${JSON.stringify(completionChunk)}\n\n`);
           }
-          
+
         } catch (parseError) {
           console.warn('DeepSeek JSON parse error:', parseError);
         }
@@ -285,8 +297,15 @@ router.post('/stream', async (req, res) => {
 
   } catch (error) {
     console.error('DeepSeek streaming error:', error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
-    res.end();
+    clearTimeout(requestTimeout);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  } finally {
+    clearTimeout(requestTimeout);
   }
 });
 

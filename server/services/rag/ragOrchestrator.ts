@@ -35,6 +35,7 @@ export class RAGOrchestrator {
   private embeddingService: EmbeddingService;
   private vectorStore: VectorStore;
   private isInitialized = false;
+  private isIndexing = false;
 
   constructor(apiKey?: string) {
     // Use singleton instance to prevent multiple database connections
@@ -70,6 +71,7 @@ export class RAGOrchestrator {
     }
 
     try {
+      this.isIndexing = true;
       // Get all platforms and knowledge base entries
       const platforms = await storage.getAllPlatforms();
       const knowledgeBase = await storage.getAllKnowledgeBase();
@@ -134,6 +136,8 @@ export class RAGOrchestrator {
     } catch (error) {
       console.error("Error indexing data:", error);
       throw new Error(`Failed to index data: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      this.isIndexing = false;
     }
   }
 
