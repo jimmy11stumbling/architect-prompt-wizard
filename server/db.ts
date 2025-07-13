@@ -1,5 +1,5 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from "@shared/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -8,14 +8,8 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Configure Neon for serverless environment
-neonConfig.fetchConnectionCache = true;
-
 // Create the neon connection with proper configuration
-const sql = neon(process.env.DATABASE_URL!, {
-  fullResults: true,
-  arrayMode: false
-});
+const sql = neon(process.env.DATABASE_URL!);
 
 console.log('[Database] Neon serverless connection initialized');
 
