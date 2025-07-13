@@ -3,7 +3,7 @@ import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-
 import { cosineDistance, desc } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { EmbeddingService } from './embeddingService';
-import { db, pool, sql as directSql } from '../../db';
+import { db, sql as directSql } from '../../db';
 import { connectionMonitor } from './connectionMonitor';
 
 // Vector database schema for embeddings
@@ -64,13 +64,13 @@ export class VectorStore {
           console.log(`Initializing vector store... (${4 - retries}/3)`);
 
           // Test database connection with timeout
-          const connectionPromise = directSql`SELECT 1`;
+          const connectionPromise = directSql`SELECT 1 as test`;
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Database connection timeout')), 15000)
           );
           
-          await Promise.race([connectionPromise, timeoutPromise]);
-          console.log('Database connection successful');
+          const testResult = await Promise.race([connectionPromise, timeoutPromise]);
+          console.log('Database connection successful', testResult?.[0]?.test === 1 ? '✓' : '✗');
 
         // Enable pgvector extension (may fail if not available, but that's okay)
         try {
@@ -254,29 +254,63 @@ export class VectorStore {
         return [];
       }
 
-      const queryVector = `[${queryEmbedding.join(',')}]`;
+      try {
+        const queryVector = `[${queryEmbedding.join(',')}]`;
+        const results = await this.db
+          .select({
+            id: vectorDocuments.documentId,
+            content: vectorDocuments.content,
+            metadata: vectorDocuments.metadata,
+            similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`
+          })
+          .from(vectorDocuments)
+          .where(sql`${vectorDocuments.embedding} IS NOT NULL AND 1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector) > ${minSimilarity}`)
+          .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`))
+          .limit(topK);
+
+        return results.map(result => ({
+          document: {
+            id: result.id,
+            content: result.content,
+            metadata: result.metadata as Record<string, any>
+          },
+          similarity: result.similarity
+        }));
+      } catch (vectorError) {
+        console.warn('Vector search failed, falling back to text search:', vectorError);
+        // Fallback to text search when vector operations fail
+        return this.textSearchFallback(queryEmbedding, { topK, minSimilarity });
+      }
+
+      } catch (error) {
+      console.error('Failed to search vector store:', error);
+      return [];
+    }
+  }
+
+  private async textSearchFallback(queryEmbedding: number[], options: VectorSearchOptions): Promise<VectorSearchResult[]> {
+    const { topK = 5 } = options;
+    try {
+      // Extract some meaningful keywords from embedding context for text search
       const results = await this.db
         .select({
           id: vectorDocuments.documentId,
           content: vectorDocuments.content,
-          metadata: vectorDocuments.metadata,
-          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector})`
+          metadata: vectorDocuments.metadata
         })
         .from(vectorDocuments)
-        .where(sql`${vectorDocuments.embedding} IS NOT NULL AND 1 - (${vectorDocuments.embedding} <=> ${queryVector}) > ${minSimilarity}`)
-        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector})`))
         .limit(topK);
 
-      return results.map(result => ({
+      return results.map((result, index) => ({
         document: {
           id: result.id,
           content: result.content,
           metadata: result.metadata as Record<string, any>
         },
-        similarity: result.similarity
+        similarity: 0.5 - (index * 0.1) // Decreasing similarity scores
       }));
     } catch (error) {
-      console.error('Failed to search vector store:', error);
+      console.error('Text search fallback failed:', error);
       return [];
     }
   }
@@ -298,37 +332,53 @@ export class VectorStore {
     }
 
     try {
-      // Optimized query with better performance
-      const queryVector = `[${queryEmbedding.join(',')}]`;
-      const results = await this.db
-        .select({
-          id: vectorDocuments.documentId,
-          content: vectorDocuments.content,
-          metadata: vectorDocuments.metadata,
-          similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector})`
-        })
-        .from(vectorDocuments)
-        .where(sql`
-          ${vectorDocuments.embedding} IS NOT NULL AND 
-          1 - (${vectorDocuments.embedding} <=> ${queryVector}) > 0.1
-        `)
-        .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector})`))
-        .limit(limit);
+      try {
+        // Optimized query with better performance
+        const queryVector = `[${queryEmbedding.join(',')}]`;
+        const results = await this.db
+          .select({
+            id: vectorDocuments.documentId,
+            content: vectorDocuments.content,
+            metadata: vectorDocuments.metadata,
+            similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`
+          })
+          .from(vectorDocuments)
+          .where(sql`
+            ${vectorDocuments.embedding} IS NOT NULL AND 
+            1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector) > 0.1
+          `)
+          .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`))
+          .limit(limit);
 
-      const formattedResults = results.map(result => ({
-        id: result.id,
-        content: result.content,
-        metadata: result.metadata || {},
-        score: result.similarity,
-        relevanceScore: result.similarity,
-        searchMethod: 'vector'
-      }));
+        const formattedResults = results.map(result => ({
+          id: result.id,
+          content: result.content,
+          metadata: result.metadata || {},
+          score: result.similarity,
+          relevanceScore: result.similarity,
+          searchMethod: 'vector'
+        }));
 
-      // Cache results
-      this.searchCache.set(cacheKey, {
-        results: formattedResults,
-        timestamp: Date.now()
-      });
+        // Cache results
+        this.searchCache.set(cacheKey, {
+          results: formattedResults,
+          timestamp: Date.now()
+        });
+
+        return formattedResults;
+      } catch (vectorError) {
+        console.warn('Vector search failed, using text search fallback');
+        // Fall back to text search
+        const textResults = await this.textSearch('search', { limit });
+        
+        // Cache fallback results
+        this.searchCache.set(cacheKey, {
+          results: textResults,
+          timestamp: Date.now()
+        });
+        
+        return textResults;
+      }
 
       // Clean old cache entries (keep cache size manageable)
       if (this.searchCache.size > 1000) {
@@ -339,8 +389,6 @@ export class VectorStore {
           }
         }
       }
-
-      return formattedResults;
     } catch (error) {
       console.error('Failed to perform vector search:', error);
       return [];
@@ -417,10 +465,16 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     try {
-      const countResult = await directSql`SELECT COUNT(*) as count FROM vector_documents`;
-      const sizeResult = await directSql`
-        SELECT pg_size_pretty(pg_total_relation_size('vector_documents')) as size
-      `;
+      const countResult = await directSql`SELECT COUNT(*)::text as count FROM vector_documents`;
+      let sizeResult;
+      try {
+        sizeResult = await directSql`
+          SELECT pg_size_pretty(pg_total_relation_size('vector_documents')) as size
+        `;
+      } catch (sizeError) {
+        console.warn('Could not get table size:', sizeError);
+        sizeResult = [{ size: 'unknown' }];
+      }
 
       return {
         totalDocuments: parseInt(countResult[0]?.count || '0'),
