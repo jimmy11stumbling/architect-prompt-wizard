@@ -65,6 +65,9 @@ export class DeepSeekApi {
 
       if (!response.ok) {
         const errorText = await response.text();
+        if (response.status === 400 && errorText.includes('API key not configured')) {
+          throw new Error('DeepSeek API key is not configured. Please add your API key in the settings.');
+        }
         throw new Error(`Stream request failed: ${response.status} - ${errorText}`);
       }
 

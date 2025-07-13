@@ -61,6 +61,7 @@ export class MCPServer extends EventEmitter {
   private prompts: Map<string, MCPPrompt> = new Map();
   private capabilities: MCPCapabilities;
   private initialized = false;
+  private platformData: any; // Assuming platformData exists
 
   constructor(capabilities: MCPCapabilities = {}) {
     super();
@@ -72,7 +73,7 @@ export class MCPServer extends EventEmitter {
    */
   async initialize(params: any): Promise<any> {
     this.initialized = true;
-    
+
     // Register default tools
     this.registerDefaultTools();
     this.registerDefaultResources();
@@ -86,6 +87,64 @@ export class MCPServer extends EventEmitter {
         version: "1.0.0"
       }
     };
+  }
+
+    /**
+   * Fix platform name matching by normalizing the input and trying partial matches
+   */
+  private findPlatformData(platformName: string): any {
+    console.log(`[MCP Hub] Looking for platform: "${platformName}"`);
+    console.log(`[MCP Hub] Available platforms:`, Object.keys(this.platformData));
+
+    // Normalize the input platform name
+    const normalizedInput = platformName.toLowerCase().trim();
+
+    // Try exact match first
+    if (this.platformData[platformName]) {
+      console.log(`[MCP Hub] Found exact match: ${platformName}`);
+      return this.platformData[platformName];
+    }
+
+    // Try case-insensitive match
+    const platformKeys = Object.keys(this.platformData);
+    let matchedKey = platformKeys.find(key => 
+      key.toLowerCase() === normalizedInput
+    );
+
+    if (matchedKey) {
+      console.log(`[MCP Hub] Found case-insensitive match: ${matchedKey}`);
+      return this.platformData[matchedKey];
+    }
+
+    // Try partial matching for common variations
+    const partialMatches = {
+      'windsurf': 'Windsurf (Codeium)',
+      'codeium': 'Windsurf (Codeium)',
+      'bolt': 'Bolt (StackBlitz)',
+      'stackblitz': 'Bolt (StackBlitz)',
+      'claude': 'Claude Code',
+      'claudecode': 'Claude Code',
+      'v0': 'V0 by Vercel',
+      'vercel': 'V0 by Vercel',
+      'lovable': 'Lovable 2.0',
+      'base44': 'Base44',
+      'rork': 'Rork',
+      'cursor': 'Cursor',
+      'replit': 'Replit',
+      'geminicli': 'Gemini CLI',
+      'gemini': 'Gemini CLI'
+    };
+
+    if (partialMatches[normalizedInput]) {
+      matchedKey = partialMatches[normalizedInput];
+      if (this.platformData[matchedKey]) {
+        console.log(`[MCP Hub] Found partial match: ${matchedKey}`);
+        return this.platformData[matchedKey];
+      }
+    }
+
+    console.log(`[MCP Hub] No match found for platform: ${platformName}`);
+    return null;
   }
 
   /**
@@ -245,7 +304,7 @@ export class MCPServer extends EventEmitter {
             category: args.category
           }
         });
-        
+
         return JSON.stringify(result, null, 2);
       } catch (error) {
         throw new Error(`Platform search failed: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -267,7 +326,7 @@ export class MCPServer extends EventEmitter {
     }, async (args) => {
       try {
         const { storage } = await import("../../storage");
-        
+
         switch (args.table) {
           case "platforms":
             const platforms = await storage.getAllPlatforms();
@@ -355,7 +414,7 @@ export class MCPServer extends EventEmitter {
       ]
     }, async (args) => {
       return `Compare ${args.platform1} and ${args.platform2} focusing on: ${args.criteria || "features, pricing, and usability"}. 
-      
+
 Provide a detailed analysis covering:
 1. Key feature differences
 2. Pricing model comparison

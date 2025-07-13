@@ -322,13 +322,13 @@ export class RAGService {
         const { controller, safeAbort } = createSafeAbortController({
           agentId: 'rag-service',
           operation: 'hybrid-search',
-          timeout: 5000,
+          timeout: 15000,
           reason: 'timeout'
         });
 
         const timeoutId = setTimeout(() => {
           safeAbort();
-        }, 5000); // 5 second timeout
+        }, 15000); // 5 second timeout
 
         try {
           const response = await fetch('/api/rag/search', {

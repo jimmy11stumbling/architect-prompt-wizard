@@ -241,7 +241,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
           <TabsTrigger value="grid">Platform Cards</TabsTrigger>
           <TabsTrigger value="dropdown">Quick Select</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="grid" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {platformCards.map((platform) => (
@@ -274,7 +274,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
                   <CardDescription className="text-xs">
                     {platform.description}
                   </CardDescription>
-                  
+
                   <div>
                     <p className="text-xs font-medium mb-1">Key Strengths:</p>
                     <div className="flex flex-wrap gap-1">
@@ -285,7 +285,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
                       ))}
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="text-xs font-medium text-muted-foreground">
                       Ideal for: {platform.idealFor}
@@ -296,7 +296,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
             ))}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="dropdown">
           <Card>
             <CardContent className="p-6">
@@ -305,7 +305,10 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
                   <label className="text-sm font-medium">Select Platform:</label>
                   <Select 
                     value={selectedPlatform} 
-                    onValueChange={(value) => handlePlatformSelect(value as PlatformType)}
+                    onValueChange={(value) => {
+                      console.log(`PlatformSelector: Platform changed to ${value}`);
+                      handlePlatformSelect(value as PlatformType)
+                    }}
                   >
                     <SelectTrigger className="w-full mt-2">
                       <SelectValue placeholder="Choose your development platform" />
@@ -325,7 +328,7 @@ const PlatformSelector: React.FC<PlatformSelectorProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {selectedPlatform && (
                   <div className="p-4 bg-muted rounded-lg">
                     <h4 className="font-medium mb-2">

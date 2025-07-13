@@ -30,7 +30,7 @@ export function safeAbort(
     // Simply abort with a non-error reason to prevent runtime overlay
     // Using a string reason instead of Error object prevents the overlay
     controller.abort(`${agentId} ${operation} aborted due to ${reason || 'timeout'}`);
-    
+
     // Log for debugging only
     console.debug(`[SafeAbort] ${agentId} ${operation} aborted due to ${reason} after ${timeout}ms`);
   } catch (error) {
@@ -43,7 +43,7 @@ export function createSafeAbortController(options: SafeAbortOptions = {}): {
   safeAbort: () => void;
 } {
   const controller = new AbortController();
-  
+
   // Add abort listener for debugging
   controller.signal.addEventListener('abort', () => {
     console.debug(`[SafeAbort] Signal aborted for ${options.agentId || 'unknown'} ${options.operation || 'operation'}`);
@@ -54,3 +54,19 @@ export function createSafeAbortController(options: SafeAbortOptions = {}): {
     safeAbort: () => safeAbort(controller, options)
   };
 }
+
+export const safeAbortController = (timeoutMs: number = 15000, label?: string) => {
+  const controller = new AbortController();
+
+  const timeoutId = setTimeout(() => {
+    console.log(`[SafeAbort] Signal aborted for ${label || 'unknown operation'}`);
+    console.log(`[SafeAbort] ${label || 'Operation'} aborted due to timeout after ${timeoutMs}ms`);
+    controller.abort();
+  }, timeoutMs);
+
+  return {
+    controller,
+    cleanup: () => clearTimeout(timeoutId),
+    signal: controller.signal
+  };
+};

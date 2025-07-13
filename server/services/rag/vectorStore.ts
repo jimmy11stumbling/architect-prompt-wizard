@@ -1,4 +1,3 @@
-
 import { sql } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-core';
 import { cosineDistance, desc, eq } from 'drizzle-orm';
@@ -47,7 +46,7 @@ export class VectorStore {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
-    
+
     // Return existing initialization promise if one is in progress
     if (this.initializationPromise) {
       return this.initializationPromise;
@@ -55,7 +54,7 @@ export class VectorStore {
 
     this.initializationPromise = connectionMonitor.acquireConnection('vector-store-init', async () => {
       if (this.initialized) return; // Double-check after acquiring connection
-      
+
       let retries = 3;
       while (retries > 0) {
         try {
@@ -101,19 +100,19 @@ export class VectorStore {
               ON vector_documents USING ivfflat (embedding vector_cosine_ops)
               WITH (lists = 1000)
             `;
-            
+
             // Additional indexes for metadata filtering
             await directSql`
               CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
               ON vector_documents USING gin(metadata)
             `;
-            
+
             // Composite index for document_id lookups
             await directSql`
               CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
               ON vector_documents (document_id, created_at DESC)
             `;
-            
+
             console.log('Optimized vector indexes created');
           } catch (indexError) {
             console.warn('Vector indexes not created (pgvector not available)');
@@ -149,57 +148,70 @@ export class VectorStore {
   async addDocuments(documents: VectorDocument[]): Promise<void> {
     if (!this.initialized) await this.initialize();
 
-    try {
-      // Process in batches of 50 for better performance
-      const batchSize = 50;
-      const batches = [];
-      
-      for (let i = 0; i < documents.length; i += batchSize) {
-        batches.push(documents.slice(i, i + batchSize));
-      }
+    const maxRetries = 3;
+    let retryCount = 0;
 
-      for (const batch of batches) {
-        // Prepare documents with embeddings
-        const documentsToInsert = await Promise.all(
-          batch.map(async (doc) => {
-            let embedding = doc.embedding;
-            
-            if (!embedding) {
-              embedding = await this.embeddingService.generateEmbedding(doc.content);
+    while (retryCount < maxRetries) {
+      try {
+        // Process in batches of 50 for better performance
+        const batchSize = 50;
+        const batches = [];
+
+        for (let i = 0; i < documents.length; i += batchSize) {
+          batches.push(documents.slice(i, i + batchSize));
+        }
+
+        for (const batch of batches) {
+          // Prepare documents with embeddings
+          const documentsToInsert = await Promise.all(
+            batch.map(async (doc) => {
+              let embedding = doc.embedding;
+
+              if (!embedding) {
+                embedding = await this.embeddingService.generateEmbedding(doc.content);
+              }
+
+              return {
+                documentId: doc.id,
+                content: doc.content,
+                embedding: `[${embedding.join(',')}]`,
+                metadata: JSON.stringify(doc.metadata)
+              };
+            })
+          );
+
+          // Use raw SQL for inserting
+          for (const doc of documentsToInsert) {
+            try {
+              await directSql`
+                INSERT INTO vector_documents (document_id, content, embedding, metadata, created_at, updated_at)
+                VALUES (${doc.documentId}, ${doc.content}, ${doc.embedding}::vector, ${doc.metadata}::jsonb, NOW(), NOW())
+                ON CONFLICT (document_id) 
+                DO UPDATE SET 
+                  content = EXCLUDED.content,
+                  embedding = EXCLUDED.embedding,
+                  metadata = EXCLUDED.metadata,
+                  updated_at = NOW()
+              `;
+            } catch (insertError) {
+              console.warn(`Failed to insert document ${doc.documentId}:`, insertError);
             }
-
-            return {
-              documentId: doc.id,
-              content: doc.content,
-              embedding: `[${embedding.join(',')}]`,
-              metadata: JSON.stringify(doc.metadata)
-            };
-          })
-        );
-
-        // Use raw SQL for inserting
-        for (const doc of documentsToInsert) {
-          try {
-            await directSql`
-              INSERT INTO vector_documents (document_id, content, embedding, metadata, created_at, updated_at)
-              VALUES (${doc.documentId}, ${doc.content}, ${doc.embedding}::vector, ${doc.metadata}::jsonb, NOW(), NOW())
-              ON CONFLICT (document_id) 
-              DO UPDATE SET 
-                content = EXCLUDED.content,
-                embedding = EXCLUDED.embedding,
-                metadata = EXCLUDED.metadata,
-                updated_at = NOW()
-            `;
-          } catch (insertError) {
-            console.warn(`Failed to insert document ${doc.documentId}:`, insertError);
           }
         }
-      }
 
-      console.log(`[VectorStore] Added ${documents.length} documents in ${batches.length} batches`);
-    } catch (error) {
-      console.error('Failed to add documents to vector store:', error);
-      throw error;
+        console.log(`[VectorStore] Added ${documents.length} documents in ${batches.length} batches`);
+        return; // Success, exit retry loop
+      } catch (error) {
+        retryCount++;
+        console.error(`[VectorStore] Error adding documents (attempt ${retryCount}):`, error);
+
+        if (retryCount >= maxRetries) {
+          throw error;
+        }
+
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
     }
   }
 
@@ -265,7 +277,7 @@ export class VectorStore {
 
         // Ensure results is an array
         const resultArray = Array.isArray(results) ? results : [];
-        
+
         return resultArray.map(result => ({
           document: {
             id: result.id,
@@ -320,11 +332,11 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     const { limit = 10 } = options;
-    
+
     // Create cache key
     const cacheKey = `${queryEmbedding.slice(0, 10).join(',')}_${limit}`;
     const cached = this.searchCache.get(cacheKey);
-    
+
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.results;
     }
@@ -369,13 +381,13 @@ export class VectorStore {
         console.warn('Vector search failed, using text search fallback');
         // Fall back to text search
         const textResults = await this.textSearch('search', { limit });
-        
+
         // Cache fallback results
         this.searchCache.set(cacheKey, {
           results: textResults,
           timestamp: Date.now()
         });
-        
+
         return textResults;
       }
 
