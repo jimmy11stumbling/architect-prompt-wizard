@@ -231,7 +231,7 @@ export class RAGService {
 
       const timeoutId = setTimeout(() => {
         safeAbort();
-      }, 30000); // 30 second timeout for indexing
+      }, 60000); // 60 second timeout for indexing
 
       const response = await fetch('/api/rag/index', {
         method: 'POST',
@@ -328,7 +328,7 @@ export class RAGService {
 
         const timeoutId = setTimeout(() => {
           safeAbort();
-        }, 15000); // 5 second timeout
+        }, 30000); // 30 second timeout
 
         try {
           const response = await fetch('/api/rag/search', {

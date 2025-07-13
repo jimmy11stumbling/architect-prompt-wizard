@@ -109,11 +109,15 @@ router.get('/search', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const promptId = parseInt(id);
+    if (isNaN(promptId)) {
+      return res.status(400).json({ error: "Invalid prompt ID" });
+    }
 
     const prompt = await db
       .select()
       .from(savedPrompts)
-      .where(eq(savedPrompts.id, parseInt(id)))
+      .where(eq(savedPrompts.id, promptId))
       .limit(1);
 
     if (prompt.length === 0) {
@@ -235,26 +239,36 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get prompt statistics
-  router.get('/stats', async (req, res) => {
-    try {
-      const userId = parseInt(req.query.userId as string) || 1;
-      if (isNaN(userId)) {
-        return res.status(400).json({ error: 'Invalid user ID' });
-      }
+router.get('/stats', async (req, res) => {
+  try {
+    const userId = parseInt(req.query.userId as string) || 1;
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
 
-      const stats = await db.query(
-        `SELECT 
-          COUNT(*) as total_prompts,
-          COUNT(CASE WHEN is_public = true THEN 1 END) as public_prompts,
-          COUNT(DISTINCT category) as categories,
-          COALESCE(SUM(usage), 0) as total_usage,
-          COALESCE(AVG(rating), 0) as average_rating
-        FROM prompts 
-        WHERE user_id = $1`,
-        [userId]
-      );
+    const stats = await db.query(
+      `SELECT 
+        COUNT(*) as total_prompts,
+        COUNT(CASE WHEN is_public = true THEN 1 END) as public_prompts,
+        COUNT(DISTINCT category) as categories,
+        COALESCE(SUM(usage), 0) as total_usage,
+        COALESCE(AVG(rating), 0) as average_rating
+      FROM saved_prompts 
+      WHERE userId = $1`,
+      [userId]
+    );
 
-    res.json(stats);
+    // Ensure all numeric values are valid
+    const sanitizedStats = {
+      total_prompts: isNaN(Number(stats[0].total_prompts)) ? 0 : Number(stats[0].total_prompts),
+      public_prompts: isNaN(Number(stats[0].public_prompts)) ? 0 : Number(stats[0].public_prompts),
+      categories: isNaN(Number(stats[0].categories)) ? 0 : Number(stats[0].categories),
+      total_usage: isNaN(Number(stats[0].total_usage)) ? 0 : Number(stats[0].total_usage),
+      average_rating: isNaN(Number(stats[0].average_rating)) ? 0 : Number(stats[0].average_rating
+      )
+    };
+
+    res.json(sanitizedStats);
   } catch (error) {
     console.error('Error fetching prompt stats:', error);
     res.status(500).json({ error: 'Internal server error' });

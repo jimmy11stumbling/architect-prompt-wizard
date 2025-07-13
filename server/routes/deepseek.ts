@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 
 const router = Router();
@@ -6,7 +5,7 @@ const router = Router();
 router.post('/stream', async (req, res) => {
   try {
     const { messages, ragContext, stream } = req.body;
-    
+
     // Set headers for Server-Sent Events
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -17,10 +16,11 @@ router.post('/stream', async (req, res) => {
     });
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      res.write(`data: ${JSON.stringify({ error: 'DeepSeek API key not configured' })}\n\n`);
-      res.end();
-      return;
+    if (!apiKey || apiKey === 'your-deepseek-api-key-here') {
+      return res.status(400).json({ 
+        error: 'DeepSeek API key not configured. Please set DEEPSEEK_API_KEY environment variable.',
+        hint: 'Get your API key from https://platform.deepseek.com/ and add it to your secrets.'
+      });
     }
 
     console.log('Making DeepSeek streaming API call with', messages.length, 'messages');
@@ -32,7 +32,7 @@ router.post('/stream', async (req, res) => {
       if (lastUserMessage.role === 'user') {
         try {
           console.log('🔍 Performing enhanced RAG search for:', lastUserMessage.content);
-          
+
           // Multi-strategy RAG search
           const ragResponse = await fetch(`http://localhost:5000/api/rag/search`, {
             method: 'POST',
@@ -48,7 +48,7 @@ router.post('/stream', async (req, res) => {
             const ragData = await ragResponse.json();
             // Console logging disabled during blueprint generation
             // console.log(`📚 RAG found ${ragData.results?.length || 0} relevant documents`);
-            
+
             if (ragData.results && ragData.results.length > 0) {
               // Build comprehensive context
               const contextChunks = ragData.results.map((result: any, index: number) => {
@@ -111,7 +111,7 @@ router.post('/stream', async (req, res) => {
 
       for (const line of lines) {
         if (!line.trim()) continue;
-        
+
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
           if (data === '[DONE]') {
@@ -122,11 +122,11 @@ router.post('/stream', async (req, res) => {
 
           try {
             const parsed = JSON.parse(data);
-            
+
             // Handle both reasoning and response content
             if (parsed.choices?.[0]?.delta) {
               const delta = parsed.choices[0].delta;
-              
+
               // Check for reasoning content
               if (delta.reasoning_content) {
                 console.log('Sending reasoning token:', delta.reasoning_content);
@@ -138,7 +138,7 @@ router.post('/stream', async (req, res) => {
                   }]
                 })}\n\n`);
               }
-              
+
               // Check for response content
               if (delta.content) {
                 console.log('Sending response token:', delta.content);
@@ -180,7 +180,7 @@ router.post('/stream', async (req, res) => {
 router.post('/demo-stream', async (req, res) => {
   try {
     const { messages } = req.body;
-    
+
     // Set headers for Server-Sent Events
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -189,9 +189,9 @@ router.post('/demo-stream', async (req, res) => {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Cache-Control'
     });
-    
+
     console.log('🎭 Demo streaming mode activated');
-    
+
     // Demo response simulating real streaming with visual indicators
     const demoResponse = `🧠 **DeepSeek Reasoner Analysis**
 
@@ -227,12 +227,12 @@ This demonstrates the complete integration of advanced AI reasoning with real-ti
 
     const words = demoResponse.split(' ');
     let wordIndex = 0;
-    
+
     const streamInterval = setInterval(() => {
       if (wordIndex < words.length) {
         const word = words[wordIndex];
         const token = wordIndex === 0 ? word : ` ${word}`;
-        
+
         res.write(`data: ${JSON.stringify({
           choices: [{
             delta: {
@@ -240,7 +240,7 @@ This demonstrates the complete integration of advanced AI reasoning with real-ti
             }
           }]
         })}\n\n`);
-        
+
         wordIndex++;
       } else {
         clearInterval(streamInterval);
@@ -259,7 +259,7 @@ This demonstrates the complete integration of advanced AI reasoning with real-ti
         res.end();
       }
     }, 80); // Stream at ~12 tokens per second for realistic feel
-    
+
   } catch (error) {
     console.error('Demo streaming error:', error);
     res.status(500).json({ error: 'Internal server error' });
