@@ -69,6 +69,18 @@ export const useDeepSeekStore = create<DeepSeekStore>((set) => ({
     set({ streamingReasoning: '', streamingResponse: '' });
   },
 
+  appendStreamingReasoning: (token: string) => {
+    set((state) => ({ 
+      streamingReasoning: state.streamingReasoning + token 
+    }));
+  },
+
+  appendStreamingResponse: (token: string) => {
+    set((state) => ({ 
+      streamingResponse: state.streamingResponse + token 
+    }));
+  },
+
   clearConversation: () => set({ 
     conversation: [],
     currentResponse: null,

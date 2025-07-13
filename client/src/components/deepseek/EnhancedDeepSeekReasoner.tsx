@@ -50,6 +50,9 @@ export default function EnhancedDeepSeekReasoner() {
     conversation 
   } = useDeepSeekStore();
 
+  // Ensure we have proper reactive state
+  const isActuallyStreaming = storeIsStreaming || Boolean(streamingReasoning || streamingResponse);
+
   // Auto-scroll refs
   const reasoningRef = useRef<HTMLDivElement>(null);
   const responseContentRef = useRef<HTMLDivElement>(null);
@@ -439,7 +442,7 @@ export default function EnhancedDeepSeekReasoner() {
       </Card>
 
       {/* AI Working Status - Show when streaming starts */}
-      {storeIsStreaming && (
+      {isActuallyStreaming && (
         <Card className="border-yellow-500 bg-gradient-to-r from-yellow-900/20 to-orange-900/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -468,12 +471,12 @@ export default function EnhancedDeepSeekReasoner() {
       )}
 
       {/* Response Display */}
-      {(currentResponse || storeIsStreaming) && (
+      {(currentResponse || isActuallyStreaming) && (
         <div id="enhanced-streaming-response-section" className="space-y-4">
           {/* Enhanced Streaming Status with Token Counters */}
-          {storeIsStreaming && (
+          {isActuallyStreaming && (
             <StreamingFeedback 
-              active={storeIsStreaming}
+              active={isActuallyStreaming}
               stage={
                 streamingReasoning && !streamingResponse ? 'reasoning' :
                 streamingResponse ? 'responding' : 'connecting'
@@ -484,13 +487,13 @@ export default function EnhancedDeepSeekReasoner() {
           )}
 
           {/* Chain-of-Thought Reasoning - Always visible during streaming */}
-          {(storeIsStreaming || streamingReasoning || currentResponse?.reasoning) && (
+          {(isActuallyStreaming || streamingReasoning || currentResponse?.reasoning) && (
             <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Brain className="h-5 w-5 text-blue-500" />
                   Chain-of-Thought Reasoning
-                  {(storeIsStreaming || streamingReasoning) && (
+                  {(isActuallyStreaming || streamingReasoning) && (
                     <div className="flex items-center gap-2 ml-auto">
                       <Activity className="h-4 w-4 text-blue-400 animate-pulse" />
                       <Badge variant="outline" className="text-xs">
@@ -505,7 +508,7 @@ export default function EnhancedDeepSeekReasoner() {
                   ref={reasoningRef}
                   className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-green-400 max-h-96 overflow-y-auto min-h-[200px]"
                 >
-                  {storeIsStreaming && !streamingReasoning ? (
+                  {isActuallyStreaming && !streamingReasoning ? (
                     <div className="flex items-center justify-center h-32 text-gray-400">
                       <div className="flex flex-col items-center">
                         <Brain className="h-8 w-8 animate-pulse mb-2" />
@@ -520,7 +523,7 @@ export default function EnhancedDeepSeekReasoner() {
                   ) : (
                     <div className="whitespace-pre-wrap">
                       {streamingReasoning || currentResponse?.reasoning || 'Waiting for reasoning content...'}
-                      {storeIsStreaming && streamingReasoning && (
+                      {isActuallyStreaming && streamingReasoning && (
                         <span className="animate-pulse">▌</span>
                       )}
                     </div>
@@ -536,7 +539,7 @@ export default function EnhancedDeepSeekReasoner() {
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MessageSquare className="h-5 w-5 text-purple-500" />
                 Final Response
-                {(storeIsStreaming || streamingResponse) && (
+                {(isActuallyStreaming || streamingResponse) && (
                   <div className="flex items-center gap-2 ml-auto">
                     <Activity className="h-4 w-4 text-purple-400 animate-pulse" />
                     <Badge variant="outline" className="text-xs">
@@ -551,7 +554,7 @@ export default function EnhancedDeepSeekReasoner() {
                 ref={responseContentRef}
                 className="prose prose-slate dark:prose-invert max-w-none max-h-96 overflow-y-auto min-h-[150px]"
               >
-                {storeIsStreaming && !streamingResponse ? (
+                {isActuallyStreaming && !streamingResponse ? (
                   <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                     <Clock className="h-8 w-8 animate-spin mb-2" />
                     <span className="italic">
@@ -566,7 +569,7 @@ export default function EnhancedDeepSeekReasoner() {
                 ) : (
                   <div className="whitespace-pre-wrap">
                     {streamingResponse || currentResponse?.response || 'Waiting for response...'}
-                    {storeIsStreaming && streamingResponse && (
+                    {isActuallyStreaming && streamingResponse && (
                       <span className="animate-pulse">▌</span>
                     )}
                   </div>
@@ -576,7 +579,7 @@ export default function EnhancedDeepSeekReasoner() {
           </Card>
 
           {/* Usage Statistics */}
-          {currentResponse && !storeIsStreaming && (
+          {currentResponse && !isActuallyStreaming && (
             <Card>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
