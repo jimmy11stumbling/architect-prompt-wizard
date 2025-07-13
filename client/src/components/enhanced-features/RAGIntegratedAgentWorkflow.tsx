@@ -158,17 +158,19 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
 
       setRagContexts(newContexts);
 
-      toast({
-        title: "Agents Enhanced (Optimized)",
-        description: `All ${agents.length} agents now have access to comprehensive RAG database context with efficient caching`
-      });
+      // Toast notifications DISABLED during blueprint generation
+      // toast({
+      //   title: "Agents Enhanced (Optimized)",
+      //   description: `All ${agents.length} agents now have access to comprehensive RAG database context with efficient caching`
+      // });
     } catch (error) {
       console.error('Failed to enhance agents with RAG:', error);
-      toast({
-        title: "Enhancement Failed",
-        description: "Could not enhance agents with RAG context",
-        variant: "destructive"
-      });
+      // Toast notifications DISABLED during blueprint generation
+      // toast({
+      //   title: "Enhancement Failed",
+      //   description: "Could not enhance agents with RAG context",
+      //   variant: "destructive"
+      // });
     } finally {
       setIsEnhancingAgents(false);
     }

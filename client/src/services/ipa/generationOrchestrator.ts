@@ -91,7 +91,8 @@ export class GenerationOrchestrator {
     };
 
     this.a2aMessages.push(message);
-    console.log(`[A2A] ${sender} → ${receiver}: ${messageType}`, { content: content.substring(0, 100) });
+    // A2A console logging DISABLED during blueprint generation to prevent frontend notification flooding
+    // console.log(`[A2A] ${sender} → ${receiver}: ${messageType}`, { content: content.substring(0, 100) });
   }
 
   private getA2AMessagesForAgent(agent: AgentName): A2AMessage[] {
