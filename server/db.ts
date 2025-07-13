@@ -26,6 +26,23 @@ export const pool = new Pool({
 // Add error handling for pool events
 pool.on('error', (err: any) => {
   console.warn('[Database] Pool error handled:', err?.message || 'Unknown error');
+  // Don't throw - let the connection be retried
+});
+
+// Add connection error handling
+pool.on('connect', () => {
+  console.log('[Database] Pool connected successfully');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('[Database] Closing pool...');
+  await pool.end();
+});
+
+process.on('SIGINT', async () => {
+  console.log('[Database] Closing pool...');
+  await pool.end();
 });
 
 export const db = drizzle({ client: pool, schema });

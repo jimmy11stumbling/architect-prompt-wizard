@@ -1,0 +1,296 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+[dotenv@16.6.0] injecting env (0) from .env
+11:58:33 PM [express] serving on port 5000
+11:58:39 PM [express] GET /api/platforms 200 in 208ms :: [{"id":1,"name":"Cursor","description":"AI-f…
+[ConnectionMonitor] Acquired connection 1/3 for: vector-store-init
+Initializing vector store... (1/3)
+[ConnectionMonitor] Reusing existing operation: vector-store-init
+Database connection successful
+pgvector extension enabled
+Vector documents table created/verified
+Optimized vector indexes created
+Vector store initialized successfully
+[ConnectionMonitor] Released connection, active: 0/3
+11:58:40 PM [express] GET /api/platforms 200 in 183ms :: [{"id":1,"name":"Cursor","description":"AI-f…
+11:58:40 PM [express] GET /api/rag/stats 200 in 573ms :: {"documentsIndexed":0,"chunksIndexed":0,"vec…
+11:58:40 PM [express] GET /api/platforms 200 in 45ms :: [{"id":1,"name":"Cursor","description":"AI-fi…
+11:58:40 PM [express] GET /api/platforms//features 200 in 6ms
+11:58:45 PM [express] GET /api/platforms/11/features 200 in 45ms :: [{"id":23,"platformId":11,"featur…
+11:58:46 PM [express] GET /api/platforms/11/integrations 200 in 52ms :: [{"id":16,"platformId":11,"se…
+11:58:48 PM [express] GET /api/platforms/11/pricing 200 in 49ms :: [{"id":11,"platformId":11,"planNam…
+[MCP Hub] Comprehensive context for platform: undefined
+MCP Hub: Rebuilding platform data cache...
+MCP Hub: Cache rebuilt with 11 platforms and complete technology data
+11:58:48 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 592ms :: {"success":true,"data":…
+[ConnectionMonitor] Acquired connection 1/3 for: vector-store-init
+Initializing vector store... (1/3)
+Database connection successful
+pgvector extension enabled
+Vector documents table created/verified
+Optimized vector indexes created
+Vector store initialized successfully
+[ConnectionMonitor] Released connection, active: 0/3
+11:59:19 PM [express] GET /api/rag/stats 200 in 577ms :: {"documentsIndexed":0,"chunksIndexed":0,"vec…
+11:59:25 PM [express] POST /api/mcp/request 200 in 5ms
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 4ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 2ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 0ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+[MCP Hub] Comprehensive context for platform: rork
+[MCP Hub] Looking for platform: "rork"
+[MCP Hub] Available platforms: [
+  'Cursor',
+  'Bolt',
+  'Replit',
+  'Windsurf',
+  'Lovable',
+  'Claude Code',
+  'Gemini CLI',
+  'V0',
+  'GitHub Copilot',
+  'Codeium',
+  'Rork'
+]
+[MCP Hub] Found exact match: Rork
+11:59:25 PM [express] POST /api/mcp-hub/comprehensive-context 200 in 1ms :: {"success":true,"data":{"…
+Initializing RAG 2.0 system...
+Hybrid search engine initialized
+RAG 2.0 system initialized successfully
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+11:59:39 PM [express] POST /api/mcp/request 200 in 10378ms
+11:59:42 PM [express] POST /api/mcp/request 200 in 10975ms
+11:59:43 PM [express] POST /api/mcp/request 200 in 10794ms
+11:59:45 PM [express] POST /api/mcp/request 200 in 10810ms
+11:59:47 PM [express] POST /api/mcp/request 200 in 7335ms
+11:59:47 PM [express] POST /api/mcp/request 200 in 10619ms
+11:59:47 PM [express] POST /api/mcp/request 200 in 3718ms
+11:59:48 PM [express] POST /api/mcp/request 200 in 2654ms
+11:59:50 PM [express] POST /api/mcp/request 200 in 3238ms
+11:59:51 PM [express] POST /api/mcp/request 200 in 3838ms
+11:59:51 PM [express] POST /api/mcp/request 200 in 4420ms
+11:59:51 PM [express] POST /api/mcp/request 200 in 4421ms
+No documents indexed yet, attempting to index data...
+Starting comprehensive data indexing...
+file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1384
+ connect",o),this._clients=this._clients.filter(u=>u!==t),s&&(o.message="Connect\
+                                                                       ^
+
+TypeError: Cannot set property message of #<ErrorEvent> which has only a getter
+    at An._connectionCallback (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1384:72)
+    at An._handleErrorWhileConnecting (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1290:38)
+    at An._handleErrorEvent (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1291:33)
+    at fn.emit (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at v.reportStreamError (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1201:46)
+    at v.emit (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:397:12)
+    at WebSocket.<anonymous> (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:986:42)
+    at callListener (/home/runner/workspace/node_modules/ws/lib/event-target.js:290:14)
+    at WebSocket.onError (/home/runner/workspace/node_modules/ws/lib/event-target.js:230:9)
+    at WebSocket.emit (node:events:518:28)
+    at emitErrorAndClose (/home/runner/workspace/node_modules/ws/lib/websocket.js:1041:13)
+    at processTicksAndRejections (node:internal/process/task_queues:82:21)
+    at runNextTicks (node:internal/process/task_queues:64:3)
+    at listOnTimeout (node:internal/timers:545:9)
+    at process.processTimers (node:internal/timers:519:7)
+
+Node.js v20.18.1
