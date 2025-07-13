@@ -168,7 +168,10 @@ router.post("/stream", async (req, res) => {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        console.log('🏁 DeepSeek stream ended');
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
@@ -179,6 +182,7 @@ router.post("/stream", async (req, res) => {
 
         const data = line.slice(6).trim();
         if (data === '[DONE]') {
+          console.log('✅ Received [DONE] signal');
           res.write(`data: [DONE]\n\n`);
           res.end();
           return;
@@ -186,12 +190,11 @@ router.post("/stream", async (req, res) => {
 
         try {
           const parsed = JSON.parse(data);
-
           const delta = parsed.choices?.[0]?.delta;
 
           // Handle reasoning content (Chain of Thought) - comes first
           if (delta?.reasoning_content) {
-            console.log('📝 Streaming reasoning token:', delta.reasoning_content.substring(0, 50));
+            console.log('📝 Streaming reasoning:', delta.reasoning_content.length, 'chars');
             const reasoningChunk = {
               type: 'reasoning',
               content: delta.reasoning_content
@@ -201,7 +204,7 @@ router.post("/stream", async (req, res) => {
 
           // Handle final response content - comes after reasoning
           if (delta?.content) {
-            console.log('💬 Streaming response token:', delta.content.substring(0, 50));
+            console.log('💬 Streaming response:', delta.content.length, 'chars');
             const responseChunk = {
               type: 'response',
               content: delta.content
@@ -211,7 +214,7 @@ router.post("/stream", async (req, res) => {
 
           // Handle completion with usage stats
           if (parsed.choices?.[0]?.finish_reason) {
-            console.log('✅ Stream completed with reason:', parsed.choices[0].finish_reason);
+            console.log('✅ Stream completed:', parsed.choices[0].finish_reason);
             const completionChunk = {
               type: 'complete',
               finish_reason: parsed.choices[0].finish_reason,
@@ -223,13 +226,21 @@ router.post("/stream", async (req, res) => {
               }
             };
             res.write(`data: ${JSON.stringify(completionChunk)}\n\n`);
+            res.write(`data: [DONE]\n\n`);
+            res.end();
+            return;
           }
 
         } catch (parseError) {
-          console.warn('DeepSeek JSON parse error:', parseError);
+          console.warn('❌ DeepSeek JSON parse error:', parseError, 'for data:', data.substring(0, 100));
         }
       }
-    }im()) continue;
+    }
+
+    // Ensure stream ends properly if no [DONE] received
+    console.log('🔚 Stream ended without [DONE], sending completion');
+    res.write(`data: [DONE]\n\n`);
+    res.end();im()) continue;
 
         if (line.startsWith('data: ')) {
           const data = line.slice(6);

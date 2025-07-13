@@ -555,7 +555,7 @@ export default function EnhancedDeepSeekReasoner() {
                   <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                     <Clock className="h-8 w-8 animate-spin mb-2" />
                     <span className="italic">
-                      {streamingReasoning ? '🧠 Reasoning complete, generating response...' : '⏳ Waiting for reasoning to complete...'}
+                      {streamingReasoning ? '🧠 Reasoning complete, generating response...' : '⏳ Waiting for reasoning to complete...''}
                     </span>
                     <div className="flex gap-1 mt-2">
                       <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
