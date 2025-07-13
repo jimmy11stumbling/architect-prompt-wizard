@@ -33,6 +33,7 @@ function App() {
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/index" element={<Index />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/reasoner" element={<ReasonerPage />} />
               <Route path="/enhanced" element={<EnhancedPage />} />
@@ -45,7 +46,7 @@ function App() {
               <Route path="/testing" element={<TestingPage />} />
               <Route path="/analytics" element={<AnalyticsDashboardPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<Index />} />
             </Routes>
             <WorkflowNotifications />
           </BrowserRouter>
