@@ -8,8 +8,11 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Use direct neon connection instead of pool to avoid WebSocket issues
-const sql = neon(process.env.DATABASE_URL!);
+// Use direct neon connection with proper configuration
+const sql = neon(process.env.DATABASE_URL!, {
+  fetchConnectionCache: true,
+  fullResults: true
+});
 
 console.log('[Database] Direct connection initialized');
 
@@ -22,6 +25,15 @@ export { sql };
 export const pool = {
   end: () => Promise.resolve(),
   query: async (text: string, params?: any[]) => {
-    return await sql(text, params);
+    try {
+      const result = await sql(text, params);
+      return {
+        rows: result.rows || result,
+        rowCount: result.rowCount || (result.rows ? result.rows.length : 0)
+      };
+    } catch (error) {
+      console.error('Pool query error:', error);
+      throw error;
+    }
   }
 };

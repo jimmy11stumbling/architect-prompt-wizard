@@ -3,7 +3,7 @@ import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-
 import { cosineDistance, desc } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { EmbeddingService } from './embeddingService';
-import { db, pool } from '../../db';
+import { db, pool, sql as directSql } from '../../db';
 import { connectionMonitor } from './connectionMonitor';
 
 // Vector database schema for embeddings
@@ -64,7 +64,7 @@ export class VectorStore {
           console.log(`Initializing vector store... (${4 - retries}/3)`);
 
           // Test database connection with timeout
-          const connectionPromise = this.db.execute(sql`SELECT 1`);
+          const connectionPromise = directSql`SELECT 1`;
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Database connection timeout')), 15000)
           );
@@ -74,14 +74,14 @@ export class VectorStore {
 
         // Enable pgvector extension (may fail if not available, but that's okay)
         try {
-          await this.db.execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+          await directSql`CREATE EXTENSION IF NOT EXISTS vector`;
           console.log('pgvector extension enabled');
         } catch (vectorError) {
           console.warn('pgvector extension not available, using text search only:', vectorError);
         }
 
         // Create vector documents table if it doesn't exist
-        await this.db.execute(sql`
+        await directSql`
         CREATE TABLE IF NOT EXISTS vector_documents (
           id SERIAL PRIMARY KEY,
           document_id TEXT NOT NULL UNIQUE,
@@ -91,35 +91,35 @@ export class VectorStore {
           created_at TIMESTAMP DEFAULT NOW(),
           updated_at TIMESTAMP DEFAULT NOW()
         )
-      `);
+      `;
         console.log('Vector documents table created/verified');
 
         // Create text search index for better performance
-        await this.db.execute(sql`
+        await directSql`
         CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
         ON vector_documents USING gin(to_tsvector('english', content))
-      `);
+      `;
 
         // Create optimized indexes for similarity search
         try {
           // Primary vector index with optimized list count for large datasets
-          await this.db.execute(sql`
+          await directSql`
             CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
             ON vector_documents USING ivfflat (embedding vector_cosine_ops)
             WITH (lists = 1000)
-          `);
+          `;
           
           // Additional indexes for metadata filtering
-          await this.db.execute(sql`
+          await directSql`
             CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
             ON vector_documents USING gin(metadata)
-          `);
+          `;
           
           // Composite index for document_id lookups
-          await this.db.execute(sql`
+          await directSql`
             CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
             ON vector_documents (document_id, created_at DESC)
-          `);
+          `;
           
           console.log('Optimized vector indexes created');
         } catch (indexError) {
@@ -417,17 +417,14 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     try {
-      const countResult = await this.db
-        .select({ count: sql<number>`count(*)` })
-        .from(vectorDocuments);
-
-      const sizeResult = await this.db.execute(sql`
+      const countResult = await directSql`SELECT COUNT(*) as count FROM vector_documents`;
+      const sizeResult = await directSql`
         SELECT pg_size_pretty(pg_total_relation_size('vector_documents')) as size
-      `);
+      `;
 
       return {
-        totalDocuments: countResult[0]?.count || 0,
-        indexSize: sizeResult.rows[0]?.size || '0 bytes'
+        totalDocuments: parseInt(countResult[0]?.count || '0'),
+        indexSize: sizeResult[0]?.size || '0 bytes'
       };
     } catch (error) {
       console.error('Failed to get vector store stats:', error);
