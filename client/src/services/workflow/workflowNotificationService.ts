@@ -350,7 +350,6 @@ export class WorkflowNotificationService {
     };
 
     this.notifications.set(id, fullNotification);
-    this.notifySubscribers();
 
     // Auto-remove non-persistent notifications after 10 seconds
     if (!fullNotification.persistent) {
@@ -358,6 +357,8 @@ export class WorkflowNotificationService {
         this.removeNotification(id);
       }, 10000);
     }
+
+    this.notifySubscribers();
 
     return id;
   }

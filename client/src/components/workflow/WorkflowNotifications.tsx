@@ -99,7 +99,7 @@ const WorkflowNotifications: React.FC = () => {
     }
   };
 
-  const displayedNotifications = showAll ? notifications : notifications.slice(0, 10);
+  const displayedNotifications = showAll ? notifications : notifications.slice(0, 5);
 
   return (
     <Card>
@@ -129,7 +129,7 @@ const WorkflowNotifications: React.FC = () => {
                 Mark All Read
               </Button>
               <Button
-                variant="outline"
+                variant="destructive"
                 size="sm"
                 onClick={() => {
                   workflowNotificationService.dismissAllNotifications();
@@ -141,7 +141,7 @@ const WorkflowNotifications: React.FC = () => {
                 disabled={notifications.length === 0}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
-                Clear All
+                Clear All ({notifications.length})
               </Button>
             </div>
           </div>
