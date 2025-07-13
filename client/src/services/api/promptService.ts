@@ -151,7 +151,7 @@ class PromptService {
 
   async getStats(): Promise<PromptStats> {
     try {
-      const response = await fetch(`${this.apiUrl}/stats`, {
+      const response = await fetch(`${this.apiUrl}/stats?userId=1`, {
         headers: {
           'Content-Type': 'application/json',
         },

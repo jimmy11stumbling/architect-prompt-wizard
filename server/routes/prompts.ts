@@ -241,10 +241,8 @@ router.delete('/:id', async (req, res) => {
 // Get prompt statistics
 router.get('/stats', async (req, res) => {
   try {
-    const userId = parseInt(req.query.userId as string) || 1;
-    if (isNaN(userId)) {
-      return res.status(400).json({ error: 'Invalid user ID' });
-    }
+    // Use default user ID if not provided (since this is a personal app)
+    const userId = req.query.userId ? parseInt(req.query.userId as string) : 1;
 
     const stats = await db.query(
       `SELECT 
