@@ -43,8 +43,10 @@ export class RealTimeResponseService {
       }
     });
 
-    // Also log to console for debugging
-    console.log(`🔄 [${response.source}] ${response.message}`, response.data || '');
+    // Only log critical messages to console to reduce noise
+    if (response.status === "error" || response.status === "warning") {
+      console.log(`🔄 [${response.source}] ${response.message}`, response.data || '');
+    }
   }
 
   getResponses(limit: number = 50): RealTimeResponse[] {

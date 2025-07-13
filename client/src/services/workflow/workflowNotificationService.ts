@@ -29,7 +29,7 @@ export class WorkflowNotificationService {
   private notificationThrottle = new Map<string, number>();
   private readonly THROTTLE_DELAY = 10000; // 10 seconds between similar notifications
   private readonly MAX_NOTIFICATIONS = 10;
-  private readonly NOTIFICATIONS_ENABLED = true;
+  private readonly NOTIFICATIONS_ENABLED = false; // Disabled during blueprint generation to prevent flooding
   private a2aThrottle = new Map<string, number>();
   private readonly A2A_THROTTLE_DELAY = 30000; // 30 seconds for A2A notifications
   private agentCompletionCount = new Map<string, number>();
@@ -61,6 +61,16 @@ export class WorkflowNotificationService {
 
   private handleRealTimeEventThrottled(event: any) {
     if (!this.NOTIFICATIONS_ENABLED) {
+      return;
+    }
+
+    // Skip all blueprint generation events to prevent flooding
+    if (event.source?.includes("blueprint") || 
+        event.source?.includes("generation") || 
+        event.source?.includes("agent") ||
+        event.message?.includes("blueprint") ||
+        event.message?.includes("generation") ||
+        event.message?.includes("Agent")) {
       return;
     }
 
