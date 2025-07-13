@@ -1,4 +1,3 @@
-
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface WorkflowNotification {
@@ -34,6 +33,10 @@ export class WorkflowNotificationService {
   private a2aThrottle = new Map<string, number>();
   private readonly A2A_THROTTLE_DELAY = 30000; // 30 seconds for A2A notifications
   private agentCompletionCount = new Map<string, number>();
+  private recentNotifications = new Set<string>();
+  private lastNotificationTime = 0;
+  private notificationThrottleTime = 2000; // 2 seconds between notifications
+
 
   static getInstance(): WorkflowNotificationService {
     if (!WorkflowNotificationService.instance) {
@@ -131,7 +134,7 @@ export class WorkflowNotificationService {
     if (agentMatch) {
       const agentName = agentMatch[1];
       const now = Date.now();
-      
+
       // Count completions per agent
       const currentCount = this.agentCompletionCount.get(agentName) || 0;
       this.agentCompletionCount.set(agentName, currentCount + 1);
@@ -169,7 +172,7 @@ export class WorkflowNotificationService {
         this.notificationThrottle.delete(key);
       }
     }
-    
+
     // Clean up A2A throttle
     for (const [key, timestamp] of this.a2aThrottle.entries()) {
       if (now - timestamp > this.A2A_THROTTLE_DELAY * 2) {
@@ -345,6 +348,23 @@ export class WorkflowNotificationService {
   }
 
   addNotification(notification: Partial<WorkflowNotification>): string {
+    const now = Date.now();
+
+    // Create a unique key for duplicate detection
+    const notificationKey = `${notification.type}_${notification.workflowId}_${notification.executionId}_${notification.stepId}`;
+
+    // Throttle notifications
+    if (now - this.lastNotificationTime < this.notificationThrottleTime) {
+        console.log("throttling notification");
+        return "";
+    }
+
+    // Prevent duplicate notifications
+    if (this.recentNotifications.has(notificationKey)) {
+        console.log("duplicate notification");
+        return "";
+    }
+
     if (!this.NOTIFICATIONS_ENABLED) {
       return "";
     }
@@ -363,12 +383,19 @@ export class WorkflowNotificationService {
     };
 
     this.notifications.set(id, fullNotification);
-    
+     this.recentNotifications.add(notificationKey);
+        this.lastNotificationTime = now;
+
     // Auto-remove non-persistent notifications after 10 seconds
     if (!fullNotification.persistent) {
       setTimeout(() => {
         this.removeNotification(id);
+         this.recentNotifications.delete(notificationKey);
       }, 10000);
+    } else {
+         setTimeout(() => {
+        this.recentNotifications.delete(notificationKey);
+      }, 60000);
     }
 
     this.notifySubscribers();
@@ -412,7 +439,7 @@ export class WorkflowNotificationService {
     this.subscribers.add(callback);
     // Immediately call with current notifications
     callback(this.getNotifications());
-    
+
     return () => {
       this.subscribers.delete(callback);
     };

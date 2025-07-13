@@ -1,5 +1,4 @@
-
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from "@shared/schema";
 
@@ -8,6 +7,9 @@ if (!process.env.DATABASE_URL) {
     "DATABASE_URL must be set. Did you forget to provision a database?",
   );
 }
+
+// Configure Neon for serverless environment
+neonConfig.fetchConnectionCache = true;
 
 // Create the neon connection with improved configuration
 const sql = neon(process.env.DATABASE_URL!, {
@@ -48,11 +50,11 @@ export const pool = {
     try {
       // Use the sql function directly for raw queries
       const result = await sql(text, params);
-      
+
       // Handle different result formats from Neon
       let rows: any[] = [];
       let rowCount = 0;
-      
+
       if (Array.isArray(result)) {
         rows = result;
         rowCount = result.length;
@@ -60,7 +62,7 @@ export const pool = {
         rows = result.rows || [];
         rowCount = result.rowCount || rows.length;
       }
-      
+
       return { rows, rowCount };
     } catch (error) {
       console.error('Pool query error:', error);

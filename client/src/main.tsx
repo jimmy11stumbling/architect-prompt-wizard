@@ -60,6 +60,20 @@ window.addEventListener('error', (event) => {
 });
 
 // Suppress runtime errors in development for cleaner testing experience
+window.addEventListener('unhandledrejection', (event) => {
+  // Handle known promise rejections
+  if (event.reason?.message?.includes('MCP request error') ||
+      event.reason?.message?.includes('Vector search failed') ||
+      event.reason?.message?.includes('timeout') ||
+      event.reason?.message?.includes('AbortError') ||
+      event.reason?.message?.includes('Failed to fetch') ||
+      event.reason?.name === 'AbortError' ||
+      event.reason instanceof TypeError ||
+      event.reason instanceof DOMException) {
+    console.debug('Suppressed promise rejection:', event.reason?.message || event.reason);
+    event.preventDefault();
+  }
+});
 if (import.meta.env.DEV) {
   const originalConsoleError = console.error;
   console.error = (...args) => {
