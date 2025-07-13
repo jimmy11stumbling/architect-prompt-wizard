@@ -90,6 +90,7 @@ export class RAGOrchestrator2 {
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
   private indexedDocuments: ProcessedDocument[] = [];
+  private indexingInProgress = false;
 
   private constructor() {
     // Use singleton instance to prevent multiple database connections
@@ -154,6 +155,14 @@ export class RAGOrchestrator2 {
       return;
     }
 
+    // Prevent multiple concurrent indexing attempts
+    if (this.indexingInProgress) {
+      console.log('Indexing already in progress, skipping...');
+      return;
+    }
+    
+    this.indexingInProgress = true;
+
     try {
       console.log('Starting comprehensive data indexing...');
 
@@ -217,6 +226,8 @@ export class RAGOrchestrator2 {
         errors: [error instanceof Error ? error.message : 'Unknown error']
       });
       throw error;
+    } finally {
+      this.indexingInProgress = false;
     }
   }
 

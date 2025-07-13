@@ -29,7 +29,7 @@ import {
   type KnowledgeBase,
   type InsertKnowledgeBase
 } from "@shared/schema";
-import { db } from "./db";
+import { db, sql } from "./db";
 import { eq, ilike, or } from "drizzle-orm";
 
 export interface IStorage {
@@ -99,7 +99,22 @@ export class DatabaseStorage implements IStorage {
 
   // Platform management
   async getAllPlatforms(): Promise<Platform[]> {
-    return await db.select().from(platforms);
+    try {
+      // Use neon connection directly
+      const { neon } = await import('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL!);
+      const result = await sql`SELECT * FROM platforms ORDER BY name`;
+      return result.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+    } catch (error) {
+      console.error('Error fetching platforms:', error);
+      throw error;
+    }
   }
 
   async getPlatform(id: number): Promise<Platform | undefined> {
