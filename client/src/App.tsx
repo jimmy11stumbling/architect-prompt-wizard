@@ -29,8 +29,8 @@ const App = () => (
       <Toaster />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/index" element={<Index />} />
+          <Route path="/" element={<Index />} />
+          <Route path="/index" element={<Navigate to="/" replace />} />
           <Route
             path="/*"
             element={
