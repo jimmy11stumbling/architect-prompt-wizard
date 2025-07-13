@@ -263,7 +263,10 @@ export class VectorStore {
           LIMIT ${topK}
         `;
 
-        return results.map(result => ({
+        // Ensure results is an array
+        const resultArray = Array.isArray(results) ? results : [];
+        
+        return resultArray.map(result => ({
           document: {
             id: result.id,
             content: result.content,
@@ -293,7 +296,10 @@ export class VectorStore {
         LIMIT ${topK}
       `;
 
-      return results.map((result, index) => ({
+      // Ensure results is an array
+      const resultArray = Array.isArray(results) ? results : [];
+
+      return resultArray.map((result, index) => ({
         document: {
           id: result.id,
           content: result.content,
@@ -340,7 +346,10 @@ export class VectorStore {
           LIMIT ${limit}
         `;
 
-        const formattedResults = results.map(result => ({
+        // Ensure results is an array
+        const resultArray = Array.isArray(results) ? results : [];
+
+        const formattedResults = resultArray.map(result => ({
           id: result.id,
           content: result.content,
           metadata: result.metadata || {},
@@ -418,9 +427,12 @@ export class VectorStore {
         LIMIT ${limit}
       `;
 
-      console.log(`[VectorStore] Text search found ${results.length} results for query: "${query}"`);
+      // Ensure results is an array
+      const resultArray = Array.isArray(results) ? results : [];
 
-      return results.map(result => ({
+      console.log(`[VectorStore] Text search found ${resultArray.length} results for query: "${query}"`);
+
+      return resultArray.map(result => ({
         id: result.id,
         content: result.content,
         metadata: result.metadata || {},
@@ -462,9 +474,13 @@ export class VectorStore {
         sizeResult = [{ size: 'unknown' }];
       }
 
+      // Ensure results are arrays
+      const countArray = Array.isArray(countResult) ? countResult : [];
+      const sizeArray = Array.isArray(sizeResult) ? sizeResult : [];
+
       return {
-        totalDocuments: parseInt(countResult[0]?.count || '0'),
-        indexSize: sizeResult[0]?.size || '0 bytes'
+        totalDocuments: parseInt(countArray[0]?.count || '0'),
+        indexSize: sizeArray[0]?.size || '0 bytes'
       };
     } catch (error) {
       console.error('Failed to get vector store stats:', error);

@@ -31,7 +31,8 @@ export { sql };
 const testConnection = async () => {
   try {
     const result = await sql`SELECT 1 as test`;
-    console.log('[Database] Connection test successful:', result[0]?.test === 1 ? '✓' : '✗');
+    const resultArray = Array.isArray(result) ? result : [];
+    console.log('[Database] Connection test successful:', resultArray[0]?.test === 1 ? '✓' : '✗');
   } catch (error) {
     console.error('[Database] Connection test failed:', error);
   }
@@ -47,10 +48,20 @@ export const pool = {
     try {
       // Use the sql function directly for raw queries
       const result = await sql(text, params);
-      return {
-        rows: Array.isArray(result) ? result : result.rows || [],
-        rowCount: Array.isArray(result) ? result.length : result.rowCount || 0
-      };
+      
+      // Handle different result formats from Neon
+      let rows: any[] = [];
+      let rowCount = 0;
+      
+      if (Array.isArray(result)) {
+        rows = result;
+        rowCount = result.length;
+      } else if (result && typeof result === 'object') {
+        rows = result.rows || [];
+        rowCount = result.rowCount || rows.length;
+      }
+      
+      return { rows, rowCount };
     } catch (error) {
       console.error('Pool query error:', error);
       throw error;
