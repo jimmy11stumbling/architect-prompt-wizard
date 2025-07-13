@@ -27,8 +27,9 @@ export class WorkflowNotificationService {
   private notifications = new Map<string, WorkflowNotification>();
   private subscribers = new Set<(notifications: WorkflowNotification[]) => void>();
   private notificationThrottle = new Map<string, number>();
-  private readonly THROTTLE_DELAY = 30000; // 30 seconds - only one notification per expert per 30 seconds
-  private readonly MAX_NOTIFICATIONS = 5; // Reduce max notifications
+  private readonly THROTTLE_DELAY = 30000;
+  private readonly MAX_NOTIFICATIONS = 5;
+  private readonly NOTIFICATIONS_DISABLED = true; // Flag to completely disable notifications
 
   static getInstance(): WorkflowNotificationService {
     if (!WorkflowNotificationService.instance) {
@@ -38,14 +39,19 @@ export class WorkflowNotificationService {
   }
 
   constructor() {
-    // Notifications disabled - no subscription to real-time events
-    console.log("Workflow notifications disabled");
+    // Notifications completely disabled - no subscription to real-time events
+    console.log("Workflow notifications completely disabled");
   }
 
   private handleRealTimeEventThrottled(event: any) {
+    // Early return if notifications are disabled
+    if (this.NOTIFICATIONS_DISABLED) {
+      return;
+    }
+
     // Only process completion events and errors, not streaming tokens
     if (event.source === "deepseek-reasoner" && event.status === "streaming") {
-      return; // Skip streaming tokens
+      return;
     }
 
     const eventKey = `${event.source}-${event.status}-${event.data?.workflowId || 'unknown'}`;
@@ -55,7 +61,7 @@ export class WorkflowNotificationService {
     if (this.notificationThrottle.has(eventKey)) {
       const lastNotification = this.notificationThrottle.get(eventKey)!;
       if (now - lastNotification < this.THROTTLE_DELAY) {
-        return; // Skip this notification
+        return;
       }
     }
 
@@ -97,6 +103,8 @@ export class WorkflowNotificationService {
   }
 
   private cleanupThrottleMap() {
+    if (this.NOTIFICATIONS_DISABLED) return;
+
     const now = Date.now();
     for (const [key, timestamp] of this.notificationThrottle.entries()) {
       if (now - timestamp > this.THROTTLE_DELAY * 2) {
@@ -106,10 +114,11 @@ export class WorkflowNotificationService {
   }
 
   private removeOldestNotifications() {
+    if (this.NOTIFICATIONS_DISABLED) return;
+
     const notifications = Array.from(this.notifications.values())
       .sort((a, b) => a.timestamp - b.timestamp);
 
-    // Remove oldest non-persistent notifications
     for (const notification of notifications) {
       if (!notification.persistent) {
         this.notifications.delete(notification.id);
@@ -119,6 +128,8 @@ export class WorkflowNotificationService {
   }
 
   private handleWorkflowEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
+
     const { status, message, data } = event;
 
     switch (status) {
@@ -154,7 +165,7 @@ export class WorkflowNotificationService {
             {
               id: "view_logs",
               label: "View Logs",
-              type: "button", 
+              type: "button",
               action: () => this.viewExecutionLogs(data.executionId),
               variant: "outline"
             }
@@ -187,6 +198,7 @@ export class WorkflowNotificationService {
   }
 
   private handleErrorEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "error" && data.severity === "critical") {
@@ -212,6 +224,7 @@ export class WorkflowNotificationService {
   }
 
   private handleMonitoringEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "warning" && data.type === "resource") {
@@ -226,6 +239,7 @@ export class WorkflowNotificationService {
   }
 
   private handleDeepSeekEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "completed") {
@@ -250,6 +264,7 @@ export class WorkflowNotificationService {
   }
 
   private handleRAGEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "completed") {
@@ -274,6 +289,7 @@ export class WorkflowNotificationService {
   }
 
   private handleA2AEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "completed") {
@@ -298,6 +314,7 @@ export class WorkflowNotificationService {
   }
 
   private handleMCPEvent(event: any) {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "completed") {
@@ -322,16 +339,21 @@ export class WorkflowNotificationService {
   }
 
   addNotification(notification: Partial<WorkflowNotification>): string {
-    // Notifications disabled - return empty string
+    // Notifications disabled - return empty string immediately
+    if (this.NOTIFICATIONS_DISABLED) {
+      return "";
+    }
     return "";
   }
 
   removeNotification(id: string): void {
+    if (this.NOTIFICATIONS_DISABLED) return;
     this.notifications.delete(id);
     this.notifySubscribers();
   }
 
   markAsRead(id: string): void {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const notification = this.notifications.get(id);
     if (notification) {
       notification.read = true;
@@ -340,6 +362,7 @@ export class WorkflowNotificationService {
   }
 
   markAllAsRead(): void {
+    if (this.NOTIFICATIONS_DISABLED) return;
     this.notifications.forEach(notification => {
       notification.read = true;
     });
@@ -359,12 +382,16 @@ export class WorkflowNotificationService {
   }
 
   subscribe(callback: (notifications: WorkflowNotification[]) => void): () => void {
-    // Notifications disabled - don't add subscribers or send data
+    // Notifications disabled - don't add subscribers
+    if (this.NOTIFICATIONS_DISABLED) {
+      return () => {};
+    }
     return () => {};
   }
 
   private notifySubscribers(): void {
     // Notifications disabled - don't notify subscribers
+    if (this.NOTIFICATIONS_DISABLED) return;
   }
 
   private generateNotificationId(): string {
@@ -373,27 +400,28 @@ export class WorkflowNotificationService {
 
   // Action handlers
   private async retryWorkflow(executionId: string): Promise<void> {
-    // Implementation would depend on workflow engine integration
+    if (this.NOTIFICATIONS_DISABLED) return;
     console.log(`Retrying workflow execution: ${executionId}`);
   }
 
   private async resumeWorkflow(executionId: string): Promise<void> {
-    // Implementation would depend on workflow engine integration
+    if (this.NOTIFICATIONS_DISABLED) return;
     console.log(`Resuming workflow execution: ${executionId}`);
   }
 
   private async viewExecutionLogs(executionId: string): Promise<void> {
-    // Implementation would open logs view
+    if (this.NOTIFICATIONS_DISABLED) return;
     console.log(`Viewing logs for execution: ${executionId}`);
   }
 
   private async investigateError(errorId: string): Promise<void> {
-    // Implementation would open error details
+    if (this.NOTIFICATIONS_DISABLED) return;
     console.log(`Investigating error: ${errorId}`);
   }
 
   // Utility methods
   clearOldNotifications(olderThanDays: number = 7): void {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
     const toRemove: string[] = [];
 
@@ -408,12 +436,14 @@ export class WorkflowNotificationService {
   }
 
   dismissAllNotifications(): void {
+    if (this.NOTIFICATIONS_DISABLED) return;
     this.notifications.clear();
     this.notificationThrottle.clear();
     this.notifySubscribers();
   }
 
   dismissNotificationsByType(type: "success" | "warning" | "error" | "info"): void {
+    if (this.NOTIFICATIONS_DISABLED) return;
     const toRemove: string[] = [];
 
     this.notifications.forEach((notification, id) => {
