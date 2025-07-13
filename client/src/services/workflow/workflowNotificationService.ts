@@ -1,3 +1,4 @@
+
 import { realTimeResponseService } from "../integration/realTimeResponseService";
 
 export interface WorkflowNotification {
@@ -27,9 +28,12 @@ export class WorkflowNotificationService {
   private notifications = new Map<string, WorkflowNotification>();
   private subscribers = new Set<(notifications: WorkflowNotification[]) => void>();
   private notificationThrottle = new Map<string, number>();
-  private readonly THROTTLE_DELAY = 30000;
-  private readonly MAX_NOTIFICATIONS = 5;
-  private readonly NOTIFICATIONS_DISABLED = true; // Flag to completely disable notifications
+  private readonly THROTTLE_DELAY = 10000; // 10 seconds between similar notifications
+  private readonly MAX_NOTIFICATIONS = 10;
+  private readonly NOTIFICATIONS_ENABLED = true;
+  private a2aThrottle = new Map<string, number>();
+  private readonly A2A_THROTTLE_DELAY = 30000; // 30 seconds for A2A notifications
+  private agentCompletionCount = new Map<string, number>();
 
   static getInstance(): WorkflowNotificationService {
     if (!WorkflowNotificationService.instance) {
@@ -39,18 +43,38 @@ export class WorkflowNotificationService {
   }
 
   constructor() {
-    // Notifications completely disabled - no subscription to real-time events
-    console.log("Workflow notifications completely disabled");
+    if (this.NOTIFICATIONS_ENABLED) {
+      this.subscribeToRealTimeEvents();
+    }
+    console.log(`Workflow notifications ${this.NOTIFICATIONS_ENABLED ? 'enabled' : 'disabled'}`);
+  }
+
+  private subscribeToRealTimeEvents() {
+    // Subscribe to real-time events with throttling
+    realTimeResponseService.subscribe((event) => {
+      this.handleRealTimeEventThrottled(event);
+    });
   }
 
   private handleRealTimeEventThrottled(event: any) {
-    // Early return if notifications are disabled
-    if (this.NOTIFICATIONS_DISABLED) {
+    if (!this.NOTIFICATIONS_ENABLED) {
       return;
     }
 
-    // Only process completion events and errors, not streaming tokens
-    if (event.source === "deepseek-reasoner" && event.status === "streaming") {
+    // Skip streaming events entirely
+    if (event.status === "streaming" || event.type === "streaming") {
+      return;
+    }
+
+    // Special handling for A2A notifications - heavily throttle them
+    if (event.source?.includes("A2A") || event.message?.includes("→")) {
+      this.handleA2ANotification(event);
+      return;
+    }
+
+    // Skip agent processing logs that flood the system
+    if (event.message?.includes("agent-processing") || 
+        event.message?.includes("Agent") && event.message?.includes("started processing")) {
       return;
     }
 
@@ -93,29 +117,68 @@ export class WorkflowNotificationService {
       case "rag-service":
         this.handleRAGEvent(event);
         break;
-      case "a2a-service":
-        this.handleA2AEvent(event);
-        break;
       case "mcp-service":
         this.handleMCPEvent(event);
         break;
     }
   }
 
-  private cleanupThrottleMap() {
-    if (this.NOTIFICATIONS_DISABLED) return;
+  private handleA2ANotification(event: any) {
+    if (!this.NOTIFICATIONS_ENABLED) return;
 
+    // Extract agent name from A2A messages
+    const agentMatch = event.message?.match(/Agent ([\w-]+) completed/);
+    if (agentMatch) {
+      const agentName = agentMatch[1];
+      const now = Date.now();
+      
+      // Count completions per agent
+      const currentCount = this.agentCompletionCount.get(agentName) || 0;
+      this.agentCompletionCount.set(agentName, currentCount + 1);
+
+      // Only notify every 5th completion for frequently completing agents
+      if (currentCount % 5 !== 0) {
+        return;
+      }
+
+      // Check A2A throttle
+      const throttleKey = `a2a-${agentName}`;
+      if (this.a2aThrottle.has(throttleKey)) {
+        const lastNotification = this.a2aThrottle.get(throttleKey)!;
+        if (now - lastNotification < this.A2A_THROTTLE_DELAY) {
+          return;
+        }
+      }
+
+      this.a2aThrottle.set(throttleKey, now);
+
+      this.addNotification({
+        type: "info",
+        title: "Agent Coordination",
+        message: `Agent ${agentName} has completed ${currentCount + 1} tasks`,
+        workflowId: "a2a-coordination",
+        persistent: false
+      });
+    }
+  }
+
+  private cleanupThrottleMap() {
     const now = Date.now();
     for (const [key, timestamp] of this.notificationThrottle.entries()) {
       if (now - timestamp > this.THROTTLE_DELAY * 2) {
         this.notificationThrottle.delete(key);
       }
     }
+    
+    // Clean up A2A throttle
+    for (const [key, timestamp] of this.a2aThrottle.entries()) {
+      if (now - timestamp > this.A2A_THROTTLE_DELAY * 2) {
+        this.a2aThrottle.delete(key);
+      }
+    }
   }
 
   private removeOldestNotifications() {
-    if (this.NOTIFICATIONS_DISABLED) return;
-
     const notifications = Array.from(this.notifications.values())
       .sort((a, b) => a.timestamp - b.timestamp);
 
@@ -128,8 +191,6 @@ export class WorkflowNotificationService {
   }
 
   private handleWorkflowEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
-
     const { status, message, data } = event;
 
     switch (status) {
@@ -161,13 +222,6 @@ export class WorkflowNotificationService {
               type: "button",
               action: () => this.retryWorkflow(data.executionId),
               variant: "default"
-            },
-            {
-              id: "view_logs",
-              label: "View Logs",
-              type: "button",
-              action: () => this.viewExecutionLogs(data.executionId),
-              variant: "outline"
             }
           ]
         });
@@ -181,16 +235,7 @@ export class WorkflowNotificationService {
             message: message,
             workflowId: data.workflowId || "unknown",
             executionId: data.executionId,
-            persistent: true,
-            actions: [
-              {
-                id: "resume",
-                label: "Resume",
-                type: "button",
-                action: () => this.resumeWorkflow(data.executionId),
-                variant: "default"
-              }
-            ]
+            persistent: true
           });
         }
         break;
@@ -198,36 +243,25 @@ export class WorkflowNotificationService {
   }
 
   private handleErrorEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
-    if (status === "error" && data.severity === "critical") {
+    if (status === "error" && data?.severity === "critical") {
       this.addNotification({
         type: "error",
         title: "Critical Error",
-        message: `Critical error in step ${data.stepId}: ${message}`,
+        message: `Critical error: ${message}`,
         workflowId: data.workflowId || "unknown",
         executionId: data.executionId,
         stepId: data.stepId,
-        persistent: true,
-        actions: [
-          {
-            id: "investigate",
-            label: "Investigate",
-            type: "button",
-            action: () => this.investigateError(data.errorId),
-            variant: "destructive"
-          }
-        ]
+        persistent: true
       });
     }
   }
 
   private handleMonitoringEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
-    if (status === "warning" && data.type === "resource") {
+    if (status === "warning" && data?.type === "resource") {
       this.addNotification({
         type: "warning",
         title: "Resource Alert",
@@ -239,14 +273,13 @@ export class WorkflowNotificationService {
   }
 
   private handleDeepSeekEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
     if (status === "completed") {
       this.addNotification({
         type: "success",
-        title: "DeepSeek Reasoner",
-        message: "Advanced reasoning and analysis completed successfully",
+        title: "DeepSeek Analysis Complete",
+        message: "Advanced reasoning analysis completed successfully",
         workflowId: data.workflowId || "deepseek-reasoner",
         executionId: data.executionId,
         persistent: false
@@ -254,7 +287,7 @@ export class WorkflowNotificationService {
     } else if (status === "error") {
       this.addNotification({
         type: "error",
-        title: "DeepSeek Reasoner Error",
+        title: "DeepSeek Error",
         message: message || "DeepSeek reasoning failed",
         workflowId: data.workflowId || "deepseek-reasoner",
         executionId: data.executionId,
@@ -264,14 +297,13 @@ export class WorkflowNotificationService {
   }
 
   private handleRAGEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
-    if (status === "completed") {
+    if (status === "completed" && data?.documentsFound > 0) {
       this.addNotification({
         type: "success",
-        title: "RAG Database Expert",
-        message: `Knowledge retrieval completed - found ${data.documentsFound || 0} relevant documents`,
+        title: "Knowledge Retrieved",
+        message: `Found ${data.documentsFound} relevant documents`,
         workflowId: data.workflowId || "rag-service",
         executionId: data.executionId,
         persistent: false
@@ -279,34 +311,9 @@ export class WorkflowNotificationService {
     } else if (status === "error") {
       this.addNotification({
         type: "error",
-        title: "RAG Database Expert Error",
-        message: message || "Knowledge retrieval failed",
+        title: "Knowledge Retrieval Error",
+        message: message || "Failed to retrieve knowledge",
         workflowId: data.workflowId || "rag-service",
-        executionId: data.executionId,
-        persistent: true
-      });
-    }
-  }
-
-  private handleA2AEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
-    const { status, message, data } = event;
-
-    if (status === "completed") {
-      this.addNotification({
-        type: "success",
-        title: "A2A Agent Coordinator",
-        message: `Agent coordination completed - ${data.agentsInvolved || 0} agents participated`,
-        workflowId: data.workflowId || "a2a-service",
-        executionId: data.executionId,
-        persistent: false
-      });
-    } else if (status === "error") {
-      this.addNotification({
-        type: "error",
-        title: "A2A Agent Coordinator Error",
-        message: message || "Agent coordination failed",
-        workflowId: data.workflowId || "a2a-service",
         executionId: data.executionId,
         persistent: true
       });
@@ -314,14 +321,13 @@ export class WorkflowNotificationService {
   }
 
   private handleMCPEvent(event: any) {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const { status, message, data } = event;
 
-    if (status === "completed") {
+    if (status === "completed" && data?.toolsExecuted > 0) {
       this.addNotification({
         type: "success",
-        title: "MCP Tool Manager",
-        message: `Tool execution completed - ${data.toolsExecuted || 0} tools used`,
+        title: "Tools Executed",
+        message: `${data.toolsExecuted} tools executed successfully`,
         workflowId: data.workflowId || "mcp-service",
         executionId: data.executionId,
         persistent: false
@@ -329,7 +335,7 @@ export class WorkflowNotificationService {
     } else if (status === "error") {
       this.addNotification({
         type: "error",
-        title: "MCP Tool Manager Error",
+        title: "Tool Execution Error",
         message: message || "Tool execution failed",
         workflowId: data.workflowId || "mcp-service",
         executionId: data.executionId,
@@ -339,21 +345,42 @@ export class WorkflowNotificationService {
   }
 
   addNotification(notification: Partial<WorkflowNotification>): string {
-    // Notifications disabled - return empty string immediately
-    if (this.NOTIFICATIONS_DISABLED) {
+    if (!this.NOTIFICATIONS_ENABLED) {
       return "";
     }
-    return "";
+
+    const id = this.generateNotificationId();
+    const fullNotification: WorkflowNotification = {
+      id,
+      type: "info",
+      title: "Notification",
+      message: "",
+      workflowId: "unknown",
+      timestamp: Date.now(),
+      read: false,
+      persistent: false,
+      ...notification
+    };
+
+    this.notifications.set(id, fullNotification);
+    
+    // Auto-remove non-persistent notifications after 10 seconds
+    if (!fullNotification.persistent) {
+      setTimeout(() => {
+        this.removeNotification(id);
+      }, 10000);
+    }
+
+    this.notifySubscribers();
+    return id;
   }
 
   removeNotification(id: string): void {
-    if (this.NOTIFICATIONS_DISABLED) return;
     this.notifications.delete(id);
     this.notifySubscribers();
   }
 
   markAsRead(id: string): void {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const notification = this.notifications.get(id);
     if (notification) {
       notification.read = true;
@@ -362,7 +389,6 @@ export class WorkflowNotificationService {
   }
 
   markAllAsRead(): void {
-    if (this.NOTIFICATIONS_DISABLED) return;
     this.notifications.forEach(notification => {
       notification.read = true;
     });
@@ -370,28 +396,37 @@ export class WorkflowNotificationService {
   }
 
   getNotifications(): WorkflowNotification[] {
-    return []; // Always return empty array
+    return Array.from(this.notifications.values())
+      .sort((a, b) => b.timestamp - a.timestamp);
   }
 
   getUnreadNotifications(): WorkflowNotification[] {
-    return []; // Always return empty array
+    return this.getNotifications().filter(n => !n.read);
   }
 
   getUnreadCount(): number {
-    return 0; // Always return 0
+    return this.getUnreadNotifications().length;
   }
 
   subscribe(callback: (notifications: WorkflowNotification[]) => void): () => void {
-    // Notifications disabled - don't add subscribers
-    if (this.NOTIFICATIONS_DISABLED) {
-      return () => {};
-    }
-    return () => {};
+    this.subscribers.add(callback);
+    // Immediately call with current notifications
+    callback(this.getNotifications());
+    
+    return () => {
+      this.subscribers.delete(callback);
+    };
   }
 
   private notifySubscribers(): void {
-    // Notifications disabled - don't notify subscribers
-    if (this.NOTIFICATIONS_DISABLED) return;
+    const notifications = this.getNotifications();
+    this.subscribers.forEach(callback => {
+      try {
+        callback(notifications);
+      } catch (error) {
+        console.error("Error notifying subscriber:", error);
+      }
+    });
   }
 
   private generateNotificationId(): string {
@@ -400,28 +435,11 @@ export class WorkflowNotificationService {
 
   // Action handlers
   private async retryWorkflow(executionId: string): Promise<void> {
-    if (this.NOTIFICATIONS_DISABLED) return;
     console.log(`Retrying workflow execution: ${executionId}`);
-  }
-
-  private async resumeWorkflow(executionId: string): Promise<void> {
-    if (this.NOTIFICATIONS_DISABLED) return;
-    console.log(`Resuming workflow execution: ${executionId}`);
-  }
-
-  private async viewExecutionLogs(executionId: string): Promise<void> {
-    if (this.NOTIFICATIONS_DISABLED) return;
-    console.log(`Viewing logs for execution: ${executionId}`);
-  }
-
-  private async investigateError(errorId: string): Promise<void> {
-    if (this.NOTIFICATIONS_DISABLED) return;
-    console.log(`Investigating error: ${errorId}`);
   }
 
   // Utility methods
   clearOldNotifications(olderThanDays: number = 7): void {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
     const toRemove: string[] = [];
 
@@ -436,14 +454,14 @@ export class WorkflowNotificationService {
   }
 
   dismissAllNotifications(): void {
-    if (this.NOTIFICATIONS_DISABLED) return;
     this.notifications.clear();
     this.notificationThrottle.clear();
+    this.a2aThrottle.clear();
+    this.agentCompletionCount.clear();
     this.notifySubscribers();
   }
 
   dismissNotificationsByType(type: "success" | "warning" | "error" | "info"): void {
-    if (this.NOTIFICATIONS_DISABLED) return;
     const toRemove: string[] = [];
 
     this.notifications.forEach((notification, id) => {
