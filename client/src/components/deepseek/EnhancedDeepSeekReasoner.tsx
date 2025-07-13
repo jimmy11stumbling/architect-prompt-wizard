@@ -278,8 +278,6 @@ export default function EnhancedDeepSeekReasoner() {
     // Note: We could restore the full conversation state here if needed
   };
 
-  const [a2aEnabled, setA2aEnabled] = useState(true);
-
   return (
     <div className="space-y-6 p-6">
       {/* Enhanced Header with Statistics */}
