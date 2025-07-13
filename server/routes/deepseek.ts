@@ -1,3 +1,55 @@
+
+import { Router } from 'express';
+
+const router = Router();
+
+// Health check endpoint for API key validation
+router.get('/check-api-key', async (req, res) => {
+  try {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    const hasValidKey = !!(apiKey && apiKey !== 'your-deepseek-api-key-here' && apiKey.length > 10);
+    
+    if (hasValidKey) {
+      // Test API connectivity
+      try {
+        const testResponse = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'deepseek-reasoner',
+            messages: [{ role: 'user', content: 'test' }],
+            max_tokens: 1
+          })
+        });
+        
+        res.json({ 
+          hasApiKey: true, 
+          isValid: testResponse.status !== 401,
+          status: testResponse.status 
+        });
+      } catch (error) {
+        res.json({ 
+          hasApiKey: true, 
+          isValid: false, 
+          error: 'Connection failed' 
+        });
+      }
+    } else {
+      res.json({ 
+        hasApiKey: false, 
+        isValid: false,
+        message: 'Please set DEEPSEEK_API_KEY in your environment variables'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Health check failed' });
+  }
+});
+
+
 import { Router } from 'express';
 
 const router = Router();
@@ -16,11 +68,13 @@ router.post('/stream', async (req, res) => {
     });
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey || apiKey === 'your-deepseek-api-key-here') {
-      return res.status(400).json({ 
+    if (!apiKey || apiKey === 'your-deepseek-api-key-here' || apiKey.length < 10) {
+      res.write(`data: ${JSON.stringify({ 
         error: 'DeepSeek API key not configured. Please set DEEPSEEK_API_KEY environment variable.',
         hint: 'Get your API key from https://platform.deepseek.com/ and add it to your secrets.'
-      });
+      })}\n\n`);
+      res.end();
+      return;
     }
 
     console.log('Making DeepSeek streaming API call with', messages.length, 'messages');
@@ -79,11 +133,10 @@ router.post('/stream', async (req, res) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model: 'deepseek-reasoner',
         messages: enhancedMessages,
         stream: true,
-        max_tokens: 8192,
-        temperature: 0.1
+        max_tokens: 32768
       })
     });
 
@@ -127,9 +180,8 @@ router.post('/stream', async (req, res) => {
             if (parsed.choices?.[0]?.delta) {
               const delta = parsed.choices[0].delta;
 
-              // Check for reasoning content
+              // Check for reasoning content (Chain of Thought)
               if (delta.reasoning_content) {
-                console.log('Sending reasoning token:', delta.reasoning_content);
                 res.write(`data: ${JSON.stringify({
                   choices: [{
                     delta: {
@@ -139,9 +191,8 @@ router.post('/stream', async (req, res) => {
                 })}\n\n`);
               }
 
-              // Check for response content
+              // Check for final response content
               if (delta.content) {
-                console.log('Sending response token:', delta.content);
                 res.write(`data: ${JSON.stringify({
                   choices: [{
                     delta: {
@@ -150,6 +201,15 @@ router.post('/stream', async (req, res) => {
                   }]
                 })}\n\n`);
               }
+            }
+
+            // Handle finish reason
+            if (parsed.choices?.[0]?.finish_reason) {
+              res.write(`data: ${JSON.stringify({
+                choices: [{
+                  finish_reason: parsed.choices[0].finish_reason
+                }]
+              })}\n\n`);
             }
 
             // Send usage info if available

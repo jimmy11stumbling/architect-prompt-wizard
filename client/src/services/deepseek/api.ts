@@ -50,16 +50,16 @@ export class DeepSeekApi {
     try {
       console.log('Starting DeepSeek streaming request...');
 
-      const response = await fetch(`${this.BASE_URL}/stream`, {
+      const response = await fetch('/api/deepseek/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           messages: request.messages,
-          maxTokens: request.maxTokens,
-          temperature: request.temperature,
-          ragContext: request.ragEnabled
+          ragContext: request.ragEnabled,
+          stream: true,
+          maxTokens: request.maxTokens || 32768
         }),
       });
 
@@ -87,6 +87,7 @@ export class DeepSeekApi {
         reasoningTokens: 0
       };
       let processingTime = Date.now();
+      let startTime = Date.now();
 
       try {
         while (true) {
@@ -117,40 +118,43 @@ export class DeepSeekApi {
 
               try {
                 const parsed = JSON.parse(jsonStr);
-                console.log('Received streaming data:', parsed);
 
-                if (parsed.error) {
-                  throw new Error(parsed.error);
-                }
-
-                if (parsed.choices && parsed.choices[0]) {
-                  const choice = parsed.choices[0];
-                  const delta = choice.delta;
-
-                  if (delta) {
-                    // Handle reasoning content for deepseek-reasoner
-                    if (delta.reasoning_content) {
-                      const reasoningToken = delta.reasoning_content;
-                      fullReasoning += reasoningToken;
-                      onReasoningToken(reasoningToken);
-                    }
-
-                    // Handle response content for deepseek-chat
-                    if (delta.content) {
-                      const responseToken = delta.content;
-                      fullResponse += responseToken;
-                      onResponseToken(responseToken);
-                    }
-                  }
-                }
-
-                // Update usage statistics if available
-                if (parsed.usage) {
-                  usage = parsed.usage;
-                }
-              } catch (parseError) {
-                console.warn('JSON parse error:', parseError);
+              // Handle reasoning content (Chain of Thought)
+              if (parsed.choices?.[0]?.delta?.reasoning_content) {
+                const reasoningToken = parsed.choices[0].delta.reasoning_content;
+                onReasoningToken(reasoningToken);
               }
+
+              // Handle final response content
+              if (parsed.choices?.[0]?.delta?.content) {
+                const token = parsed.choices[0].delta.content;
+                onResponseToken(token);
+              }
+
+              // Handle completion
+              if (parsed.choices?.[0]?.finish_reason) {
+                onComplete({
+                  reasoning: '', // Accumulated in store
+                  response: '', // Accumulated in store
+                  usage: parsed.usage || {
+                    promptTokens: 0,
+                    completionTokens: 0,
+                    totalTokens: 0,
+                    reasoningTokens: 0
+                  },
+                  processingTime: Date.now() - startTime
+                });
+                return;
+              }
+
+              // Handle usage info
+              if (parsed.usage) {
+                console.log('Usage info:', parsed.usage);
+              }
+
+            } catch (parseError) {
+              console.warn('DeepSeek JSON parse error:', parseError);
+            }
             }
           }
 

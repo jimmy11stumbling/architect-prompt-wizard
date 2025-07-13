@@ -11,6 +11,13 @@ export class DeepSeekService {
     const store = useDeepSeekStore.getState();
     
     try {
+      // Check API key health first
+      const healthCheck = await this.checkHealth();
+      if (!healthCheck) {
+        store.setError('DeepSeek API key not configured. Please add DEEPSEEK_API_KEY to your environment variables.');
+        return;
+      }
+
       // Set loading state
       store.setLoading(true);
       store.setStreaming(true);
