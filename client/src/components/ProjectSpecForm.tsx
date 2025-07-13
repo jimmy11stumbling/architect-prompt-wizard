@@ -13,7 +13,7 @@ export interface ProjectSpecFormHandle {
 }
 
 const defaultSpec: ProjectSpec = {
-  targetPlatform: "cursor",
+  targetPlatform: "claudecode",
   platformSpecificConfig: {
     supportedFeatures: [],
     preferredTechStack: ["React", "TypeScript"],

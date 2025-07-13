@@ -25,7 +25,7 @@ import { realTimeResponseService } from "@/services/integration/realTimeResponse
 
 const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("create");
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("cursor");
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformType>("claudecode");
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({
     supportedFeatures: [],
     preferredTechStack: ["React", "TypeScript"],
