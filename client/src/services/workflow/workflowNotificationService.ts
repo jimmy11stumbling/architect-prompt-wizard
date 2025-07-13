@@ -347,30 +347,24 @@ export class WorkflowNotificationService {
   }
 
   getNotifications(): WorkflowNotification[] {
-    return Array.from(this.notifications.values())
-      .sort((a, b) => b.timestamp - a.timestamp);
+    return []; // Always return empty array
   }
 
   getUnreadNotifications(): WorkflowNotification[] {
-    return this.getNotifications().filter(n => !n.read);
+    return []; // Always return empty array
   }
 
   getUnreadCount(): number {
-    return this.getUnreadNotifications().length;
+    return 0; // Always return 0
   }
 
   subscribe(callback: (notifications: WorkflowNotification[]) => void): () => void {
-    this.subscribers.add(callback);
-    callback(this.getNotifications()); // Send initial state
-
-    return () => {
-      this.subscribers.delete(callback);
-    };
+    // Notifications disabled - don't add subscribers or send data
+    return () => {};
   }
 
   private notifySubscribers(): void {
-    const notifications = this.getNotifications();
-    this.subscribers.forEach(callback => callback(notifications));
+    // Notifications disabled - don't notify subscribers
   }
 
   private generateNotificationId(): string {
