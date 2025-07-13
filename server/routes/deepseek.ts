@@ -163,7 +163,51 @@ router.post('/stream', async (req, res) => {
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (!line.trim()) continue;
+        if (!line.trim() || !line.startsWith('data: ')) continue;
+        
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') {
+          res.write(`data: [DONE]\n\n`);
+          res.end();
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          
+          // Handle reasoning content (Chain of Thought)
+          if (parsed.choices?.[0]?.delta?.reasoning_content) {
+            const reasoningChunk = {
+              type: 'reasoning',
+              content: parsed.choices[0].delta.reasoning_content
+            };
+            res.write(`data: ${JSON.stringify(reasoningChunk)}\n\n`);
+          }
+          
+          // Handle final response content
+          if (parsed.choices?.[0]?.delta?.content) {
+            const responseChunk = {
+              type: 'response',
+              content: parsed.choices[0].delta.content
+            };
+            res.write(`data: ${JSON.stringify(responseChunk)}\n\n`);
+          }
+          
+          // Handle completion
+          if (parsed.choices?.[0]?.finish_reason) {
+            const completionChunk = {
+              type: 'complete',
+              finish_reason: parsed.choices[0].finish_reason,
+              usage: parsed.usage
+            };
+            res.write(`data: ${JSON.stringify(completionChunk)}\n\n`);
+          }
+          
+        } catch (parseError) {
+          console.warn('DeepSeek JSON parse error:', parseError);
+        }
+      }
+    }im()) continue;
 
         if (line.startsWith('data: ')) {
           const data = line.slice(6);

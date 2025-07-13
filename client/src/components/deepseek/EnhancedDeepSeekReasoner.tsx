@@ -483,39 +483,55 @@ export default function EnhancedDeepSeekReasoner() {
             />
           )}
 
-          {/* Reasoning Process */}
-          <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Brain className="h-5 w-5 text-blue-500" />
-                Chain-of-Thought Reasoning
-                {streamingReasoning && (
-                  <div className="flex items-center gap-2 ml-auto">
-                    <Activity className="h-4 w-4 text-blue-400 animate-pulse" />
-                    <Badge variant="outline" className="text-xs">
-                      {streamingReasoning.length} tokens
-                    </Badge>
-                  </div>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div 
-                ref={reasoningRef}
-                className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-green-400 max-h-96 overflow-y-auto"
-              >
-                {storeIsStreaming && streamingReasoning ? (
-                  <TypewriterEffect 
-                    text={streamingReasoning} 
-                    speed={0}
-                    showCursor={storeIsStreaming && !streamingResponse}
-                  />
-                ) : (
-                  currentResponse?.reasoning
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Reasoning Process - Always show when streaming or has content */}
+          {(streamingReasoning || currentResponse?.reasoning || storeIsStreaming) && (
+            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Brain className="h-5 w-5 text-blue-500" />
+                  Chain-of-Thought Reasoning
+                  {streamingReasoning && (
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Activity className="h-4 w-4 text-blue-400 animate-pulse" />
+                      <Badge variant="outline" className="text-xs">
+                        {streamingReasoning.length} chars
+                      </Badge>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div 
+                  ref={reasoningRef}
+                  className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-green-400 max-h-96 overflow-y-auto min-h-[200px]"
+                >
+                  {storeIsStreaming ? (
+                    streamingReasoning ? (
+                      <TypewriterEffect 
+                        text={streamingReasoning} 
+                        speed={0}
+                        showCursor={storeIsStreaming && !streamingResponse}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-32 text-gray-400">
+                        <div className="flex flex-col items-center">
+                          <Brain className="h-8 w-8 animate-pulse mb-2" />
+                          <span className="italic">Waiting for reasoning to begin...</span>
+                          <div className="flex gap-1 mt-2">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    currentResponse?.reasoning || 'No reasoning content available'
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Final Response */}
           <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/50">

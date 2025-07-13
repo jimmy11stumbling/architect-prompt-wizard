@@ -120,19 +120,17 @@ export class DeepSeekApi {
                 const parsed = JSON.parse(jsonStr);
 
               // Handle reasoning content (Chain of Thought)
-              if (parsed.choices?.[0]?.delta?.reasoning_content) {
-                const reasoningToken = parsed.choices[0].delta.reasoning_content;
-                onReasoningToken(reasoningToken);
+              if (parsed.type === 'reasoning' && parsed.content) {
+                onReasoningToken(parsed.content);
               }
 
               // Handle final response content
-              if (parsed.choices?.[0]?.delta?.content) {
-                const token = parsed.choices[0].delta.content;
-                onResponseToken(token);
+              if (parsed.type === 'response' && parsed.content) {
+                onResponseToken(parsed.content);
               }
 
               // Handle completion
-              if (parsed.choices?.[0]?.finish_reason) {
+              if (parsed.type === 'complete') {
                 onComplete({
                   reasoning: '', // Accumulated in store
                   response: '', // Accumulated in store
@@ -145,11 +143,6 @@ export class DeepSeekApi {
                   processingTime: Date.now() - startTime
                 });
                 return;
-              }
-
-              // Handle usage info
-              if (parsed.usage) {
-                console.log('Usage info:', parsed.usage);
               }
 
             } catch (parseError) {

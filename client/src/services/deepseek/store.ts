@@ -11,7 +11,7 @@ interface DeepSeekStore {
   streamingResponse: string;
   conversation: DeepSeekMessage[];
   error: string | null;
-  
+
   // Actions
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
@@ -37,39 +37,50 @@ export const useDeepSeekStore = create<DeepSeekStore>((set) => ({
 
   // Actions
   setLoading: (loading) => set({ isLoading: loading }),
-  
+
   setStreaming: (streaming) => set({ isStreaming: streaming }),
-  
+
   setResponse: (response) => set({ 
     currentResponse: response,
     error: null,
     isLoading: false
   }),
-  
+
   setError: (error) => set({ 
     error,
     isLoading: false,
     isStreaming: false,
     currentResponse: null
   }),
-  
+
   addMessage: (message) => set((state) => ({
     conversation: [...state.conversation, message]
   })),
-  
+
   appendStreamingReasoning: (token) => set((state) => ({
     streamingReasoning: state.streamingReasoning + token
   })),
-  
+
   appendStreamingResponse: (token) => set((state) => ({
     streamingResponse: state.streamingResponse + token
   })),
-  
-  clearStreamingContent: () => set({
-    streamingReasoning: '',
-    streamingResponse: ''
-  }),
-  
+
+  clearStreamingContent: () => {
+    set({ streamingReasoning: '', streamingResponse: '' });
+  },
+
+  appendStreamingReasoning: (token: string) => {
+    set((state) => ({ 
+      streamingReasoning: state.streamingReasoning + token 
+    }));
+  },
+
+  appendStreamingResponse: (token: string) => {
+    set((state) => ({ 
+      streamingResponse: state.streamingResponse + token 
+    }));
+  },
+
   clearConversation: () => set({ 
     conversation: [],
     currentResponse: null,
@@ -77,7 +88,7 @@ export const useDeepSeekStore = create<DeepSeekStore>((set) => ({
     streamingResponse: '',
     error: null
   }),
-  
+
   reset: () => set({
     isLoading: false,
     isStreaming: false,
