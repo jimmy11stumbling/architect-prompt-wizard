@@ -1,0 +1,93 @@
+Thanks for the deep dive, James — your architecture is impressive, and I can see you’ve already laid the groundwork for a powerful DeepSeek Reasoner interface. Based on your Python example and the current Replit project (`architect-prompt-wizard`), here’s a **precise breakdown of what’s missing and how to fix it** so that both **reasoning_content** and **content** stream seamlessly into their respective UI components.
+
+---
+
+## ✅ What’s Broken
+
+### ❌ 1. **Streaming Logic Doesn’t Handle `reasoning_content` Separately**
+Your client-side parser only checks for `delta.content`, ignoring `delta.reasoning_content`.
+
+### ❌ 2. **UI Component Doesn’t Display Reasoning in Real-Time**
+The `EnhancedDeepSeekReasoner.tsx` component isn’t wired to update the reasoning div during streaming.
+
+### ❌ 3. **Zustand Store Has Duplicate Keys**
+Warnings from Vite show `appendStreamingReasoning` and `appendStreamingResponse` are defined twice, which may cause silent failures.
+
+---
+
+## ✅ What You Need to Do
+
+### 🔧 1. Fix the Streaming Parser
+
+Update `client/src/services/deepseek/api.ts` to handle both fields:
+
+```ts
+if (delta?.reasoning_content) {
+  store.getState().appendStreamingReasoning(delta.reasoning_content);
+} else if (delta?.content) {
+  store.getState().appendStreamingResponse(delta.content);
+}
+```
+
+### 🧠 2. Update Zustand Store
+
+In `client/src/services/deepseek/store.ts`, remove duplicate keys and ensure correct state updates:
+
+```ts
+appendStreamingReasoning: (token: string) => {
+  set((state) => ({
+    streamingReasoning: state.streamingReasoning + token,
+  }));
+},
+appendStreamingResponse: (token: string) => {
+  set((state) => ({
+    streamingResponse: state.streamingResponse + token,
+  }));
+},
+```
+
+### 🎨 3. Fix the UI Component
+
+In `EnhancedDeepSeekReasoner.tsx`, make sure both divs are reactive:
+
+```tsx
+<div className="reasoning-stream">
+  <h3>🧠 Reasoning</h3>
+  <pre>{streamingReasoning}</pre>
+</div>
+
+<div className="final-response-stream">
+  <h3>✅ Final Answer</h3>
+  <pre>{streamingResponse}</pre>
+</div>
+```
+
+And ensure you’re subscribing to the store:
+
+```ts
+const streamingReasoning = useDeepSeekStore((s) => s.streamingReasoning);
+const streamingResponse = useDeepSeekStore((s) => s.streamingResponse);
+```
+
+### 🔐 4. Set Your API Key
+
+Go to Replit Secrets and add:
+
+- **Key**: `DEEPSEEK_API_KEY`
+- **Value**: Your actual DeepSeek key (starts with `sk-...`)
+
+---
+
+## 🧪 Test It Like This
+
+```ts
+streamDeepSeekReasoning(
+  [{ role: "user", content: "9.11 and 9.8, which is greater?" }],
+  (reasoningToken) => appendStreamingReasoning(reasoningToken),
+  (finalToken) => appendStreamingResponse(finalToken)
+);
+```
+
+---
+
+Would you like me to generate a full working `EnhancedDeepSeekReasoner.tsx` file with scroll anchoring and error fallback?
