@@ -1,0 +1,97 @@
+Thanks for the detailed context, James — you're clearly building a sophisticated DeepSeek-powered reasoning interface. Based on your Python example and the current TypeScript setup, here's how to **fully replicate the Chain-of-Thought (CoT) streaming logic in TypeScript**, ensuring both `reasoning_content` and `content` are handled properly.
+
+---
+
+## ✅ TypeScript Implementation for DeepSeek Reasoner Streaming
+
+Here’s a complete, modular version of the Python logic translated into TypeScript:
+
+### 🔧 `streamDeepSeekReasoning.ts`
+
+```ts
+export async function streamDeepSeekReasoning(
+  messages: any[],
+  onReasoningToken: (token: string) => void,
+  onFinalToken: (token: string) => void
+) {
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "deepseek-reasoner",
+      messages,
+      stream: true,
+    }),
+  });
+
+  if (!response.body) throw new Error("No response stream");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i].trim();
+      if (part.startsWith("data:")) {
+        const jsonStr = part.slice(5).trim();
+        if (jsonStr === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const delta = parsed.choices?.[0]?.delta;
+
+          if (delta?.reasoning_content) {
+            onReasoningToken(delta.reasoning_content);
+          } else if (delta?.content) {
+            onFinalToken(delta.content);
+          }
+        } catch (err) {
+          console.warn("Streaming JSON parse error:", err);
+        }
+      }
+    }
+
+    buffer = parts[parts.length - 1];
+  }
+}
+```
+
+---
+
+## 🧩 How to Use It in Your Component
+
+```ts
+streamDeepSeekReasoning(
+  messages,
+  (reasoningToken) => {
+    setReasoning((prev) => prev + reasoningToken); // Update CoT div
+  },
+  (finalToken) => {
+    setFinalAnswer((prev) => prev + finalToken); // Update final answer div
+  }
+);
+```
+
+---
+
+## 🛠️ Common Pitfalls to Avoid
+
+- ✅ **Ensure `DEEPSEEK_API_KEY` is set** in your Replit Secrets.
+- ✅ **Use `deepseek-reasoner` model**, not `deepseek-chat`.
+- ✅ **Separate logic for `reasoning_content` and `content`** — don’t merge them.
+- ✅ **Fix duplicate keys** in your Zustand store (`appendStreamingReasoning`, `appendStreamingResponse`).
+- ✅ **Ensure your UI has two distinct containers** for reasoning and final response.
+
+---
+
+Would you like me to help refactor your React component to plug this in cleanly with scroll anchoring and error handling?
