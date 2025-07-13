@@ -303,7 +303,8 @@ export class RAGService {
     // Check cache first
     const cached = this.requestCache.get(cacheKey);
     if (cached && this.isValidCache(cached)) {
-      console.log('🔄 [rag-service] Returning cached result for query:', query.substring(0, 50) + '...');
+      // Console logging DISABLED during blueprint generation to prevent infinite notification loop
+      // console.log('🔄 [rag-service] Returning cached result for query:', query.substring(0, 50) + '...');
       return cached.data;
     }
 

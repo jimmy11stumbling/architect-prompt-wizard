@@ -1431,7 +1431,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Query is required" });
       }
 
-      console.log(`[RAG Search] Processing query: "${query}" with limit: ${limit}`);
+      // Logging disabled during blueprint generation to prevent console flooding
+      // console.log(`[RAG Search] Processing query: "${query}" with limit: ${limit}`);
       const startTime = Date.now();
 
       // Use the vector store for search
@@ -1440,7 +1441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if we have any documents first
       const stats = await vectorStore.getStats();
-      console.log(`[RAG Search] Vector store stats:`, stats);
+      // console.log(`[RAG Search] Vector store stats:`, stats);
 
       // If no documents, populate from knowledge base
       if (stats.totalDocuments === 0) {

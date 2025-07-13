@@ -21,6 +21,9 @@ export class RealTimeResponseService {
   }
 
   addResponse(response: Omit<RealTimeResponse, "id" | "timestamp">): void {
+    // COMPLETELY DISABLED during blueprint generation to prevent notification flooding
+    return;
+    
     const fullResponse: RealTimeResponse = {
       id: `resp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
@@ -34,19 +37,16 @@ export class RealTimeResponseService {
       this.responses = this.responses.slice(0, this.maxResponses);
     }
 
-    // Notify all listeners
-    this.listeners.forEach(listener => {
-      try {
-        listener(fullResponse);
-      } catch (error) {
-        console.error("Error in real-time response listener:", error);
-      }
-    });
+    // Notify all listeners - DISABLED
+    // this.listeners.forEach(listener => {
+    //   try {
+    //     listener(fullResponse);
+    //   } catch (error) {
+    //     console.error("Error in real-time response listener:", error);
+    //   }
+    // });
 
-    // Only log critical messages to console to reduce noise
-    if (response.status === "error" || response.status === "warning") {
-      console.log(`🔄 [${response.source}] ${response.message}`, response.data || '');
-    }
+    // Console logging DISABLED during blueprint generation
   }
 
   getResponses(limit: number = 50): RealTimeResponse[] {

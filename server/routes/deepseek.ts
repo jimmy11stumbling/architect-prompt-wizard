@@ -46,7 +46,8 @@ router.post('/stream', async (req, res) => {
 
           if (ragResponse.ok) {
             const ragData = await ragResponse.json();
-            console.log(`📚 RAG found ${ragData.results?.length || 0} relevant documents`);
+            // Console logging disabled during blueprint generation
+            // console.log(`📚 RAG found ${ragData.results?.length || 0} relevant documents`);
             
             if (ragData.results && ragData.results.length > 0) {
               // Build comprehensive context
@@ -60,13 +61,13 @@ router.post('/stream', async (req, res) => {
               };
 
               enhancedMessages = [contextMessage, ...messages];
-              console.log('📖 Added RAG context with', ragData.results.length, 'documents');
+              // console.log('📖 Added RAG context with', ragData.results.length, 'documents');
             }
           } else {
-            console.warn('⚠️ RAG search failed, proceeding without context');
+            // console.warn('⚠️ RAG search failed, proceeding without context');
           }
         } catch (ragError) {
-          console.error('❌ RAG context error:', ragError);
+          // console.error('❌ RAG context error:', ragError);
         }
       }
     }

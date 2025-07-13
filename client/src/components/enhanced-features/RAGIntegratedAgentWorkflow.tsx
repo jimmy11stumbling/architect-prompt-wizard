@@ -70,7 +70,8 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
       let platformCache: any = null;
       let bestPracticesCache: any = null;
 
-      console.log("🔄 [rag-optimization] Fetching shared context once for all agents...");
+      // Console logging DISABLED during blueprint generation to prevent infinite notification loop
+      // console.log("🔄 [rag-optimization] Fetching shared context once for all agents...");
 
       // Get platform-specific context once (shared by all agents)
       try {
@@ -87,7 +88,8 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
           rerankingEnabled: true
         });
 
-        console.log(`✅ [rag-optimization] Cached shared context: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices`);
+        // Console logging DISABLED during blueprint generation to prevent infinite notification loop
+        // console.log(`✅ [rag-optimization] Cached shared context: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices`);
       } catch (error) {
         console.error("Failed to fetch shared context:", error);
       }
@@ -137,11 +139,12 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
               searchStats: searchResults.searchStats
             };
 
-            console.log(`🔄 [rag-integration] Agent ${agent.name} enhanced with RAG database context`, {
-              documents: searchResults.results?.length || 0,
-              bestPractices: bestPracticesCache?.results?.length || 0,
-              platformContext: platformCache?.results?.length || 0
-            });
+            // Console logging DISABLED during blueprint generation to prevent infinite notification loop
+            // console.log(`🔄 [rag-integration] Agent ${agent.name} enhanced with RAG database context`, {
+            //   documents: searchResults.results?.length || 0,
+            //   bestPractices: bestPracticesCache?.results?.length || 0,
+            //   platformContext: platformCache?.results?.length || 0
+            // });
 
             // Notify parent component of agent enhancement
             if (onAgentUpdate) {

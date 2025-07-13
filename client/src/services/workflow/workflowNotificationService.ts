@@ -358,6 +358,9 @@ export class WorkflowNotificationService {
   }
 
   addNotification(notification: Partial<WorkflowNotification>): string {
+    // COMPLETELY DISABLED - No notifications during blueprint generation
+    return "";
+
     const now = Date.now();
 
     // Create a unique key for duplicate detection
