@@ -10,6 +10,7 @@ import {
   workflows,
   workflowExecutions,
   knowledgeBase,
+  deepseekSessions,
   type User, 
   type InsertUser,
   type Platform,
@@ -27,7 +28,9 @@ import {
   type Workflow,
   type InsertWorkflow,
   type KnowledgeBase,
-  type InsertKnowledgeBase
+  type InsertKnowledgeBase,
+  type DeepSeekSession,
+  type InsertDeepSeekSession
 } from "@shared/schema";
 import { db, sql } from "./db";
 import { eq, ilike, or } from "drizzle-orm";
@@ -74,6 +77,12 @@ export interface IStorage {
   createKnowledgeBaseEntry(entry: InsertKnowledgeBase): Promise<KnowledgeBase>;
   searchKnowledgeBase(query: string, category?: string): Promise<KnowledgeBase[]>;
   getAllKnowledgeBase(): Promise<KnowledgeBase[]>;
+  
+  // DeepSeek sessions
+  createDeepSeekSession(session: InsertDeepSeekSession): Promise<DeepSeekSession>;
+  getUserDeepSeekSessions(userId: number): Promise<DeepSeekSession[]>;
+  getPublicDeepSeekSessions(): Promise<DeepSeekSession[]>;
+  getDeepSeekSession(id: number): Promise<DeepSeekSession | undefined>;
 }
 
 // Database storage implementation
@@ -259,6 +268,28 @@ export class DatabaseStorage implements IStorage {
 
   async getAllKnowledgeBase(): Promise<KnowledgeBase[]> {
     return await db.select().from(knowledgeBase);
+  }
+
+  // DeepSeek sessions
+  async createDeepSeekSession(session: InsertDeepSeekSession): Promise<DeepSeekSession> {
+    const [newSession] = await db
+      .insert(deepseekSessions)
+      .values(session)
+      .returning();
+    return newSession;
+  }
+
+  async getUserDeepSeekSessions(userId: number): Promise<DeepSeekSession[]> {
+    return await db.select().from(deepseekSessions).where(eq(deepseekSessions.userId, userId));
+  }
+
+  async getPublicDeepSeekSessions(): Promise<DeepSeekSession[]> {
+    return await db.select().from(deepseekSessions).where(eq(deepseekSessions.isPublic, true));
+  }
+
+  async getDeepSeekSession(id: number): Promise<DeepSeekSession | undefined> {
+    const result = await db.select().from(deepseekSessions).where(eq(deepseekSessions.id, id));
+    return result[0];
   }
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import StreamingInterface from '../deepseek/StreamingInterface';
+import EnhancedDeepSeekReasoner from '../deepseek/EnhancedDeepSeekReasoner';
 
 export default function DeepSeekReasonerPanel() {
-  return <StreamingInterface />;
+  return <EnhancedDeepSeekReasoner />;
 }

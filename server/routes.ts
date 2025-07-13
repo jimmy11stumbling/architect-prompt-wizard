@@ -1397,6 +1397,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DeepSeek Sessions API endpoints
+  app.post("/api/deepseek/sessions", async (req, res) => {
+    try {
+      const { insertDeepSeekSessionSchema } = await import("@shared/schema");
+      const validatedSession = insertDeepSeekSessionSchema.parse(req.body);
+      
+      // Set default userId to 1 since we don't have authentication
+      if (!validatedSession.userId) {
+        validatedSession.userId = 1;
+      }
+      
+      const session = await storage.createDeepSeekSession(validatedSession);
+      res.json(session);
+    } catch (error) {
+      console.error("Error creating DeepSeek session:", error);
+      res.status(500).json({ error: "Failed to create session" });
+    }
+  });
+
+  app.get("/api/deepseek/sessions", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      
+      if (userId) {
+        const sessions = await storage.getUserDeepSeekSessions(parseInt(userId as string));
+        res.json(sessions);
+      } else {
+        const sessions = await storage.getPublicDeepSeekSessions();
+        res.json(sessions);
+      }
+    } catch (error) {
+      console.error("Error fetching DeepSeek sessions:", error);
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
+  app.get("/api/deepseek/sessions/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const session = await storage.getDeepSeekSession(parseInt(id));
+      
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      res.json(session);
+    } catch (error) {
+      console.error("Error fetching DeepSeek session:", error);
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
     try {

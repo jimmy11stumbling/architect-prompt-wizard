@@ -124,6 +124,29 @@ export const knowledgeBase = pgTable("knowledge_base", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// DeepSeek reasoning sessions for database integration
+export const deepseekSessions = pgTable("deepseek_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  query: text("query").notNull(),
+  reasoning: text("reasoning").notNull(),
+  response: text("response").notNull(),
+  ragEnabled: boolean("rag_enabled").default(false),
+  mcpEnabled: boolean("mcp_enabled").default(false),
+  tokensUsed: integer("tokens_used").default(0),
+  reasoningTokens: integer("reasoning_tokens").default(0),
+  responseTokens: integer("response_tokens").default(0),
+  processingTime: integer("processing_time").default(0),
+  temperature: text("temperature").default("0.1"),
+  tags: text("tags").array(),
+  metadata: json("metadata"),
+  isPublic: boolean("is_public").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
 // Schema definitions for validation
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -202,6 +225,25 @@ export const insertKnowledgeBaseSchema = createInsertSchema(knowledgeBase).pick(
   sourceFile: true,
 });
 
+export const insertDeepSeekSessionSchema = createInsertSchema(deepseekSessions).pick({
+  userId: true,
+  title: true,
+  description: true,
+  query: true,
+  reasoning: true,
+  response: true,
+  ragEnabled: true,
+  mcpEnabled: true,
+  tokensUsed: true,
+  reasoningTokens: true,
+  responseTokens: true,
+  processingTime: true,
+  temperature: true,
+  tags: true,
+  metadata: true,
+  isPublic: true,
+});
+
 // Type definitions
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -229,3 +271,6 @@ export type Workflow = typeof workflows.$inferSelect;
 
 export type InsertKnowledgeBase = z.infer<typeof insertKnowledgeBaseSchema>;
 export type KnowledgeBase = typeof knowledgeBase.$inferSelect;
+
+export type InsertDeepSeekSession = z.infer<typeof insertDeepSeekSessionSchema>;
+export type DeepSeekSession = typeof deepseekSessions.$inferSelect;
