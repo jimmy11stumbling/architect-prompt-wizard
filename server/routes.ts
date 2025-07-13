@@ -1316,19 +1316,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DeepSeek Reasoner API with seamless RAG, MCP, and A2A integration
   app.post("/api/deepseek/query", async (req, res) => {
     try {
-      const { messages, ragContext } = req.body;
+      const { messages, maxTokens, temperature, ragContext, mcpEnabled, a2aEnabled } = req.body;
 
       if (!process.env.DEEPSEEK_API_KEY) {
-        return res.status(400).json({ error: "DeepSeek API key not configured" });
+        return res.status(500).json({ error: "DeepSeek API key not configured" });
       }
 
-      console.log('Making DeepSeek API call with', messages.length, 'messages');
+      // Extract the user's query from the last message
+      const userQuery = messages[messages.length - 1]?.content || '';
+      let enhancedMessages = [...messages];
 
-      // Add timeout to prevent hanging
+      // Enhanced context building - mirror master blueprint integration
+      let contextSections = [];
+
+      // 1. RAG Integration - Same as master blueprint
+      const { RAGOrchestrator2 } = await import("./services/rag/ragOrchestrator2");
+      const ragOrchestrator = RAGOrchestrator2.getInstance();
+      if (ragContext) {
+        try {
+          const ragResults = await ragOrchestrator.query({
+            query: userQuery,
+            limit: 10,
+            options: { rerankingEnabled: true, hybridWeight: { semantic: 0.7, keyword: 0.3 }}
+          });
+
+          if (ragResults.results.length > 0) {
+            const ragContext = ragResults.results.slice(0, 5).map(result => 
+              `[${result.metadata.category}] ${result.metadata.title}: ${result.content.substring(0, 500)}...`
+            ).join('\n\n');
+
+            contextSections.push({
+              type: 'RAG 2.0',
+              content: `Context from RAG 2.0 Database (${ragResults.totalResults} documents found):\n\n${ragContext}`
+            });
+          }
+        } catch (ragError) {
+          console.warn('RAG context retrieval failed:', ragError);
+        }
+      }
+
+      // 2. MCP Integration - Same as master blueprint
+      if (mcpEnabled) {
+        try {
+          const { mcpHub } = await import('./services/mcpHub');
+		  const mcpHubService = mcpHub.getInstance();
+          const mcpContext = await mcpHubService.getComprehensiveContext('');
+
+          if (mcpContext) {
+            const mcpContextText = `MCP Platform Context:\n\n${JSON.stringify(mcpContext, null, 2)}`;
+            contextSections.push({
+              type: 'MCP Protocol',
+              content: mcpContextText
+            });
+          }
+        } catch (mcpError) {
+          console.warn('MCP context retrieval failed:', mcpError);
+        }
+      }
+
+      // 3. A2A Integration - Same as master blueprint
+      if (a2aEnabled) {
+        try {
+          const { AgentCoordinator } = await import('./services/a2a/agentCoordinator');
+		  const a2aService = new AgentCoordinator();
+          const a2aContext = await a2aService.getAgentContext(userQuery);
+
+          if (a2aContext) {
+            contextSections.push({
+              type: 'A2A Protocol',
+              content: `Agent-to-Agent Communication Context:\n\n${a2aContext}`
+            });
+          }
+        } catch (a2aError) {
+          console.warn('A2A context retrieval failed:', a2aError);
+        }
+      }
+
+      // 4. Build enhanced prompt - Same structure as master blueprint
+      if (contextSections.length > 0) {
+        const contextPrompt = contextSections.map(section => 
+          `## ${section.type}\n${section.content}`
+        ).join('\n\n---\n\n');
+
+        const enhancedPrompt = `${contextPrompt}\n\n---\n\nUser Question: ${userQuery}`;
+
+        // Replace the last message with enhanced version
+        enhancedMessages[enhancedMessages.length - 1] = {
+          ...enhancedMessages[enhancedMessages.length - 1],
+          content: enhancedPrompt
+        };
+      }
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -1340,9 +1423,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           body: JSON.stringify({
             model: 'deepseek-reasoner',
-            messages,
-            max_tokens: 4096,
-            temperature: 0.1,
+            messages: enhancedMessages,
+            max_tokens: maxTokens || 4096,
+            temperature: temperature || 0.1,
             stream: false
           }),
           signal: controller.signal
@@ -1357,12 +1440,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const result = await response.json();
-        console.log('DeepSeek API call successful, response structure:', {
+        console.log('DeepSeek API call successful with enhanced context, response structure:', {
           hasChoices: !!result.choices,
           hasMessage: !!result.choices?.[0]?.message,
           contentLength: result.choices?.[0]?.message?.content?.length || 0,
           reasoningLength: result.choices?.[0]?.message?.reasoning_content?.length || 0,
-          usage: result.usage
+          usage: result.usage,
+          contextSections: contextSections.length
         });
 
         // Handle DeepSeek Reasoner response format - preserve both reasoning and response
@@ -1375,8 +1459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             reasoningLength: message.reasoning_content?.length || 0
           });
 
-          // For DeepSeek Reasoner, don't modify the fields - let the client handle them
-          // reasoning_content = reasoning process, content = final answer
+          // Add processing metadata
+          result.processingTime = Date.now() - Date.now();
+          result.contextEnhancements = contextSections.map(s => s.type);
         }
 
         res.json(result);
@@ -1402,12 +1487,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { insertDeepSeekSessionSchema } = await import("@shared/schema");
       const validatedSession = insertDeepSeekSessionSchema.parse(req.body);
-      
+
       // Set default userId to 1 since we don't have authentication
       if (!validatedSession.userId) {
         validatedSession.userId = 1;
       }
-      
+
       const session = await storage.createDeepSeekSession(validatedSession);
       res.json(session);
     } catch (error) {
@@ -1419,7 +1504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/deepseek/sessions", async (req, res) => {
     try {
       const { userId } = req.query;
-      
+
       if (userId) {
         const sessions = await storage.getUserDeepSeekSessions(parseInt(userId as string));
         res.json(sessions);
@@ -1437,11 +1522,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const session = await storage.getDeepSeekSession(parseInt(id));
-      
+
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
-      
+
       res.json(session);
     } catch (error) {
       console.error("Error fetching DeepSeek session:", error);
@@ -1579,6 +1664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function getMCPDocumentationContext(): Promise<string | null> {
     try {
       // Get the most relevant MCP documentation
+      const { db, vectorDocuments, sql } = await import("./storage");
       const mcpDocs = await db
         .select({ content: vectorDocuments.content })
         .from(vectorDocuments)

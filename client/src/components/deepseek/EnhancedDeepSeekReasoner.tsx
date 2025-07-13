@@ -31,6 +31,7 @@ export default function EnhancedDeepSeekReasoner() {
   const [query, setQuery] = useState('');
   const [ragEnabled, setRagEnabled] = useState(true);
   const [mcpEnabled, setMcpEnabled] = useState(true);
+  const [a2aEnabled, setA2aEnabled] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [conversationTitle, setConversationTitle] = useState('');
   const [ragStats, setRagStats] = useState(null);
@@ -97,7 +98,7 @@ export default function EnhancedDeepSeekReasoner() {
           tokensUsed: session.tokensUsed
         }));
         setSavedConversations(conversations);
-        
+
         // Also update localStorage as backup
         localStorage.setItem('deepseek-conversations', JSON.stringify(conversations));
       } else {
@@ -105,7 +106,7 @@ export default function EnhancedDeepSeekReasoner() {
       }
     } catch (error) {
       console.warn('Failed to load from database, using localStorage:', error);
-      
+
       // Fallback to localStorage
       const saved = localStorage.getItem('deepseek-conversations');
       if (saved) {
@@ -124,7 +125,7 @@ export default function EnhancedDeepSeekReasoner() {
         ]);
         setRagStats(ragData);
         setMcpStats(mcpData);
-        
+
         // Load saved conversations from database and localStorage
         await loadSavedSessions();
       } catch (error) {
@@ -154,6 +155,7 @@ export default function EnhancedDeepSeekReasoner() {
       await DeepSeekService.processQueryStreaming(query, { 
         ragEnabled,
         mcpEnabled,
+        a2aEnabled,
         temperature: 0.1 
       });
       setQuery('');
@@ -203,7 +205,7 @@ export default function EnhancedDeepSeekReasoner() {
 
       if (response.ok) {
         const savedSession = await response.json();
-        
+
         // Create local conversation object for UI
         const conversation: SavedConversation = {
           id: savedSession.id,
@@ -231,7 +233,7 @@ export default function EnhancedDeepSeekReasoner() {
       }
     } catch (error) {
       console.warn('Failed to save to database:', error);
-      
+
       // Fallback to localStorage only
       const conversation: SavedConversation = {
         id: Date.now(),
@@ -275,6 +277,8 @@ export default function EnhancedDeepSeekReasoner() {
     setMcpEnabled(conversation.mcpEnabled);
     // Note: We could restore the full conversation state here if needed
   };
+
+  const [a2aEnabled, setA2aEnabled] = useState(true);
 
   return (
     <div className="space-y-6 p-6">
@@ -344,6 +348,25 @@ export default function EnhancedDeepSeekReasoner() {
                   checked={mcpEnabled}
                   onCheckedChange={setMcpEnabled}
                 />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="mcp-enabled"
+                    checked={mcpEnabled}
+                    onCheckedChange={setMcpEnabled}
+                  />
+                  <Label htmlFor="mcp-enabled">MCP Integration</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="a2a-enabled"
+                    checked={a2aEnabled}
+                    onCheckedChange={setA2aEnabled}
+                  />
+                  <Label htmlFor="a2a-enabled">A2A Protocol</Label>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

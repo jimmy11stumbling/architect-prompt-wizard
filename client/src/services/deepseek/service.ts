@@ -108,7 +108,7 @@ export class DeepSeekService {
 
   static async processQuery(
     query: string,
-    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean } = {}
+    options: { ragEnabled?: boolean; temperature?: number; mcpEnabled?: boolean; a2aEnabled?: boolean } = {}
   ): Promise<void> {
     const store = useDeepSeekStore.getState();
     
@@ -117,63 +117,24 @@ export class DeepSeekService {
       store.setLoading(true);
       store.setError(null);
 
-      // Enhanced query with RAG context if enabled
-      let enhancedQuery = query;
-      
-      if (options.ragEnabled) {
-        try {
-          // Import ragService dynamically to avoid circular dependencies
-          const { ragService } = await import('@/services/rag/ragService');
-          const ragResults = await ragService.searchRAG2(query, {
-            limit: 10,
-            rerankingEnabled: true,
-            hybridWeight: { semantic: 0.7, keyword: 0.3 }
-          });
-          
-          if (ragResults.results.length > 0) {
-            const contextChunks = ragResults.results.slice(0, 5).map(result => 
-              `[${result.category}] ${result.title}: ${result.content.substring(0, 500)}...`
-            ).join('\n\n');
-            
-            enhancedQuery = `Context from RAG 2.0 Database (${ragResults.totalResults} documents found):\n\n${contextChunks}\n\n---\n\nUser Question: ${query}`;
-          }
-        } catch (ragError) {
-          console.warn('RAG context retrieval failed:', ragError);
-          // Continue with original query if RAG fails
-        }
-      }
-
-      // Add MCP context if enabled
-      if (options.mcpEnabled) {
-        try {
-          const { mcpHubService } = await import('@/services/mcp/mcpHubService');
-          const mcpContext = await mcpHubService.getContextForPrompt(query, 3);
-          
-          if (mcpContext && !mcpContext.includes('No relevant')) {
-            enhancedQuery = `${mcpContext}\n\n---\n\n${enhancedQuery}`;
-          }
-        } catch (mcpError) {
-          console.warn('MCP context retrieval failed:', mcpError);
-          // Continue without MCP context if it fails
-        }
-      }
-
-      // Add user message to conversation
+      // Add user message to conversation first
       const userMessage: DeepSeekMessage = {
         role: 'user',
-        content: enhancedQuery
+        content: query
       };
       store.addMessage(userMessage);
 
-      // Prepare request
+      // Prepare request - let server handle context enhancement (same as master blueprint)
       const request: DeepSeekRequest = {
         messages: [...store.conversation, userMessage],
         maxTokens: 8192, // Increased for larger context
         temperature: options.temperature || 0.1,
-        ragEnabled: options.ragEnabled || false
+        ragEnabled: options.ragEnabled || false,
+        mcpEnabled: options.mcpEnabled || false,
+        a2aEnabled: options.a2aEnabled || false
       };
 
-      // Make API call
+      // Make API call - server handles all context integration
       const response = await DeepSeekApi.query(request);
 
       // Add assistant message to conversation

@@ -14,7 +14,9 @@ export class DeepSeekApi {
         messages: request.messages,
         maxTokens: request.maxTokens,
         temperature: request.temperature,
-        ragContext: request.ragEnabled
+        ragContext: request.ragEnabled,
+        mcpEnabled: request.mcpEnabled,
+        a2aEnabled: request.a2aEnabled
       }),
     });
 
@@ -27,13 +29,14 @@ export class DeepSeekApi {
     return {
       reasoning: data.choices[0]?.message?.reasoning_content || '',
       response: data.choices[0]?.message?.content || '',
-      usage: data.usage || {
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
-        reasoningTokens: 0
+      usage: {
+        promptTokens: data.usage?.prompt_tokens || 0,
+        completionTokens: data.usage?.completion_tokens || 0,
+        totalTokens: data.usage?.total_tokens || 0,
+        reasoningTokens: data.usage?.reasoning_tokens || 0
       },
-      processingTime: data.processingTime || 0
+      processingTime: data.processingTime || 0,
+      contextEnhancements: data.contextEnhancements || []
     };
   }
 
@@ -93,7 +96,7 @@ export class DeepSeekApi {
 
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');
-          
+
           for (let i = 0; i < parts.length - 1; i++) {
             const part = parts[i].trim();
             if (part.startsWith('data:')) {
@@ -128,7 +131,7 @@ export class DeepSeekApi {
                       fullReasoning += reasoningToken;
                       onReasoningToken(reasoningToken);
                     }
-                    
+
                     // Handle response content for deepseek-chat
                     if (delta.content) {
                       const responseToken = delta.content;
@@ -137,7 +140,7 @@ export class DeepSeekApi {
                     }
                   }
                 }
-                
+
                 // Update usage statistics if available
                 if (parsed.usage) {
                   usage = parsed.usage;
@@ -147,7 +150,7 @@ export class DeepSeekApi {
               }
             }
           }
-          
+
           buffer = parts[parts.length - 1];
         }
       } catch (streamError) {

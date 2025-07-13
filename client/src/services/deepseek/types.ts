@@ -9,6 +9,8 @@ export interface DeepSeekRequest {
   maxTokens?: number;
   temperature?: number;
   ragEnabled?: boolean;
+  mcpEnabled?: boolean;
+  a2aEnabled?: boolean;
 }
 
 export interface DeepSeekResponse {
@@ -21,6 +23,7 @@ export interface DeepSeekResponse {
     totalTokens: number;
   };
   processingTime: number;
+  contextEnhancements?: string[];
   conversationId: string;
 }
 
