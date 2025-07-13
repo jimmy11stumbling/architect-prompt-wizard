@@ -11,9 +11,8 @@ if (!process.env.DATABASE_URL) {
 // Configure Neon for serverless environment
 neonConfig.fetchConnectionCache = true;
 
-// Create the neon connection with improved configuration
+// Create the neon connection with proper configuration
 const sql = neon(process.env.DATABASE_URL!, {
-  fetchConnectionCache: true,
   fullResults: true,
   arrayMode: false
 });
