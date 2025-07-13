@@ -199,7 +199,7 @@ router.post("/stream", async (req, res) => {
               type: 'reasoning',
               content: delta.reasoning_content
             };
-            res.write(`data: ${JSON.stringify(reasoningChunk)}\n\n`);
+            res.write(`data: ${JSON.stringify(reasoningChunk)}\n\n`);nk)}\n\n`);
           }
 
           // Handle final response content - comes after reasoning
