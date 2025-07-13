@@ -256,7 +256,3 @@ const Index: React.FC = () => {
         </TabsContent>
       </Tabs>
     </MainLayout>
-  );
-};
-
-export default Index;
