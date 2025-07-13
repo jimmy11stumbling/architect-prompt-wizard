@@ -119,26 +119,31 @@ export class DeepSeekApi {
               try {
                 const parsed = JSON.parse(jsonStr);
 
-              // Handle reasoning content (Chain of Thought)
+              // Handle reasoning content (Chain of Thought) - display immediately
               if (parsed.type === 'reasoning' && parsed.content) {
+                console.log('🧠 Received reasoning token:', parsed.content.substring(0, 30));
+                fullReasoning += parsed.content;
                 onReasoningToken(parsed.content);
               }
 
-              // Handle final response content
-              if (parsed.type === 'response' && parsed.content) {
+              // Handle final response content - display after reasoning
+              else if (parsed.type === 'response' && parsed.content) {
+                console.log('💬 Received response token:', parsed.content.substring(0, 30));
+                fullResponse += parsed.content;
                 onResponseToken(parsed.content);
               }
 
-              // Handle completion
-              if (parsed.type === 'complete') {
+              // Handle completion with final stats
+              else if (parsed.type === 'complete') {
+                console.log('✅ Stream complete with usage:', parsed.usage);
                 onComplete({
-                  reasoning: '', // Accumulated in store
-                  response: '', // Accumulated in store
-                  usage: parsed.usage || {
-                    promptTokens: 0,
-                    completionTokens: 0,
-                    totalTokens: 0,
-                    reasoningTokens: 0
+                  reasoning: fullReasoning,
+                  response: fullResponse,
+                  usage: {
+                    promptTokens: parsed.usage?.prompt_tokens || 0,
+                    completionTokens: parsed.usage?.completion_tokens || 0,
+                    totalTokens: parsed.usage?.total_tokens || 0,
+                    reasoningTokens: parsed.usage?.reasoning_tokens || 0
                   },
                   processingTime: Date.now() - startTime
                 });

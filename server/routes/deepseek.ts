@@ -175,30 +175,40 @@ router.post('/stream', async (req, res) => {
         try {
           const parsed = JSON.parse(data);
           
-          // Handle reasoning content (Chain of Thought)
-          if (parsed.choices?.[0]?.delta?.reasoning_content) {
+          const delta = parsed.choices?.[0]?.delta;
+          
+          // Handle reasoning content (Chain of Thought) - comes first
+          if (delta?.reasoning_content) {
+            console.log('📝 Streaming reasoning token:', delta.reasoning_content.substring(0, 50));
             const reasoningChunk = {
               type: 'reasoning',
-              content: parsed.choices[0].delta.reasoning_content
+              content: delta.reasoning_content
             };
             res.write(`data: ${JSON.stringify(reasoningChunk)}\n\n`);
           }
           
-          // Handle final response content
-          if (parsed.choices?.[0]?.delta?.content) {
+          // Handle final response content - comes after reasoning
+          if (delta?.content) {
+            console.log('💬 Streaming response token:', delta.content.substring(0, 50));
             const responseChunk = {
               type: 'response',
-              content: parsed.choices[0].delta.content
+              content: delta.content
             };
             res.write(`data: ${JSON.stringify(responseChunk)}\n\n`);
           }
           
-          // Handle completion
+          // Handle completion with usage stats
           if (parsed.choices?.[0]?.finish_reason) {
+            console.log('✅ Stream completed with reason:', parsed.choices[0].finish_reason);
             const completionChunk = {
               type: 'complete',
               finish_reason: parsed.choices[0].finish_reason,
-              usage: parsed.usage
+              usage: parsed.usage || {
+                prompt_tokens: 0,
+                completion_tokens: 0,
+                reasoning_tokens: 0,
+                total_tokens: 0
+              }
             };
             res.write(`data: ${JSON.stringify(completionChunk)}\n\n`);
           }
