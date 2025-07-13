@@ -75,21 +75,62 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
 
       // Get platform-specific context once (shared by all agents)
       try {
-        platformCache = await ragService.searchRAG2(`${projectSpec.targetPlatform} specific features capabilities`, {
-          limit: 5,
-          hybridWeight: { semantic: 0.8, keyword: 0.2 },
-          filters: { category: 'platform' }
-        });
+        // Map target platform to full database name for better matching
+        const platformMapping: Record<string, string> = {
+          'v0': 'V0 by Vercel',
+          'cursor': 'Cursor', 
+          'bolt': 'Bolt (StackBlitz)',
+          'windsurf': 'Windsurf (Codeium)',
+          'lovable': 'Lovable 2.0',
+          'replit': 'Replit',
+          'claudecode': 'Claude Code'
+        };
+        
+        const fullPlatformName = platformMapping[projectSpec.targetPlatform?.toLowerCase()] || projectSpec.targetPlatform;
+        console.log(`🔍 [RAG] Searching for platform context: "${fullPlatformName}" (from: "${projectSpec.targetPlatform}")`);
+        
+        // Try multiple search strategies to find platform-specific content
+        const platformSearches = [
+          // Search for direct platform name
+          ragService.searchRAG2(`${fullPlatformName} specific features capabilities`, {
+            limit: 2,
+            hybridWeight: { semantic: 0.8, keyword: 0.2 }
+          }),
+          // Search for generated prompt content (contains platform-specific docs)
+          ragService.searchRAG2(`Intelligent ${fullPlatformName} AI Prompt generated`, {
+            limit: 2,
+            hybridWeight: { semantic: 0.6, keyword: 0.4 }
+          }),
+          // Search for optimization content
+          ragService.searchRAG2(`${projectSpec.targetPlatform} optimization WebContainer analysis`, {
+            limit: 2,
+            hybridWeight: { semantic: 0.7, keyword: 0.3 }
+          }),
+          // Search for platform-specific implementation
+          ragService.searchRAG2(`${projectSpec.targetPlatform} specific recommendations blueprint`, {
+            limit: 1,
+            hybridWeight: { semantic: 0.5, keyword: 0.5 }
+          })
+        ];
+        
+        const platformResults = await Promise.all(platformSearches);
+        const allPlatformDocs = platformResults.flatMap(result => result.results || []);
+        
+        platformCache = {
+          results: allPlatformDocs.slice(0, 5), // Take top 5 from all searches
+          query: `${fullPlatformName} multi-strategy search`,
+          totalResults: allPlatformDocs.length,
+          searchTime: platformResults[0].searchTime || 0
+        };
 
         // Get best practices once (shared by all agents)
-        bestPracticesCache = await ragService.searchRAG2(`architecture patterns best practices ${projectSpec.targetPlatform}`, {
+        bestPracticesCache = await ragService.searchRAG2(`architecture patterns best practices ${fullPlatformName}`, {
           limit: 5,
           hybridWeight: { semantic: 0.7, keyword: 0.3 },
           rerankingEnabled: true
         });
 
-        // Console logging DISABLED during blueprint generation to prevent infinite notification loop
-        // console.log(`✅ [rag-optimization] Cached shared context: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices`);
+        console.log(`✅ [RAG] Platform context found: ${platformCache.results?.length || 0} platform docs, ${bestPracticesCache.results?.length || 0} best practices for ${fullPlatformName}`);
       } catch (error) {
         console.error("Failed to fetch shared context:", error);
       }
@@ -340,6 +381,12 @@ const RAGIntegratedAgentWorkflow: React.FC<RAGIntegratedAgentWorkflowProps> = ({
                           </div>
                           <div>
                             <strong>Platform Context:</strong> {ragContexts[agent.name].platformContext.length} specific items
+                            {ragContexts[agent.name].platformContext.length > 0 && (
+                              <span className="text-green-600 ml-1">✓</span>
+                            )}
+                            {ragContexts[agent.name].platformContext.length === 0 && (
+                              <span className="text-amber-600 ml-1">⚠ No platform-specific docs found</span>
+                            )}
                           </div>
                           <div>
                             <strong>Best Practices:</strong> {ragContexts[agent.name].bestPractices.length} recommendations
