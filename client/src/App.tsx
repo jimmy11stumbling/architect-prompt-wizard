@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import WorkflowNotifications from "./components/workflow/WorkflowNotifications";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import ReasonerPage from "./pages/ReasonerPage";
@@ -46,6 +47,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <WorkflowNotifications />
           </BrowserRouter>
         </ErrorBoundary>
       </TooltipProvider>

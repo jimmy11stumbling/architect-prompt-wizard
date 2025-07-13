@@ -1,49 +1,85 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { workflowNotificationService, WorkflowNotification } from "../../services/workflow/workflowNotificationService";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { X, Bell, BellRing, CheckCheck, Trash2 } from "lucide-react";
-import { toast } from "../ui/use-toast";
+import { toast } from "../../hooks/use-toast";
 
 const WorkflowNotifications: React.FC = () => {
   const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const subscriptionRef = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(true);
+
+  const handleNotificationUpdate = useCallback((newNotifications: WorkflowNotification[]) => {
+    if (mountedRef.current) {
+      setNotifications(newNotifications);
+    }
+  }, []);
 
   useEffect(() => {
-    const unsubscribe = workflowNotificationService.subscribe((newNotifications) => {
-      setNotifications(newNotifications);
-    });
+    mountedRef.current = true;
+    
+    // Clear any existing subscription
+    if (subscriptionRef.current) {
+      subscriptionRef.current();
+    }
 
-    return unsubscribe;
-  }, []);
+    // Create new subscription
+    subscriptionRef.current = workflowNotificationService.subscribe(handleNotificationUpdate);
+
+    return () => {
+      mountedRef.current = false;
+      if (subscriptionRef.current) {
+        subscriptionRef.current();
+        subscriptionRef.current = null;
+      }
+    };
+  }, [handleNotificationUpdate]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleMarkAsRead = (id: string) => {
-    workflowNotificationService.markAsRead(id);
-  };
+  const handleMarkAsRead = useCallback((id: string) => {
+    try {
+      workflowNotificationService.markAsRead(id);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }, []);
 
-  const handleMarkAllAsRead = () => {
-    workflowNotificationService.markAllAsRead();
-    toast({
-      title: "All notifications marked as read",
-      duration: 2000,
-    });
-  };
+  const handleMarkAllAsRead = useCallback(() => {
+    try {
+      workflowNotificationService.markAllAsRead();
+      toast({
+        title: "All notifications marked as read",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  }, []);
 
-  const handleRemove = (id: string) => {
-    workflowNotificationService.removeNotification(id);
-  };
+  const handleRemove = useCallback((id: string) => {
+    try {
+      workflowNotificationService.removeNotification(id);
+    } catch (error) {
+      console.error('Error removing notification:', error);
+    }
+  }, []);
 
-  const handleDismissAll = () => {
-    workflowNotificationService.dismissAllNotifications();
-    toast({
-      title: "All notifications dismissed",
-      duration: 2000,
-    });
-  };
+  const handleDismissAll = useCallback(() => {
+    try {
+      workflowNotificationService.dismissAllNotifications();
+      toast({
+        title: "All notifications dismissed",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error dismissing notifications:', error);
+    }
+  }, []);
 
   const getTypeColor = (type: string) => {
     switch (type) {
