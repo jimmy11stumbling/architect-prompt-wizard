@@ -9,19 +9,36 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Create the neon connection
+// Create the neon connection with improved configuration
 const sql = neon(process.env.DATABASE_URL!, {
   fetchConnectionCache: true,
-  fullResults: true
+  fullResults: true,
+  arrayMode: false
 });
 
 console.log('[Database] Neon serverless connection initialized');
 
 // Create Drizzle instance with proper schema
-export const db = drizzle(sql, { schema });
+export const db = drizzle(sql, { 
+  schema,
+  logger: process.env.NODE_ENV === 'development'
+});
 
 // Export the sql function for direct queries
 export { sql };
+
+// Test the connection on startup
+const testConnection = async () => {
+  try {
+    const result = await sql`SELECT 1 as test`;
+    console.log('[Database] Connection test successful:', result[0]?.test === 1 ? '✓' : '✗');
+  } catch (error) {
+    console.error('[Database] Connection test failed:', error);
+  }
+};
+
+// Test connection but don't block startup
+testConnection();
 
 // For compatibility with existing code that expects a pool
 export const pool = {

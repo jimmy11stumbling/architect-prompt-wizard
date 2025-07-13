@@ -1,6 +1,7 @@
+
 import { sql } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp, jsonb, vector } from 'drizzle-orm/pg-core';
-import { cosineDistance, desc } from 'drizzle-orm';
+import { cosineDistance, desc, eq } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 import { EmbeddingService } from './embeddingService';
 import { db, sql as directSql } from '../../db';
@@ -36,14 +37,11 @@ export interface VectorSearchOptions {
 }
 
 export class VectorStore {
-  private db: typeof db;
   private initialized = false;
   private embeddingService: EmbeddingService;
   private initializationPromise: Promise<void> | null = null;
 
   constructor(connectionString?: string) {
-    // Use shared database connection
-    this.db = db;
     this.embeddingService = EmbeddingService.getInstance();
   }
 
@@ -64,88 +62,83 @@ export class VectorStore {
           console.log(`Initializing vector store... (${4 - retries}/3)`);
 
           // Test database connection with timeout
-          const connectionPromise = directSql`SELECT 1 as test`;
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Database connection timeout')), 15000)
-          );
-          
-          const testResult = await Promise.race([connectionPromise, timeoutPromise]);
+          const testResult = await directSql`SELECT 1 as test`;
           console.log('Database connection successful', testResult?.[0]?.test === 1 ? '✓' : '✗');
 
-        // Enable pgvector extension (may fail if not available, but that's okay)
-        try {
-          await directSql`CREATE EXTENSION IF NOT EXISTS vector`;
-          console.log('pgvector extension enabled');
-        } catch (vectorError) {
-          console.warn('pgvector extension not available, using text search only:', vectorError);
-        }
+          // Enable pgvector extension (may fail if not available, but that's okay)
+          try {
+            await directSql`CREATE EXTENSION IF NOT EXISTS vector`;
+            console.log('pgvector extension enabled');
+          } catch (vectorError) {
+            console.warn('pgvector extension not available, using text search only:', vectorError);
+          }
 
-        // Create vector documents table if it doesn't exist
-        await directSql`
-        CREATE TABLE IF NOT EXISTS vector_documents (
-          id SERIAL PRIMARY KEY,
-          document_id TEXT NOT NULL UNIQUE,
-          content TEXT NOT NULL,
-          embedding VECTOR(1536),
-          metadata JSONB,
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
-        )
-      `;
-        console.log('Vector documents table created/verified');
-
-        // Create text search index for better performance
-        await directSql`
-        CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
-        ON vector_documents USING gin(to_tsvector('english', content))
-      `;
-
-        // Create optimized indexes for similarity search
-        try {
-          // Primary vector index with optimized list count for large datasets
+          // Create vector documents table if it doesn't exist
           await directSql`
-            CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
-            ON vector_documents USING ivfflat (embedding vector_cosine_ops)
-            WITH (lists = 1000)
+            CREATE TABLE IF NOT EXISTS vector_documents (
+              id SERIAL PRIMARY KEY,
+              document_id TEXT NOT NULL UNIQUE,
+              content TEXT NOT NULL,
+              embedding VECTOR(1536),
+              metadata JSONB,
+              created_at TIMESTAMP DEFAULT NOW(),
+              updated_at TIMESTAMP DEFAULT NOW()
+            )
           `;
-          
-          // Additional indexes for metadata filtering
-          await directSql`
-            CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
-            ON vector_documents USING gin(metadata)
-          `;
-          
-          // Composite index for document_id lookups
-          await directSql`
-            CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
-            ON vector_documents (document_id, created_at DESC)
-          `;
-          
-          console.log('Optimized vector indexes created');
-        } catch (indexError) {
-          console.warn('Vector indexes not created (pgvector not available)');
-        }
+          console.log('Vector documents table created/verified');
 
-        this.initialized = true;
-        console.log('Vector store initialized successfully');
-        return;
-      } catch (error: any) {
-        retries--;
-        const errorMsg = error?.message || 'Unknown error';
-        console.error(`Vector store initialization failed (${retries} retries left):`, errorMsg);
+          // Create text search index for better performance
+          await directSql`
+            CREATE INDEX IF NOT EXISTS vector_documents_content_idx 
+            ON vector_documents USING gin(to_tsvector('english', content))
+          `;
 
-        if (retries === 0) {
-          console.error('Vector store initialization failed permanently, continuing without vector store');
-          // Don't throw error, allow app to continue with degraded functionality
+          // Create optimized indexes for similarity search
+          try {
+            // Primary vector index with optimized list count for large datasets
+            await directSql`
+              CREATE INDEX IF NOT EXISTS vector_documents_embedding_idx 
+              ON vector_documents USING ivfflat (embedding vector_cosine_ops)
+              WITH (lists = 1000)
+            `;
+            
+            // Additional indexes for metadata filtering
+            await directSql`
+              CREATE INDEX IF NOT EXISTS vector_documents_metadata_idx 
+              ON vector_documents USING gin(metadata)
+            `;
+            
+            // Composite index for document_id lookups
+            await directSql`
+              CREATE INDEX IF NOT EXISTS vector_documents_id_created_idx 
+              ON vector_documents (document_id, created_at DESC)
+            `;
+            
+            console.log('Optimized vector indexes created');
+          } catch (indexError) {
+            console.warn('Vector indexes not created (pgvector not available)');
+          }
+
           this.initialized = true;
-          this.initializationPromise = null;
+          console.log('Vector store initialized successfully');
           return;
-        }
+        } catch (error: any) {
+          retries--;
+          const errorMsg = error?.message || 'Unknown error';
+          console.error(`Vector store initialization failed (${retries} retries left):`, errorMsg);
 
-        // Wait before retry with exponential backoff
-        await new Promise(resolve => setTimeout(resolve, (4 - retries) * 3000));
+          if (retries === 0) {
+            console.error('Vector store initialization failed permanently, continuing without vector store');
+            // Don't throw error, allow app to continue with degraded functionality
+            this.initialized = true;
+            this.initializationPromise = null;
+            return;
+          }
+
+          // Wait before retry with exponential backoff
+          await new Promise(resolve => setTimeout(resolve, (4 - retries) * 3000));
+        }
       }
-    }
     }).finally(() => {
       this.initializationPromise = null;
     });
@@ -178,24 +171,29 @@ export class VectorStore {
             return {
               documentId: doc.id,
               content: doc.content,
-              embedding: embedding,
-              metadata: doc.metadata
+              embedding: `[${embedding.join(',')}]`,
+              metadata: JSON.stringify(doc.metadata)
             };
           })
         );
 
-        // Batch insert
-        await this.db.insert(vectorDocuments)
-          .values(documentsToInsert)
-          .onConflictDoUpdate({
-            target: vectorDocuments.documentId,
-            set: {
-              content: sql`excluded.content`,
-              embedding: sql`excluded.embedding`,
-              metadata: sql`excluded.metadata`,
-              updatedAt: new Date()
-            }
-          });
+        // Use raw SQL for inserting
+        for (const doc of documentsToInsert) {
+          try {
+            await directSql`
+              INSERT INTO vector_documents (document_id, content, embedding, metadata, created_at, updated_at)
+              VALUES (${doc.documentId}, ${doc.content}, ${doc.embedding}::vector, ${doc.metadata}::jsonb, NOW(), NOW())
+              ON CONFLICT (document_id) 
+              DO UPDATE SET 
+                content = EXCLUDED.content,
+                embedding = EXCLUDED.embedding,
+                metadata = EXCLUDED.metadata,
+                updated_at = NOW()
+            `;
+          } catch (insertError) {
+            console.warn(`Failed to insert document ${doc.documentId}:`, insertError);
+          }
+        }
       }
 
       console.log(`[VectorStore] Added ${documents.length} documents in ${batches.length} batches`);
@@ -210,28 +208,24 @@ export class VectorStore {
 
     try {
       // Find documents without embeddings
-      const documentsWithoutEmbeddings = await this.db
-        .select({
-          id: vectorDocuments.id,
-          documentId: vectorDocuments.documentId,
-          content: vectorDocuments.content,
-          metadata: vectorDocuments.metadata
-        })
-        .from(vectorDocuments)
-        .where(sql`${vectorDocuments.embedding} IS NULL`);
+      const documentsWithoutEmbeddings = await directSql`
+        SELECT id, document_id, content, metadata 
+        FROM vector_documents 
+        WHERE embedding IS NULL
+      `;
 
       if (documentsWithoutEmbeddings.length > 0) {
         console.log(`[VectorStore] Found ${documentsWithoutEmbeddings.length} documents without embeddings, generating...`);
 
         for (const doc of documentsWithoutEmbeddings) {
           const embedding = await this.embeddingService.generateEmbedding(doc.content);
+          const embeddingVector = `[${embedding.join(',')}]`;
 
-          await this.db.update(vectorDocuments)
-            .set({
-              embedding: embedding,
-              updatedAt: new Date()
-            })
-            .where(sql`${vectorDocuments.id} = ${doc.id}`);
+          await directSql`
+            UPDATE vector_documents 
+            SET embedding = ${embeddingVector}::vector, updated_at = NOW() 
+            WHERE id = ${doc.id}
+          `;
         }
 
         console.log(`[VectorStore] Generated embeddings for ${documentsWithoutEmbeddings.length} documents`);
@@ -256,17 +250,18 @@ export class VectorStore {
 
       try {
         const queryVector = `[${queryEmbedding.join(',')}]`;
-        const results = await this.db
-          .select({
-            id: vectorDocuments.documentId,
-            content: vectorDocuments.content,
-            metadata: vectorDocuments.metadata,
-            similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`
-          })
-          .from(vectorDocuments)
-          .where(sql`${vectorDocuments.embedding} IS NOT NULL AND 1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector) > ${minSimilarity}`)
-          .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`))
-          .limit(topK);
+        const results = await directSql`
+          SELECT 
+            document_id as id,
+            content,
+            metadata,
+            1 - (embedding <=> ${queryVector}::vector) as similarity
+          FROM vector_documents
+          WHERE embedding IS NOT NULL 
+            AND 1 - (embedding <=> ${queryVector}::vector) > ${minSimilarity}
+          ORDER BY embedding <=> ${queryVector}::vector
+          LIMIT ${topK}
+        `;
 
         return results.map(result => ({
           document: {
@@ -282,7 +277,7 @@ export class VectorStore {
         return this.textSearchFallback(queryEmbedding, { topK, minSimilarity });
       }
 
-      } catch (error) {
+    } catch (error) {
       console.error('Failed to search vector store:', error);
       return [];
     }
@@ -292,14 +287,11 @@ export class VectorStore {
     const { topK = 5 } = options;
     try {
       // Extract some meaningful keywords from embedding context for text search
-      const results = await this.db
-        .select({
-          id: vectorDocuments.documentId,
-          content: vectorDocuments.content,
-          metadata: vectorDocuments.metadata
-        })
-        .from(vectorDocuments)
-        .limit(topK);
+      const results = await directSql`
+        SELECT document_id as id, content, metadata
+        FROM vector_documents
+        LIMIT ${topK}
+      `;
 
       return results.map((result, index) => ({
         document: {
@@ -335,20 +327,18 @@ export class VectorStore {
       try {
         // Optimized query with better performance
         const queryVector = `[${queryEmbedding.join(',')}]`;
-        const results = await this.db
-          .select({
-            id: vectorDocuments.documentId,
-            content: vectorDocuments.content,
-            metadata: vectorDocuments.metadata,
-            similarity: sql<number>`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`
-          })
-          .from(vectorDocuments)
-          .where(sql`
-            ${vectorDocuments.embedding} IS NOT NULL AND 
-            1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector) > 0.1
-          `)
-          .orderBy(desc(sql`1 - (${vectorDocuments.embedding} <=> ${queryVector}::vector)`))
-          .limit(limit);
+        const results = await directSql`
+          SELECT 
+            document_id as id,
+            content,
+            metadata,
+            1 - (embedding <=> ${queryVector}::vector) as similarity
+          FROM vector_documents
+          WHERE embedding IS NOT NULL 
+            AND 1 - (embedding <=> ${queryVector}::vector) > 0.1
+          ORDER BY embedding <=> ${queryVector}::vector
+          LIMIT ${limit}
+        `;
 
         const formattedResults = results.map(result => ({
           id: result.id,
@@ -404,33 +394,29 @@ export class VectorStore {
       console.log(`[VectorStore] Performing text search fallback for: "${query}" with limit: ${limit}`);
 
       // Enhanced text search with better scoring
-      const results = await this.db
-        .select({
-          id: vectorDocuments.documentId,
-          content: vectorDocuments.content,
-          metadata: vectorDocuments.metadata,
-          score: sql<number>`
-            CASE 
-              WHEN ${vectorDocuments.content} ILIKE ${`%${query}%`} THEN 0.9
-              WHEN ${vectorDocuments.content} ILIKE ${`%${query.toLowerCase()}%`} THEN 0.8
-              ELSE 0.5
-            END
-          `
-        })
-        .from(vectorDocuments)
-        .where(sql`
-          ${vectorDocuments.content} ILIKE ${`%${query}%`} OR 
-          ${vectorDocuments.content} ILIKE ${`%${query.toLowerCase()}%`} OR
-          ${vectorDocuments.metadata}::text ILIKE ${`%${query}%`}
-        `)
-        .orderBy(sql`
+      const results = await directSql`
+        SELECT 
+          document_id as id,
+          content,
+          metadata,
           CASE 
-            WHEN ${vectorDocuments.content} ILIKE ${`%${query}%`} THEN 0.9
-            WHEN ${vectorDocuments.content} ILIKE ${`%${query.toLowerCase()}%`} THEN 0.8
+            WHEN content ILIKE ${`%${query}%`} THEN 0.9
+            WHEN content ILIKE ${`%${query.toLowerCase()}%`} THEN 0.8
+            ELSE 0.5
+          END as score
+        FROM vector_documents
+        WHERE 
+          content ILIKE ${`%${query}%`} OR 
+          content ILIKE ${`%${query.toLowerCase()}%`} OR
+          metadata::text ILIKE ${`%${query}%`}
+        ORDER BY 
+          CASE 
+            WHEN content ILIKE ${`%${query}%`} THEN 0.9
+            WHEN content ILIKE ${`%${query.toLowerCase()}%`} THEN 0.8
             ELSE 0.5
           END DESC
-        `)
-        .limit(limit);
+        LIMIT ${limit}
+      `;
 
       console.log(`[VectorStore] Text search found ${results.length} results for query: "${query}"`);
 
@@ -453,7 +439,7 @@ export class VectorStore {
     if (!this.initialized) await this.initialize();
 
     try {
-      await this.db.delete(vectorDocuments).where(sql`document_id = ${documentId}`);
+      await directSql`DELETE FROM vector_documents WHERE document_id = ${documentId}`;
       console.log(`Deleted document ${documentId} from vector store`);
     } catch (error) {
       console.error('Failed to delete document from vector store:', error);
