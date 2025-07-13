@@ -1,64 +1,56 @@
-import { Toaster } from "@/components/ui/sonner";
+
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Navigate } from "react-router-dom";
-import MainLayout from "./components/layout/MainLayout";
-import Dashboard from "./pages/Dashboard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import ReasonerPage from "./pages/ReasonerPage";
+import EnhancedPage from "./pages/EnhancedPage";
 import RAGPage from "./pages/RAGPage";
+import A2APage from "./pages/A2APage";
 import MCPPage from "./pages/MCPPage";
 import MCPHubPage from "./pages/MCPHubPage";
-import A2APage from "./pages/A2APage";
+import WorkflowPage from "./pages/WorkflowPage";
 import SavedPromptsPage from "./pages/SavedPromptsPage";
 import TestingPage from "./pages/TestingPage";
-import WorkflowPage from "./pages/WorkflowPage";
 import AnalyticsDashboardPage from "./pages/AnalyticsDashboardPage";
 import SettingsPage from "./pages/SettingsPage";
-import AdvancedSettingsPage from "./pages/AdvancedSettingsPage";
-import EnhancedPage from "./pages/EnhancedPage";
 import NotFound from "./pages/NotFound";
-import WorkflowNotifications from "./components/workflow/WorkflowNotifications";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<MainLayout><Index /></MainLayout>} />
-          <Route path="/index" element={<Navigate to="/" replace />} />
-          <Route
-            path="/*"
-            element={
-              <MainLayout>
-                <Routes>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/reasoner" element={<ReasonerPage />} />
-                  <Route path="/rag" element={<RAGPage />} />
-                  <Route path="/mcp" element={<MCPPage />} />
-                  <Route path="/mcp-hub" element={<MCPHubPage />} />
-                  <Route path="/a2a" element={<A2APage />} />
-                  <Route path="/saved-prompts" element={<SavedPromptsPage />} />
-                  <Route path="/testing" element={<TestingPage />} />
-                  <Route path="/workflow" element={<WorkflowPage />} />
-                  <Route path="/analytics" element={<AnalyticsDashboardPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/advanced-settings" element={<AdvancedSettingsPage />} />
-                  <Route path="/enhanced" element={<EnhancedPage />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <WorkflowNotifications />
-              </MainLayout>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <ErrorBoundary>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/reasoner" element={<ReasonerPage />} />
+              <Route path="/enhanced" element={<EnhancedPage />} />
+              <Route path="/rag" element={<RAGPage />} />
+              <Route path="/a2a" element={<A2APage />} />
+              <Route path="/mcp" element={<MCPPage />} />
+              <Route path="/mcp-hub" element={<MCPHubPage />} />
+              <Route path="/workflow" element={<WorkflowPage />} />
+              <Route path="/saved-prompts" element={<SavedPromptsPage />} />
+              <Route path="/testing" element={<TestingPage />} />
+              <Route path="/analytics" element={<AnalyticsDashboardPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
