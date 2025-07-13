@@ -49,10 +49,10 @@ export class WorkflowNotificationService {
     if (event.source === "deepseek-reasoner" && event.status === "streaming") {
       return; // Skip streaming tokens
     }
-    
+
     const eventKey = `${event.source}-${event.status}-${event.data?.workflowId || 'unknown'}`;
     const now = Date.now();
-    
+
     // Check if we should throttle this event
     if (this.notificationThrottle.has(eventKey)) {
       const lastNotification = this.notificationThrottle.get(eventKey)!;
@@ -60,18 +60,18 @@ export class WorkflowNotificationService {
         return; // Skip this notification
       }
     }
-    
+
     // Update throttle timestamp
     this.notificationThrottle.set(eventKey, now);
-    
+
     // Clean up old throttle entries
     this.cleanupThrottleMap();
-    
+
     // Check notification limit
     if (this.notifications.size >= this.MAX_NOTIFICATIONS) {
       this.removeOldestNotifications();
     }
-    
+
     // Convert real-time events to notifications
     switch (event.source) {
       case "workflow-engine":
@@ -110,7 +110,7 @@ export class WorkflowNotificationService {
   private removeOldestNotifications() {
     const notifications = Array.from(this.notifications.values())
       .sort((a, b) => a.timestamp - b.timestamp);
-    
+
     // Remove oldest non-persistent notifications
     for (const notification of notifications) {
       if (!notification.persistent) {
@@ -324,6 +324,18 @@ export class WorkflowNotificationService {
   }
 
   addNotification(notification: Partial<WorkflowNotification>): string {
+    // Check for duplicate notifications in last 5 seconds
+    const recentTime = Date.now() - 5000;
+    const isDuplicate = Array.from(this.notifications.values()).some(n =>
+      n.title === notification.title &&
+      n.message === notification.message &&
+      n.timestamp > recentTime
+    );
+
+    if (isDuplicate) {
+      return ""; // Skip duplicate notifications
+    }
+
     const id = this.generateNotificationId();
     const fullNotification: WorkflowNotification = {
       id,
@@ -445,7 +457,7 @@ export class WorkflowNotificationService {
 
   dismissNotificationsByType(type: "success" | "warning" | "error" | "info"): void {
     const toRemove: string[] = [];
-    
+
     this.notifications.forEach((notification, id) => {
       if (notification.type === type && !notification.persistent) {
         toRemove.push(id);

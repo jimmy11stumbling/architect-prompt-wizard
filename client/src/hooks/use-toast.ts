@@ -140,6 +140,18 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
+  // Check for duplicate toasts with same title/description in last 2 seconds
+  const now = Date.now();
+  const recentToasts = memoryState.toasts.filter(t => 
+    (now - parseInt(t.id)) < 2000 && // Recent toasts (using id as timestamp)
+    t.title === props.title && 
+    t.description === props.description
+  );
+  
+  if (recentToasts.length > 0) {
+    return recentToasts[0]; // Return existing toast instead of creating duplicate
+  }
+
   const id = genId()
 
   const update = (props: ToasterToast) =>

@@ -25,12 +25,19 @@ const WorkflowNotifications: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let mounted = true;
+    
     const unsubscribe = workflowNotificationService.subscribe((notifications) => {
-      setNotifications(notifications);
-      setUnreadCount(workflowNotificationService.getUnreadCount());
+      if (mounted) {
+        setNotifications(notifications);
+        setUnreadCount(workflowNotificationService.getUnreadCount());
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const handleMarkAsRead = (id: string) => {
@@ -50,6 +57,10 @@ const WorkflowNotifications: React.FC = () => {
   };
 
   const handleActionClick = async (action: any) => {
+    // Prevent multiple clicks
+    if (action._executing) return;
+    action._executing = true;
+    
     try {
       await action.action();
       toast({
@@ -63,6 +74,8 @@ const WorkflowNotifications: React.FC = () => {
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive"
       });
+    } finally {
+      action._executing = false;
     }
   };
 
