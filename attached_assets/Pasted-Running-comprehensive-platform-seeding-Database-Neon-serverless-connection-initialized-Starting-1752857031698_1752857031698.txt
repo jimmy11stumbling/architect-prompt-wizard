@@ -1,0 +1,65 @@
+Running comprehensive platform seeding...
+[Database] Neon serverless connection initialized
+Starting platform data seeding...
+[Database] Connection test successful: ✓
+Error during platform data seeding: NeonDbError: null value in column "username" of relation "users" violates not-null constraint
+    at execute (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async seedPlatformData (/home/runner/workspace/server/seedData.ts:26:7) {
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (1, null, null, admin@example.com, 2025-07-18 16:43:39.559).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'users',
+  column: 'username',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2006',
+  routine: 'ExecConstraints',
+  sourceError: undefined
+}
+❌ Seeding failed: NeonDbError: null value in column "username" of relation "users" violates not-null constraint
+    at execute (file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1556:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async seedPlatformData (/home/runner/workspace/server/seedData.ts:26:7) {
+  severity: 'ERROR',
+  code: '23502',
+  detail: 'Failing row contains (1, null, null, admin@example.com, 2025-07-18 16:43:39.559).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'users',
+  column: 'username',
+  dataType: undefined,
+  constraint: undefined,
+  file: 'execMain.c',
+  line: '2006',
+  routine: 'ExecConstraints',
+  sourceError: undefined
+}
+Error during seeding: Error: Command failed: npx tsx server/seedData.ts
+    at genericNodeError (node:internal/errors:984:15)
+    at wrappedFn (node:internal/errors:538:14)
+    at checkExecSyncError (node:child_process:891:11)
+    at execSync (node:child_process:963:15)
+    at runSeeding (file:///home/runner/workspace/run-seed.js:10:20)
+    at file:///home/runner/workspace/run-seed.js:22:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:122:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 1503,
+  stdout: null,
+  stderr: null
+}
