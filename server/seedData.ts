@@ -26,6 +26,7 @@ export async function seedPlatformData() {
       await db.insert(users).values({
         id: 1,
         username: 'admin',
+        password: 'admin123', // Default password for seeding
         email: 'admin@example.com',
         name: 'Default Admin',
         createdAt: new Date(),
