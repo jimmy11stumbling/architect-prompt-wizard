@@ -1,13 +1,13 @@
-import { execSync } from 'child_process';
+
+import { seedPlatformData } from './server/seedData.ts';
 
 // Function to run seeding
 async function runSeeding() {
   try {
     console.log('Running comprehensive platform seeding...');
     
-    // Run the actual seeding function
-    const result = execSync('npx tsx -e "import { seedPlatformData } from \'./server/seedData.ts\'; await seedPlatformData();"', { encoding: 'utf8' });
-    console.log('Seeding output:', result);
+    // Run the seeding function directly
+    await seedPlatformData();
     
     console.log('Comprehensive seeding completed successfully!');
   } catch (error) {

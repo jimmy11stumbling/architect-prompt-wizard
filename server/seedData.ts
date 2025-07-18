@@ -1,6 +1,9 @@
 import { storage } from "./storage";
 import fs from "fs";
 import path from "path";
+import { db } from "./db";
+import { users } from "../shared/schema";
+import { eq } from "drizzle-orm";
 
 // Function to read attached asset files
 function readAttachedAsset(filename: string): string {
@@ -17,6 +20,18 @@ export async function seedPlatformData() {
   console.log("Starting platform data seeding...");
 
   try {
+    // First, ensure we have a default user for prompts
+    const existingUser = await db.select().from(users).where(eq(users.id, 1)).limit(1);
+    if (existingUser.length === 0) {
+      await db.insert(users).values({
+        id: 1,
+        email: 'admin@example.com',
+        name: 'Default Admin',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      console.log("Created default user for prompts");
+    }
     // Create platforms
     const boltPlatform = await storage.createPlatform({
       name: "Bolt (StackBlitz)",
