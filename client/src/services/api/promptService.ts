@@ -91,17 +91,23 @@ class PromptService {
   }
 
   async savePrompt(prompt: Omit<SavedPrompt, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'usage' | 'rating' | 'category'>): Promise<SavedPrompt> {
-    const response = await fetch(this.apiUrl, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(prompt),
-    });
+    try {
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(prompt),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to save prompt');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to save prompt: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error saving prompt:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async updatePrompt(id: number, updates: Partial<SavedPrompt>): Promise<SavedPrompt> {

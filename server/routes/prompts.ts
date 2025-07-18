@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
+import { savedPrompts, users } from '../../shared/schema';
 import { eq, desc, and, or, like, gte } from 'drizzle-orm';
-import { savedPrompts } from '../../shared/schema';
 import { z } from 'zod';
 import { AuthenticatedRequest } from '../middleware/auth';
 
@@ -150,6 +150,18 @@ router.post('/', async (req, res) => {
     }
 
     const promptData = validation.data;
+
+    // Ensure user exists, create if not
+    const existingUser = await db.select().from(users).where(eq(users.id, req.user.id)).limit(1);
+    if (existingUser.length === 0) {
+      await db.insert(users).values({
+        id: req.user.id,
+        email: `user${req.user.id}@example.com`,
+        name: `User ${req.user.id}`,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    }
 
     const newPrompt = await db
       .insert(savedPrompts)
