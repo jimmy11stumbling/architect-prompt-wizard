@@ -784,3 +784,16 @@ export async function seedPlatformData() {
     throw error;
   }
 }
+
+// Make this file executable as a script
+if (import.meta.url === `file://${process.argv[1]}`) {
+  seedPlatformData()
+    .then(() => {
+      console.log("✅ Seeding completed successfully");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("❌ Seeding failed:", error);
+      process.exit(1);
+    });
+}
