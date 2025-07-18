@@ -25,6 +25,7 @@ export async function seedPlatformData() {
     if (existingUser.length === 0) {
       await db.insert(users).values({
         id: 1,
+        username: 'admin',
         email: 'admin@example.com',
         name: 'Default Admin',
         createdAt: new Date(),
