@@ -1,0 +1,213 @@
+Running comprehensive platform seeding...
+node:internal/process/promises:391
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Error: Transform failed with 1 error:
+/eval.ts:1:57: ERROR: Top-level await is currently not supported with the "cjs" output format
+    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1477:15)
+    at /home/runner/workspace/node_modules/esbuild/lib/main.js:756:50
+    at responseCallbacks.<computed> (/home/runner/workspace/node_modules/esbuild/lib/main.js:623:9)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/esbuild/lib/main.js:678:12)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:601:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23) {
+  errors: [
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 57,
+        file: '/eval.ts',
+        length: 5,
+        line: 1,
+        lineText: "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    }
+  ],
+  warnings: []
+}
+
+Node.js v20.18.1
+Error during seeding: Error: Command failed: npx tsx -e "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();"
+node:internal/process/promises:391
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Error: Transform failed with 1 error:
+/eval.ts:1:57: ERROR: Top-level await is currently not supported with the "cjs" output format
+    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1477:15)
+    at /home/runner/workspace/node_modules/esbuild/lib/main.js:756:50
+    at responseCallbacks.<computed> (/home/runner/workspace/node_modules/esbuild/lib/main.js:623:9)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/esbuild/lib/main.js:678:12)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:601:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23) {
+  errors: [
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 57,
+        file: '/eval.ts',
+        length: 5,
+        line: 1,
+        lineText: "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    }
+  ],
+  warnings: []
+}
+
+Node.js v20.18.1
+
+    at genericNodeError (node:internal/errors:984:15)
+    at wrappedFn (node:internal/errors:538:14)
+    at checkExecSyncError (node:child_process:891:11)
+    at execSync (node:child_process:963:15)
+    at runSeeding (file:///home/runner/workspace/run-seed.js:9:20)
+    at file:///home/runner/workspace/run-seed.js:19:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:234:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:473:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:122:5) {
+  status: 1,
+  signal: null,
+  output: [
+    null,
+    '',
+    'node:internal/process/promises:391\n' +
+      '    triggerUncaughtException(err, true /* fromPromise */);\n' +
+      '    ^\n' +
+      '\n' +
+      'Error: Transform failed with 1 error:\n' +
+      '/eval.ts:1:57: ERROR: Top-level await is currently not supported with the "cjs" output format\n' +
+      '    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1477:15)\n' +
+      '    at /home/runner/workspace/node_modules/esbuild/lib/main.js:756:50\n' +
+      '    at responseCallbacks.<computed> (/home/runner/workspace/node_modules/esbuild/lib/main.js:623:9)\n' +
+      '    at handleIncomingPacket (/home/runner/workspace/node_modules/esbuild/lib/main.js:678:12)\n' +
+      '    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:601:7)\n' +
+      '    at Socket.emit (node:events:518:28)\n' +
+      '    at addChunk (node:internal/streams/readable:561:12)\n' +
+      '    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)\n' +
+      '    at Readable.push (node:internal/streams/readable:392:5)\n' +
+      '    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23) {\n' +
+      '  errors: [\n' +
+      '    {\n' +
+      '      detail: undefined,\n' +
+      "      id: '',\n" +
+      '      location: {\n' +
+      '        column: 57,\n' +
+      "        file: '/eval.ts',\n" +
+      '        length: 5,\n' +
+      '        line: 1,\n' +
+      `        lineText: "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();",\n` +
+      "        namespace: '',\n" +
+      "        suggestion: ''\n" +
+      '      },\n' +
+      '      notes: [],\n' +
+      "      pluginName: '',\n" +
+      `      text: 'Top-level await is currently not supported with the "cjs" output format'\n` +
+      '    }\n' +
+      '  ],\n' +
+      '  warnings: []\n' +
+      '}\n' +
+      '\n' +
+      'Node.js v20.18.1\n'
+  ],
+  pid: 982,
+  stdout: '',
+  stderr: 'node:internal/process/promises:391\n' +
+    '    triggerUncaughtException(err, true /* fromPromise */);\n' +
+    '    ^\n' +
+    '\n' +
+    'Error: Transform failed with 1 error:\n' +
+    '/eval.ts:1:57: ERROR: Top-level await is currently not supported with the "cjs" output format\n' +
+    '    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1477:15)\n' +
+    '    at /home/runner/workspace/node_modules/esbuild/lib/main.js:756:50\n' +
+    '    at responseCallbacks.<computed> (/home/runner/workspace/node_modules/esbuild/lib/main.js:623:9)\n' +
+    '    at handleIncomingPacket (/home/runner/workspace/node_modules/esbuild/lib/main.js:678:12)\n' +
+    '    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:601:7)\n' +
+    '    at Socket.emit (node:events:518:28)\n' +
+    '    at addChunk (node:internal/streams/readable:561:12)\n' +
+    '    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)\n' +
+    '    at Readable.push (node:internal/streams/readable:392:5)\n' +
+    '    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23) {\n' +
+    '  errors: [\n' +
+    '    {\n' +
+    '      detail: undefined,\n' +
+    "      id: '',\n" +
+    '      location: {\n' +
+    '        column: 57,\n' +
+    "        file: '/eval.ts',\n" +
+    '        length: 5,\n' +
+    '        line: 1,\n' +
+    `        lineText: "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();",\n` +
+    "        namespace: '',\n" +
+    "        suggestion: ''\n" +
+    '      },\n' +
+    '      notes: [],\n' +
+    "      pluginName: '',\n" +
+    `      text: 'Top-level await is currently not supported with the "cjs" output format'\n` +
+    '    }\n' +
+    '  ],\n' +
+    '  warnings: []\n' +
+    '}\n' +
+    '\n' +
+    'Node.js v20.18.1\n'
+}
+Error output: Error: Command failed: npx tsx -e "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();"
+node:internal/process/promises:391
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+Error: Transform failed with 1 error:
+/eval.ts:1:57: ERROR: Top-level await is currently not supported with the "cjs" output format
+    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1477:15)
+    at /home/runner/workspace/node_modules/esbuild/lib/main.js:756:50
+    at responseCallbacks.<computed> (/home/runner/workspace/node_modules/esbuild/lib/main.js:623:9)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/esbuild/lib/main.js:678:12)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:601:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23) {
+  errors: [
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 57,
+        file: '/eval.ts',
+        length: 5,
+        line: 1,
+        lineText: "import { seedPlatformData } from './server/seedData.ts'; await seedPlatformData();",
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [],
+      pluginName: '',
+      text: 'Top-level await is currently not supported with the "cjs" output format'
+    }
+  ],
+  warnings: []
+}
+
+Node.js v20.18.1
+
